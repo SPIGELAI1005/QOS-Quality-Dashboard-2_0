@@ -1,0 +1,327 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 174 72% 56%; /* Teal/cyan blue - matches reference */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 174 72% 56%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 174 72% 56%;
+    --radius: 0.5rem;
+    /* Chart colors matching reference design - professional blue/teal palette */
+    --chart-1: 174 72% 56%; /* Primary teal/cyan for Q1/Customer */
+    --chart-2: 173 58% 39%; /* Teal/Green for Q2/Supplier */
+    --chart-3: 197 37% 24%; /* Dark blue for Q3/Internal */
+    --chart-4: 43 74% 66%; /* Yellow/Amber for highlights */
+    --chart-5: 340 75% 55%; /* Red/Pink for alerts */
+    --sidebar-background: 222 47% 8%; /* Dark sidebar matching reference */
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 174 72% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 174 72% 56%;
+  }
+
+  .dark {
+    --background: 222 47% 8%; /* Dark background matching reference */
+    --foreground: 240 4.8% 95.9%;
+    --card: 222 47% 10%;
+    --card-foreground: 240 4.8% 95.9%;
+    --popover: 222 47% 10%;
+    --popover-foreground: 240 4.8% 95.9%;
+    --primary: 174 72% 56%; /* Teal/cyan primary */
+    --primary-foreground: 222 47% 8%;
+    --secondary: 222 47% 15%;
+    --secondary-foreground: 240 4.8% 95.9%;
+    --muted: 222 47% 12%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 174 72% 56%;
+    --accent-foreground: 222 47% 8%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 240 4.8% 95.9%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 8%;
+    --success: 142 76% 36%;
+    --success-foreground: 240 4.8% 95.9%;
+    --border: 222 47% 15%;
+    --input: 222 47% 15%;
+    --ring: 174 72% 56%;
+    /* Chart colors for dark mode - brighter versions */
+    --chart-1: 174 72% 56%; /* Primary teal/cyan */
+    --chart-2: 173 58% 45%; /* Teal/Green - brighter */
+    --chart-3: 197 37% 35%; /* Dark blue - lighter */
+    --chart-4: 43 74% 66%; /* Yellow/Amber */
+    --chart-5: 340 75% 55%; /* Red/Pink */
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 174 72% 56%;
+    --sidebar-primary-foreground: 222 47% 8%;
+    --sidebar-accent: 222 47% 12%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 222 47% 15%;
+    --sidebar-ring: 174 72% 56%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  /* Animated vertical lines background */
+  .animated-lines-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .animated-lines-bg::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+      linear-gradient(90deg, transparent 0%, rgba(0, 255, 0, 0.03) 50%, transparent 100%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 255, 0, 0.05) 2px,
+        rgba(0, 255, 0, 0.05) 4px
+      );
+    background-size: 100% 100%, 60px 100%;
+    animation: slideLines 20s linear infinite;
+    filter: blur(1px);
+  }
+
+  .animated-lines-bg::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+      linear-gradient(90deg, transparent 0%, rgba(0, 255, 0, 0.02) 50%, transparent 100%),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 3px,
+        rgba(0, 255, 0, 0.04) 3px,
+        rgba(0, 255, 0, 0.04) 6px
+      );
+    background-size: 100% 100%, 80px 100%;
+    animation: slideLines 25s linear infinite reverse;
+    filter: blur(1.5px);
+  }
+
+  @keyframes slideLines {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(60px);
+    }
+  }
+
+  /* Fade in animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 1s ease-out;
+  }
+
+  /* Glassmorphism effect for chart cards */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .dark .glass-card {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  /* Glassmorphism with subtle glow */
+  .glass-card-glow {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+      0 8px 32px 0 rgba(0, 0, 0, 0.1),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 1px 0 rgba(255, 255, 255, 0.1) inset;
+  }
+
+  .dark .glass-card-glow {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    box-shadow: 
+      0 8px 32px 0 rgba(0, 0, 0, 0.4),
+      0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+      0 1px 0 rgba(255, 255, 255, 0.1) inset;
+  }
+
+  /* Smooth chart container animation */
+  .chart-container {
+    transition: all 0.3s ease-in-out;
+  }
+
+  .chart-container:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Accordion animations */
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  .animate-accordion-down {
+    animation: accordion-down 0.2s ease-out;
+  }
+
+  .animate-accordion-up {
+    animation: accordion-up 0.2s ease-out;
+  }
+
+  /* Collapsible animations */
+  @keyframes collapsible-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+    }
+  }
+
+  @keyframes collapsible-up {
+    from {
+      height: var(--radix-collapsible-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+
+  .animate-collapsible-down {
+    animation: collapsible-down 0.2s ease-out;
+  }
+
+  .animate-collapsible-up {
+    animation: collapsible-up 0.2s ease-out;
+  }
+
+  /* Custom sidebar scrollbar styling */
+  .sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(222 47% 20%) hsl(222 47% 8%);
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: hsl(222 47% 8%);
+    border-radius: 4px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(222 47% 20%);
+    border-radius: 4px;
+    border: 1px solid hsl(222 47% 12%);
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #00FF88;
+  }
+
+  /* Custom app/page scrollbar styling (match sidebar) */
+  .app-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(222 47% 20%) hsl(222 47% 8%);
+  }
+
+  .app-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-track {
+    background: hsl(222 47% 8%);
+    border-radius: 4px;
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(222 47% 20%);
+    border-radius: 4px;
+    border: 1px solid hsl(222 47% 12%);
+  }
+
+  .app-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #00FF88;
+  }
+}
+
