@@ -712,7 +712,7 @@ export function IAmQChatPanel({
               )}
             </Button>
             <Button
-              onClick={handleSend}
+              onClick={() => handleSend()}
               disabled={!input.trim() || isLoading}
               size="icon"
               className="border-border/40"
