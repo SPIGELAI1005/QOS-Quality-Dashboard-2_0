@@ -241,8 +241,7 @@ export function Sidebar() {
             isCollapsed ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-2 pointer-events-none absolute inset-0"
           )}
           aria-hidden={!isCollapsed}
-          // @ts-expect-error inert is not in React types in some TS versions
-          inert={!isCollapsed ? "" : undefined}
+          inert={!isCollapsed ? true : undefined}
         >
           {visibleFlattenedNavigation.map((item) => {
             const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
@@ -277,8 +276,7 @@ export function Sidebar() {
             isCollapsed ? "opacity-0 translate-x-2 pointer-events-none absolute inset-0" : "opacity-100 translate-x-0"
           )}
           aria-hidden={isCollapsed}
-          // @ts-expect-error inert is not in React types in some TS versions
-          inert={isCollapsed ? "" : undefined}
+          inert={isCollapsed ? true : undefined}
         >
           {visibleNavigation.map((item) => {
           const itemName = t.sidebar[item.nameKey as keyof typeof t.sidebar] as string;

@@ -5,11 +5,12 @@ import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Languages, SunMoon, UserCircle2 } from "lucide-react";
+import { Languages, SunMoon, UserCircle2, MessageCircle } from "lucide-react";
 import { RoleAccessDialog } from "@/components/auth/role-access-dialog";
 import { ROLE_CHANGED_EVENT, ROLE_STORAGE_KEY, type RoleKey } from "@/lib/auth/roles";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { type LanguageKey, LANGUAGE_CHANGED_EVENT } from "@/lib/i18n/translations";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 
 export function TopBar() {
   const { theme, setTheme } = useTheme();
@@ -18,6 +19,7 @@ export function TopBar() {
   const [role, setRole] = useState<RoleKey>("reader");
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [pendingRole, setPendingRole] = useState<RoleKey | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const themeValue = (theme === "light" ? "light" : "dark") as "dark" | "light";
 
   useEffect(() => {
@@ -59,6 +61,20 @@ export function TopBar() {
         <h1 className="text-xl font-semibold text-foreground">{t.header.title}</h1>
 
         <div className="flex items-center gap-4">
+          {/* I AM Q Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsChatOpen(true)}
+            className={cn(
+              "h-11 px-4 bg-[#00FF88] text-black hover:bg-[#00FF88] hover:border-black border-[#00FF88] border-2 font-semibold shadow-sm hover:shadow-md transition-all",
+              themeValue === "light" && "hover:text-black"
+            )}
+          >
+            <MessageCircle className={cn("h-5 w-5 scale-x-[-1] text-black", themeValue === "light" && "hover:text-black")} />
+            <span className={cn("ml-2.5 font-semibold", themeValue === "light" && "hover:text-black")}>I A:M Q</span>
+          </Button>
+
           {/* Language */}
           <Select value={language} onValueChange={(v: LanguageKey) => setLanguage(v)}>
             <SelectTrigger className="h-10 w-[190px] border-border/60 bg-background/40 backdrop-blur">
@@ -132,6 +148,8 @@ export function TopBar() {
           setRole(storedRole);
         }}
       />
+
+      <IAmQChatPanel open={isChatOpen} onOpenChange={setIsChatOpen} />
     </header>
   );
 }

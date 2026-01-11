@@ -126,36 +126,22 @@ export function FilterPanel({
       });
   }, []);
 
-  // Get unique plants - prefer loaded plant data from "Webasto ET Plants.xlsx", fallback to KPI data
+  // Get unique plants - merge plants from "Webasto ET Plants.xlsx" with any additional plants from KPI data
   const availablePlants = useMemo(() => {
-    // If we have plant data from official Excel file, use it (shows ALL plants from file)
-    if (plantsData.length > 0) {
-      console.log('[Filter Panel] Using plants from official "Webasto ET Plants.xlsx" file:', plantsData.length, 'plants');
-      console.log('[Filter Panel] Plant codes:', plantsData.map(p => p.code).join(', '));
-      
-      // Validate that KPI sites exist in official file
-      const kpiSiteCodes = new Set(monthlySiteKpis.map(k => k.siteCode));
-      const officialPlantCodes = new Set(plantsData.map(p => p.code));
-      const missingInOfficial = Array.from(kpiSiteCodes).filter(code => !officialPlantCodes.has(code));
-      if (missingInOfficial.length > 0) {
-        console.warn('[Filter Panel] Warning: Some KPI site codes not found in official plants file:', missingInOfficial.join(', '));
-      }
-      
-      return plantsData.sort((a, b) => {
-        // Sort numerically if both are numbers, otherwise alphabetically
-        const aNum = parseInt(a.code);
-        const bNum = parseInt(b.code);
-        if (!isNaN(aNum) && !isNaN(bNum)) {
-          return aNum - bNum;
-        }
-        return a.code.localeCompare(b.code);
-      });
-    }
-
-    // Fallback to KPI data if plants file not loaded
     const plantMap = new Map<string, PlantData>();
+    
+    // First, add all plants from official Excel file (authoritative source)
+    if (plantsData.length > 0) {
+      plantsData.forEach((plant) => {
+        plantMap.set(plant.code, plant);
+      });
+      console.log('[Filter Panel] Loaded plants from official "Webasto ET Plants.xlsx" file:', plantsData.length, 'plants');
+    }
+    
+    // Then, add any plants from KPI data that are NOT in the official file
     monthlySiteKpis.forEach((kpi) => {
       if (!plantMap.has(kpi.siteCode)) {
+        // This plant exists in KPI data but not in official file - add it
         const abbreviation =
           typeof kpi.siteName === "string" && kpi.siteName.trim().length > 0
             ? kpi.siteName.trim().substring(0, 3).toUpperCase()
@@ -166,9 +152,13 @@ export function FilterPanel({
           location: kpi.siteName || undefined,
           abbreviation,
         });
+        console.log(`[Filter Panel] Added plant ${kpi.siteCode} from KPI data (not in official file)`);
       }
     });
-    const fallbackPlants = Array.from(plantMap.values()).sort((a, b) => {
+    
+    // Sort all plants
+    const allPlants = Array.from(plantMap.values()).sort((a, b) => {
+      // Sort numerically if both are numbers, otherwise alphabetically
       const aNum = parseInt(a.code);
       const bNum = parseInt(b.code);
       if (!isNaN(aNum) && !isNaN(bNum)) {
@@ -176,8 +166,11 @@ export function FilterPanel({
       }
       return a.code.localeCompare(b.code);
     });
-    console.log('Using fallback plants from KPIs:', fallbackPlants.length, fallbackPlants.map(p => p.code).join(', '));
-    return fallbackPlants;
+    
+    console.log('[Filter Panel] Total available plants:', allPlants.length);
+    console.log('[Filter Panel] Plant codes:', allPlants.map(p => p.code).join(', '));
+    
+    return allPlants;
   }, [monthlySiteKpis, plantsData]);
 
   // Auto-select SAP PS4 plants when availablePlants and plantsData are loaded and no plants are selected
@@ -266,15 +259,19 @@ export function FilterPanel({
   };
 
   const filterBySapPS4 = () => {
-    const sapPS4Plants = availablePlants
-      .filter((plant) => {
-        const plantData = plantsData.find((p) => p.code === plant.code);
-        if (!plantData?.erp) return false;
-        const erp = plantData.erp.toUpperCase().trim();
-        // Match: SAP PS4, PS4, SAP S4, S4, etc.
-        return erp.includes('PS4') || erp.includes('S4') || erp.includes('SAP S4');
-      })
-      .map((p) => p.code);
+    // Use getSapPS4PlantCodes to get ALL PS4 plants from Excel file (authoritative source)
+    // This ensures all PS4 plants are shown, even if they don't have KPI data
+    const sapPS4Plants = getSapPS4PlantCodes.length > 0
+      ? getSapPS4PlantCodes
+      : availablePlants
+          .filter((plant) => {
+            // Fallback: if Excel file not loaded, try to find ERP info from available plant data
+            const plantData = plantsData.find((p) => p.code === plant.code) || plant;
+            if (!plantData?.erp) return false;
+            const erp = plantData.erp.toUpperCase().trim();
+            return erp.includes('PS4') || erp.includes('S4') || erp.includes('SAP S4');
+          })
+          .map((p) => p.code);
     onFiltersChange({ ...filters, selectedPlants: sapPS4Plants });
   };
 
@@ -306,6 +303,73 @@ export function FilterPanel({
       .map((p) => p.code);
     onFiltersChange({ ...filters, selectedPlants: aftermarketPlants });
   };
+
+  // Helper functions to check if a quick access filter is active
+  const getSapPS4PlantCodes = useMemo(() => {
+    if (plantsData.length === 0) return [];
+    return plantsData
+      .filter((plant) => {
+        if (!plant.erp) return false;
+        const erp = plant.erp.toUpperCase().trim();
+        return erp.includes('PS4') || erp.includes('S4') || erp.includes('SAP S4');
+      })
+      .map((p) => p.code);
+  }, [plantsData]);
+
+  const getSapP01PlantCodes = useMemo(() => {
+    if (plantsData.length === 0) return [];
+    return plantsData
+      .filter((plant) => {
+        if (!plant.erp) return false;
+        const erp = plant.erp.toUpperCase().trim();
+        return erp.includes('P01') && !erp.includes('PS4') && !erp.includes('S4');
+      })
+      .map((p) => p.code);
+  }, [plantsData]);
+
+  const getAXPlantCodes = useMemo(() => {
+    if (plantsData.length === 0) return [];
+    return plantsData
+      .filter((plant) => {
+        if (!plant.erp) return false;
+        const erp = plant.erp.toUpperCase().trim();
+        return (erp === 'AX' || erp.includes('AX')) && !erp.includes('P01') && !erp.includes('PS4') && !erp.includes('S4');
+      })
+      .map((p) => p.code);
+  }, [plantsData]);
+
+  const isSapPS4Active = useMemo(() => {
+    if (filters.selectedPlants.length === 0 || getSapPS4PlantCodes.length === 0) return false;
+    if (filters.selectedPlants.length !== getSapPS4PlantCodes.length) return false;
+    return getSapPS4PlantCodes.every(code => filters.selectedPlants.includes(code)) &&
+           filters.selectedPlants.every(code => getSapPS4PlantCodes.includes(code));
+  }, [filters.selectedPlants, getSapPS4PlantCodes]);
+
+  const isSapP01Active = useMemo(() => {
+    if (filters.selectedPlants.length === 0 || getSapP01PlantCodes.length === 0) return false;
+    if (filters.selectedPlants.length !== getSapP01PlantCodes.length) return false;
+    return getSapP01PlantCodes.every(code => filters.selectedPlants.includes(code)) &&
+           filters.selectedPlants.every(code => getSapP01PlantCodes.includes(code));
+  }, [filters.selectedPlants, getSapP01PlantCodes]);
+
+  const isAXActive = useMemo(() => {
+    if (filters.selectedPlants.length === 0 || getAXPlantCodes.length === 0) return false;
+    if (filters.selectedPlants.length !== getAXPlantCodes.length) return false;
+    return getAXPlantCodes.every(code => filters.selectedPlants.includes(code)) &&
+           filters.selectedPlants.every(code => getAXPlantCodes.includes(code));
+  }, [filters.selectedPlants, getAXPlantCodes]);
+
+  const isAutomotiveActive = useMemo(() => {
+    return filters.selectedPlants.length === 1 && filters.selectedPlants[0] === '101';
+  }, [filters.selectedPlants]);
+
+  const isAftermarketActive = useMemo(() => {
+    if (filters.selectedPlants.length === 0 || availablePlants.length === 0) return false;
+    const aftermarketCodes = availablePlants.filter(p => p.code !== '101').map(p => p.code);
+    if (filters.selectedPlants.length !== aftermarketCodes.length) return false;
+    return aftermarketCodes.every(code => filters.selectedPlants.includes(code)) &&
+           filters.selectedPlants.every(code => aftermarketCodes.includes(code));
+  }, [filters.selectedPlants, availablePlants]);
 
   const toggleComplaintType = (type: string) => {
     const newTypes = filters.selectedComplaintTypes.includes(type)
@@ -366,8 +430,7 @@ export function FilterPanel({
           isCollapsed ? "opacity-0 -translate-x-2 pointer-events-none" : "opacity-100 translate-x-0"
         )}
         aria-hidden={isCollapsed}
-        // @ts-expect-error inert is not in React types in some TS versions
-        inert={isCollapsed ? "" : undefined}
+        inert={isCollapsed ? true : undefined}
       >
       {/* PLANT Section */}
       <Card className="bg-card/50 border-border">
@@ -414,7 +477,10 @@ export function FilterPanel({
                     key={plant.code}
                     variant={isSelected ? "default" : "outline"}
                     size="sm"
-                    className="w-full justify-start text-xs py-1.5 px-2"
+                    className={cn(
+                      "w-full justify-start text-xs py-1.5 px-2",
+                      isSelected && "dark:!text-black dark:hover:!text-black"
+                    )}
                     onClick={() => togglePlant(plant.code)}
                   >
                         <div
@@ -423,7 +489,10 @@ export function FilterPanel({
                       isSelected ? color : "border-2 border-muted-foreground"
                           )}
                         />
-                    <span className="flex items-center gap-1 whitespace-nowrap">
+                    <span className={cn(
+                      "flex items-center gap-1 whitespace-nowrap",
+                      isSelected ? "text-black dark:text-black" : "text-black dark:text-foreground"
+                    )}>
                       <span className="font-medium">{plant.code}</span>
                       {plantData.abbreviation && (
                         <span className="opacity-70 font-normal">{plantData.abbreviation}</span>
@@ -448,45 +517,60 @@ export function FilterPanel({
           {/* Quick Access Filter Buttons */}
           <div className="space-y-2">
             <Button
-              variant="outline"
+              variant={isSapP01Active ? "default" : "outline"}
               size="sm"
-              className="w-full justify-start text-xs"
+              className={cn(
+                "w-full justify-start text-xs",
+                isSapP01Active && "dark:!text-black"
+              )}
               onClick={filterBySapP01}
             >
               <span className="mr-2">📊</span>
               {t.filterPanel.sapP01Sites}
             </Button>
             <Button
-              variant="outline"
+              variant={isSapPS4Active ? "default" : "outline"}
               size="sm"
-              className="w-full justify-start text-xs"
+              className={cn(
+                "w-full justify-start text-xs",
+                isSapPS4Active && "dark:!text-black"
+              )}
               onClick={filterBySapPS4}
             >
               <span className="mr-2">📊</span>
               {t.filterPanel.sapPS4Sites}
             </Button>
             <Button
-              variant="outline"
+              variant={isAXActive ? "default" : "outline"}
               size="sm"
-              className="w-full justify-start text-xs"
+              className={cn(
+                "w-full justify-start text-xs",
+                isAXActive && "dark:!text-black"
+              )}
               onClick={filterByAX}
             >
               <span className="mr-2">📊</span>
               {t.filterPanel.axSites}
             </Button>
             <Button
-              variant="outline"
+              variant={isAutomotiveActive ? "default" : "outline"}
               size="sm"
-              className="w-full justify-start text-xs"
+              className={cn(
+                "w-full justify-start text-xs",
+                isAutomotiveActive && "dark:!text-black"
+              )}
               onClick={filterByAutomotive}
             >
               <span className="mr-2">🚗</span>
               {t.filterPanel.automotiveSites}
             </Button>
             <Button
-              variant="outline"
+              variant={isAftermarketActive ? "default" : "outline"}
               size="sm"
-              className="w-full justify-start text-xs"
+              className={cn(
+                "w-full justify-start text-xs",
+                isAftermarketActive && "dark:!text-black"
+              )}
               onClick={filterByAftermarket}
             >
               <span className="mr-2">📦</span>

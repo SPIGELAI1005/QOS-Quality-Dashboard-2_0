@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   AlertTriangle,
   CheckCircle,
@@ -75,6 +76,7 @@ function toMonthKey(date: Date): string {
 }
 
 export function DeviationsClient() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
   const [deviations, setDeviations] = useState<DeviationApiItem[]>([]);
@@ -139,8 +141,8 @@ export function DeviationsClient() {
   }, [plantsData]);
 
   const monthNames = useMemo(
-    () => ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-    []
+    () => t.common.months,
+    [t]
   );
 
   const availableMonthsYears = useMemo(() => {
@@ -216,8 +218,8 @@ export function DeviationsClient() {
   }, [deviations, filters.selectedPlants, filters.dateFrom, filters.dateTo, lookbackPeriod.start, lookbackPeriod.end]);
 
   const totalDNotifications = filteredDeviations.length;
-  const inProgress = filteredDeviations.filter((d) => d.status === "In Progress" || d.status === "Pending").length;
-  const closed = filteredDeviations.filter((d) => d.status === "Completed").length;
+    const inProgress = filteredDeviations.filter((d) => d.status === "In Progress" || d.status === "Pending" || d.status === t.deviations.inProgress || d.status === t.deviations.pending).length;
+    const closed = filteredDeviations.filter((d) => d.status === "Completed" || d.status === t.deviations.completed).length;
 
   const deviationsMonthlySiteKpisForAi = useMemo<MonthlySiteKpi[]>(() => {
     const byKey = new Map<string, MonthlySiteKpi>();
@@ -402,14 +404,14 @@ export function DeviationsClient() {
       if (!byMonth.has(month)) byMonth.set(month, { closed: 0, inProgress: 0, total: 0 });
       const row = byMonth.get(month)!;
 
-      if (d.status === "Completed") row.closed += 1;
+      if (d.status === "Completed" || d.status === t.deviations.completed) row.closed += 1;
       else row.inProgress += 1;
       row.total += 1;
     }
 
     return Array.from(byMonth.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, v]) => ({ month, Closed: v.closed, "In Progress": v.inProgress, total: v.total }));
+      .map(([month, v]) => ({ month, [t.charts.deviations.closed]: v.closed, [t.deviations.inProgress]: v.inProgress, total: v.total }));
   }, [filteredDeviations, selectedPlantForStatusChart]);
 
   const PlantLegend = useCallback(({
@@ -466,7 +468,7 @@ export function DeviationsClient() {
               <div className="flex items-center gap-2">
                 <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(Number(v))}>
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Month" />
+                    <SelectValue placeholder={t.common.month} />
                   </SelectTrigger>
                   <SelectContent>
                     {monthNames.map((name, idx) => (
@@ -478,7 +480,7 @@ export function DeviationsClient() {
                 </Select>
                 <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(Number(v))}>
                   <SelectTrigger className="w-[110px]">
-                    <SelectValue placeholder="Year" />
+                    <SelectValue placeholder={t.common.year} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableMonthsYears.years.map((y) => (
@@ -678,8 +680,8 @@ export function DeviationsClient() {
         <div className="space-y-6">
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>YTD D Notifications by Month and Plant</CardTitle>
-              <CardDescription>Number of deviations by month and plant (stacked)</CardDescription>
+              <CardTitle>{t.charts.deviations.notificationsByMonth}</CardTitle>
+              <CardDescription>{t.charts.deviations.notificationsDescription}</CardDescription>
             </CardHeader>
             <CardContent>
               {deviationsByMonthPlant.data.length > 0 && deviationsByMonthPlant.sites.length > 0 ? (
@@ -777,8 +779,8 @@ export function DeviationsClient() {
                           return [Number.isFinite(n) ? n.toLocaleString("de-DE") : String(value), label];
                         }}
                       />
-                      <Bar dataKey="Closed" fill="#10b981" name="Closed" stackId="a" radius={[0, 0, 0, 0]} {...getBarAnimation(0)} />
-                      <Bar dataKey="In Progress" fill="#f59e0b" name="In Progress" stackId="a" radius={[4, 4, 0, 0]} {...getBarAnimation(1)}>
+                      <Bar dataKey={t.charts.deviations.closed} fill="#10b981" name={t.charts.deviations.closed} stackId="a" radius={[0, 0, 0, 0]} {...getBarAnimation(0)} />
+                      <Bar dataKey={t.deviations.inProgress} fill="#f59e0b" name={t.deviations.inProgress} stackId="a" radius={[4, 4, 0, 0]} {...getBarAnimation(1)}>
                         <LabelList
                           dataKey="total"
                           position="top"

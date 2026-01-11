@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { ExternalLink, FileSpreadsheet, Info, Loader2, RefreshCw, Sparkles, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -64,6 +65,7 @@ function toMonthKey(date: Date): string {
 }
 
 export function PPAPsClient() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
   const [ppaps, setPpaps] = useState<PPAPApiItem[]>([]);
@@ -128,8 +130,8 @@ export function PPAPsClient() {
   }, [plantsData]);
 
   const monthNames = useMemo(
-    () => ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
-    []
+    () => t.common.months,
+    [t]
   );
 
   const availableMonthsYears = useMemo(() => {
@@ -402,7 +404,7 @@ export function PPAPsClient() {
 
     return Array.from(byMonth.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([month, v]) => ({ month, Closed: v.closed, "In Progress": v.inProgress, total: v.total }));
+      .map(([month, v]) => ({ month, [t.charts.deviations.closed]: v.closed, [t.ppaps.inProgress]: v.inProgress, total: v.total }));
   }, [filteredPpaps, selectedPlantForStatusChart]);
 
   const PlantLegend = useCallback(({
@@ -431,7 +433,7 @@ export function PPAPsClient() {
                 isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg p-1"
               )}
               onClick={() => onPlantClick?.(isSelected ? null : site)}
-              title={isSelected ? "Click to show all plants" : `Click to filter by ${city || site}`}
+              title={isSelected ? t.charts.resetToShowAll : `${t.charts.clickToFilterBy} ${city || site}`}
             >
               <div
                 className={cn("h-6 w-6 rounded flex items-center justify-center text-xs font-semibold text-white flex-shrink-0")}
@@ -459,7 +461,7 @@ export function PPAPsClient() {
               <div className="flex items-center gap-2">
                 <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(Number(v))}>
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Month" />
+                    <SelectValue placeholder={t.common.month} />
                   </SelectTrigger>
                   <SelectContent>
                     {monthNames.map((name, idx) => (
@@ -471,7 +473,7 @@ export function PPAPsClient() {
                 </Select>
                 <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(Number(v))}>
                   <SelectTrigger className="w-[110px]">
-                    <SelectValue placeholder="Year" />
+                    <SelectValue placeholder={t.common.year} />
                   </SelectTrigger>
                   <SelectContent>
                     {availableMonthsYears.years.map((y) => (
@@ -540,7 +542,7 @@ export function PPAPsClient() {
                         }}
                         disabled={aiSummaryLoading || ppapMonthlySiteKpisForAi.length === 0}
                         className="p-2 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="Refresh AI Summary"
+                        title={t.dashboard.clickToGenerateSummary}
                         aria-label="Refresh AI Summary"
                       >
                         <RefreshCw className={`h-3.5 w-3.5 ${aiSummaryLoading ? "animate-spin" : ""}`} style={{ color: "#9E9E9E" }} />
@@ -773,8 +775,8 @@ export function PPAPsClient() {
                           return [Number.isFinite(n) ? n.toLocaleString("de-DE") : String(value), label];
                         }}
                       />
-                      <Bar dataKey="Closed" fill="#10b981" name="Closed" stackId="a" radius={[0, 0, 0, 0]} {...getBarAnimation(0)} />
-                      <Bar dataKey="In Progress" fill="#f59e0b" name="In Progress" stackId="a" radius={[4, 4, 0, 0]} {...getBarAnimation(1)}>
+                      <Bar dataKey={t.charts.deviations.closed} fill="#10b981" name={t.charts.deviations.closed} stackId="a" radius={[0, 0, 0, 0]} {...getBarAnimation(0)} />
+                      <Bar dataKey={t.ppaps.inProgress} fill="#f59e0b" name={t.ppaps.inProgress} stackId="a" radius={[4, 4, 0, 0]} {...getBarAnimation(1)}>
                         <LabelList
                           dataKey="total"
                           position="top"

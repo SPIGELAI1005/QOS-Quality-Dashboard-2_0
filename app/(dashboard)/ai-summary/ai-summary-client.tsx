@@ -6,6 +6,7 @@ import { Loader2, FileText } from "lucide-react";
 import { AIInsightsPanel } from "@/components/dashboard/ai-insights-panel";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 
 interface PlantData {
@@ -24,6 +25,7 @@ interface AISummaryClientProps {
 }
 
 export function AISummaryClient({ monthlySiteKpis: propsKpis = [], globalPpm: propsPpm }: AISummaryClientProps) {
+  const { t } = useTranslation();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>(propsKpis);
   const [globalPpm, setGlobalPpm] = useState<{ customerPpm: number | null; supplierPpm: number | null } | null>(propsPpm || null);
   const [loading, setLoading] = useState(propsKpis.length === 0);
@@ -199,10 +201,10 @@ export function AISummaryClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
           <div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-              AI Management Summary
+              {t.aiSummary.title}
             </h1>
             <p className="text-sm sm:text-base text-muted-foreground mt-1">
-              Intelligent insights and automated quality analysis powered by AI
+              {t.aiSummary.subtitle}
             </p>
           </div>
         </div>
@@ -210,7 +212,7 @@ export function AISummaryClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              No data available. Please upload data from the Upload Data page first.
+              {t.aiSummary.noDataMessage}
             </p>
           </CardContent>
         </Card>
@@ -224,10 +226,10 @@ export function AISummaryClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground">
-            AI Management Summary
+            {t.aiSummary.title}
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Intelligent insights and automated quality analysis powered by AI
+            {t.aiSummary.subtitle}
           </p>
         </div>
       </div>

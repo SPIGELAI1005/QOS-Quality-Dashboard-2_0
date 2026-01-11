@@ -13,8 +13,10 @@ import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
 import { Badge } from "@/components/ui/badge";
 import { FileSpreadsheet, Info } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export function AuditManagementClient() {
+  const { t } = useTranslation();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
@@ -87,12 +89,12 @@ export function AuditManagementClient() {
       <div className="flex-1 space-y-6">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-bold tracking-tight">Audit Management YTD //</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t.auditManagement.title}</h1>
             {selectedMonth !== null && selectedYear !== null && (
               <div className="flex items-center gap-2">
                 <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(Number(v))}>
                   <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder="Month" />
+                    <SelectValue placeholder={t.common.month} />
                   </SelectTrigger>
                   <SelectContent>
                     {monthNames.map((name, idx) => (
@@ -170,13 +172,13 @@ export function AuditManagementClient() {
         <div className="space-y-6">
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>YTD Audits by Month and Plant</CardTitle>
-              <CardDescription>Placeholder until audit data source is connected</CardDescription>
+              <CardTitle>{t.auditManagement.auditsByMonth}</CardTitle>
+              <CardDescription>{t.auditManagement.underConstruction}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] flex items-center justify-center text-center">
                 <p className="text-sm font-semibold" style={{ color: "#FF8A00" }}>
-                  Data Source Missing (Under Construction)
+                  {t.auditManagement.dataSourceMissing}
                 </p>
               </div>
             </CardContent>
@@ -184,13 +186,13 @@ export function AuditManagementClient() {
 
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>YTD Audit Findings Closed vs. Open by Month and Plant</CardTitle>
-              <CardDescription>Placeholder until audit data source is connected</CardDescription>
+              <CardTitle>{t.auditManagement.auditsClosedVsOpen}</CardTitle>
+              <CardDescription>{t.auditManagement.underConstruction}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] flex items-center justify-center text-center">
                 <p className="text-sm font-semibold" style={{ color: "#FF8A00" }}>
-                  Data Source Missing (Under Construction)
+                  {t.auditManagement.dataSourceMissing}
                 </p>
               </div>
             </CardContent>

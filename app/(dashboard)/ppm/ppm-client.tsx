@@ -23,8 +23,10 @@ import {
 import { TrendingUp, FileText } from "lucide-react";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export function PPMClient() {
+  const { t } = useTranslation();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     selectedPlants: [],
@@ -109,16 +111,16 @@ export function PPMClient() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">PPM / ET Site</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t.ppm.title}</h2>
           <p className="text-muted-foreground">
-            Parts Per Million metrics by site
+            {t.ppm.subtitle}
           </p>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              No data available. Please upload data from the Upload Data page first.
+              {t.ppm.noDataMessage}
             </p>
           </CardContent>
         </Card>
@@ -139,8 +141,8 @@ export function PPMClient() {
         <div className="flex-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>PPM Trend by Site</CardTitle>
-              <CardDescription>Customer and Supplier PPM trends over time</CardDescription>
+              <CardTitle>{t.charts.ppm.trendBySite}</CardTitle>
+              <CardDescription>{t.charts.ppm.customerAndSupplierTrends}</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -178,8 +180,8 @@ export function PPMClient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>PPM by Site and Month</CardTitle>
-              <CardDescription>Detailed breakdown of PPM metrics</CardDescription>
+              <CardTitle>{t.charts.ppm.bySiteAndMonth}</CardTitle>
+              <CardDescription>{t.charts.ppm.detailedBreakdown}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">

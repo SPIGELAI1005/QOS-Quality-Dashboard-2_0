@@ -12,8 +12,10 @@ import {
   type ComplaintColumnMapping,
   type DeliveryColumnMapping,
 } from "@/lib/config/columnMappings";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export default function SettingsPage() {
+  const { t } = useTranslation();
   const [complaintMapping, setComplaintMapping] = useState<ComplaintColumnMapping>(
     DEFAULT_COMPLAINT_COLUMN_MAPPING
   );
@@ -47,36 +49,36 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{t.settings.title}</h2>
         <p className="text-muted-foreground">
-          Configure application settings and preferences
+          {t.settings.subtitle}
         </p>
       </div>
 
       <Tabs defaultValue="ai" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="ai">AI Configuration</TabsTrigger>
-          <TabsTrigger value="mappings">Column Mappings</TabsTrigger>
+          <TabsTrigger value="ai">{t.settings.aiConfigurationTab}</TabsTrigger>
+          <TabsTrigger value="mappings">{t.settings.columnMappingsTab}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="ai" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>AI Configuration</CardTitle>
+              <CardTitle>{t.settings.aiConfiguration}</CardTitle>
               <CardDescription>
-                Configure AI insights API keys (set in environment variables)
+                {t.settings.aiConfigurationDescription}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-lg border p-4 bg-muted/50">
-                <p className="text-sm font-medium mb-2">Environment Variables Required:</p>
+                <p className="text-sm font-medium mb-2">{t.settings.environmentVariablesRequired}</p>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                  <li><code className="bg-background px-1 rounded">AI_API_KEY</code> - Your LLM API key</li>
-                  <li><code className="bg-background px-1 rounded">AI_PROVIDER</code> - "openai" or "anthropic" (optional, defaults to "openai")</li>
-                  <li><code className="bg-background px-1 rounded">AI_MODEL</code> - Model name override (optional)</li>
+                  <li><code className="bg-background px-1 rounded">AI_API_KEY</code> - {t.settings.aiApiKeyDescription}</li>
+                  <li><code className="bg-background px-1 rounded">AI_PROVIDER</code> - {t.settings.aiProviderDescription}</li>
+                  <li><code className="bg-background px-1 rounded">AI_MODEL</code> - {t.settings.aiModelDescription}</li>
                 </ul>
                 <p className="text-xs text-muted-foreground mt-3">
-                  Note: API keys are configured server-side in <code>.env.local</code> for security.
+                  {t.settings.apiKeyNote}
                 </p>
               </div>
             </CardContent>
@@ -86,15 +88,15 @@ export default function SettingsPage() {
         <TabsContent value="mappings" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Column Mappings</CardTitle>
+              <CardTitle>{t.settings.columnMappings}</CardTitle>
               <CardDescription>
-                Customize how Excel column names map to internal fields
+                {t.settings.columnMappingsDescription}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-semibold mb-3">Complaint File Mappings</h4>
+                  <h4 className="text-sm font-semibold mb-3">{t.settings.complaintFileMappings}</h4>
                   <div className="space-y-3">
                     {Object.entries(complaintMapping).map(([field, values]) => (
                       <div key={field} className="space-y-1">
@@ -110,11 +112,11 @@ export default function SettingsPage() {
                               .filter((v) => v.length > 0);
                             updateComplaintMapping(field as keyof ComplaintColumnMapping, newValues);
                           }}
-                          placeholder="Comma-separated column names"
+                          placeholder={t.settings.commaSeparatedColumnNames}
                           className="text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {values.length} mapping(s) configured
+                          {values.length} {t.settings.mappingsConfigured}
                         </p>
                       </div>
                     ))}
@@ -122,7 +124,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <h4 className="text-sm font-semibold mb-3">Delivery File Mappings</h4>
+                  <h4 className="text-sm font-semibold mb-3">{t.settings.deliveryFileMappings}</h4>
                   <div className="space-y-3">
                     {Object.entries(deliveryMapping).map(([field, values]) => (
                       <div key={field} className="space-y-1">
@@ -138,11 +140,11 @@ export default function SettingsPage() {
                               .filter((v) => v.length > 0);
                             updateDeliveryMapping(field as keyof DeliveryColumnMapping, newValues);
                           }}
-                          placeholder="Comma-separated column names"
+                          placeholder={t.settings.commaSeparatedColumnNames}
                           className="text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          {Array.isArray(values) ? values.length : 0} mapping(s) configured
+                          {Array.isArray(values) ? values.length : 0} {t.settings.mappingsConfigured}
                         </p>
                       </div>
                     ))}
@@ -151,7 +153,7 @@ export default function SettingsPage() {
 
                 <div className="flex items-center gap-2 pt-4 border-t">
                   <Button onClick={handleSaveMappings}>
-                    {saved ? "Saved!" : "Save Mappings"}
+                    {saved ? t.settings.saved : t.settings.saveMappings}
                   </Button>
                   <Button
                     variant="outline"
@@ -160,15 +162,15 @@ export default function SettingsPage() {
                       setDeliveryMapping(DEFAULT_DELIVERY_COLUMN_MAPPING);
                     }}
                   >
-                    Reset to Defaults
+                    {t.settings.resetToDefaults}
                   </Button>
                   {saved && (
-                    <span className="text-sm text-success">Mappings saved!</span>
+                    <span className="text-sm text-success">{t.settings.mappingsSaved}</span>
                   )}
                 </div>
 
                 <p className="text-xs text-muted-foreground">
-                  Note: Custom mappings are currently stored in browser memory. Full persistence coming soon.
+                  {t.settings.mappingsNote}
                 </p>
               </div>
             </CardContent>

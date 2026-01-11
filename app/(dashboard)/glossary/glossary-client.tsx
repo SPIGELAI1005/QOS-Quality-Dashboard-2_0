@@ -11,6 +11,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { ExternalLink, HelpCircle, Mail, Sparkles, ListChecks, BookOpen, Link2, Download, Check } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type UploadSectionKey = "complaints" | "deliveries" | "ppap" | "deviations" | "audit" | "plants";
 
@@ -28,14 +29,8 @@ interface UploadHistoryEntry {
 interface GlossaryItem {
   term: string;
   definition: string;
-  category:
-    | "Navigation"
-    | "Data Sources"
-    | "Notifications"
-    | "Metrics"
-    | "Charts & Views"
-    | "AI"
-    | "General";
+  category: string; // Translated category name
+  categoryKey: "Navigation" | "Data Sources" | "Notifications" | "Metrics" | "Charts & Views" | "AI" | "General"; // Original key for filtering
 }
 
 function safeJsonParse<T>(raw: string | null): T | null {
@@ -63,6 +58,7 @@ function buildMailtoHref(args: { to: string; subject: string; body: string }): s
 }
 
 export function GlossaryClient() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [openFaq, setOpenFaq] = useState<string | undefined>(undefined);
   const [copiedFaqId, setCopiedFaqId] = useState<string | null>(null);
@@ -70,67 +66,67 @@ export function GlossaryClient() {
   const faqs = useMemo(
     () => [
       {
-        q: "Where do I upload the data files used by the dashboards?",
-        a: "Go to Upload Data. Use the structured upload sections (Complaints, Deliveries, PPAP, Deviations, Plants). After upload, you can calculate KPIs and the report pages will read from the KPI dataset.",
+        q: t.glossary.faqs.howToUpload.q,
+        a: t.glossary.faqs.howToUpload.a,
       },
       {
-        q: "Which files are the source of truth for complaints and PPM?",
-        a: "Complaints and defective parts are taken from the Q Cockpit complaints extract. Deliveries are taken from Outbound (customer deliveries) and Inbound (supplier deliveries) files. PPM is derived from defective parts and deliveries.",
+        q: t.glossary.faqs.sourceOfTruth.q,
+        a: t.glossary.faqs.sourceOfTruth.a,
       },
       {
-        q: "How is Customer PPM calculated?",
-        a: "Customer PPM = (Customer Defective Parts / Customer Deliveries) × 1,000,000 for the selected plants and time window.",
+        q: t.glossary.faqs.customerPpmCalculation.q,
+        a: t.glossary.faqs.customerPpmCalculation.a,
       },
       {
-        q: "How is Supplier PPM calculated?",
-        a: "Supplier PPM = (Supplier Defective Parts / Supplier Deliveries) × 1,000,000 for the selected plants and time window.",
+        q: t.glossary.faqs.supplierPpmCalculation.q,
+        a: t.glossary.faqs.supplierPpmCalculation.a,
       },
       {
-        q: "What do Q1, Q2, and Q3 mean?",
-        a: "Q1 = Customer complaints, Q2 = Supplier complaints, Q3 = Internal complaints. They represent different notification categories and drive different charts/metrics.",
+        q: t.glossary.faqs.q1q2q3Meaning.q,
+        a: t.glossary.faqs.q1q2q3Meaning.a,
       },
       {
-        q: "What do D1, D2, D3 represent on the Deviations page?",
-        a: "D1/D2/D3 are deviation notification types. The Deviations Overview page shows counts by month and plant, and a status view (Closed vs In Progress).",
+        q: t.glossary.faqs.d1d2d3Meaning.q,
+        a: t.glossary.faqs.d1d2d3Meaning.a,
       },
       {
-        q: "What do P1, P2, P3 represent on the PPAPs page?",
-        a: "P1/P2/P3 are PPAP notification types. The PPAPs Overview page shows PPAP counts by month/plant and a status view (Closed vs In Progress).",
+        q: t.glossary.faqs.p1p2p3Meaning.q,
+        a: t.glossary.faqs.p1p2p3Meaning.a,
       },
       {
-        q: "Why do charts show a 12-month lookback even when the page says YTD?",
-        a: "The selector uses a 12-month lookback ending at the selected month/year to provide a consistent trend window across pages. The page title keeps “YTD //” for consistency with the dashboard naming.",
+        q: t.glossary.faqs.ytdLookback.q,
+        a: t.glossary.faqs.ytdLookback.a,
       },
       {
-        q: "How does plant filtering work?",
-        a: "The global filter panel (right sidebar) filters most content. Some charts also support local chart-only filtering via clicking on the legend (it affects only that chart).",
+        q: t.glossary.faqs.plantFiltering.q,
+        a: t.glossary.faqs.plantFiltering.a,
       },
       {
-        q: "Why do some legends show plant code plus city/location?",
-        a: "Plant names are enriched from the official Plant Overview file so users can recognize sites by city/location (e.g., “410 (Fenton)”).",
+        q: t.glossary.faqs.plantNamesEnrichment.q,
+        a: t.glossary.faqs.plantNamesEnrichment.a,
       },
       {
-        q: "What does “Fixed Y-axis scale” mean on certain charts?",
-        a: "When a chart supports local filtering by plant, the Y-axis max is computed from the unfiltered dataset to prevent the scale from changing after selecting a plant.",
+        q: t.glossary.faqs.fixedYAxis.q,
+        a: t.glossary.faqs.fixedYAxis.a,
       },
       {
-        q: "Why does the AI Summary sometimes show an error?",
-        a: "AI Summary depends on the configured AI provider/key and the current filtered dataset. If the provider rejects the request (API key, rate limit, network), the UI shows a structured explanation and suggested fixes.",
+        q: t.glossary.faqs.aiSummaryError.q,
+        a: t.glossary.faqs.aiSummaryError.a,
       },
       {
-        q: "Does AI Summary use the same plant labels as the dashboard?",
-        a: "Yes. The AI prompt is instructed to mention plant code and city/location when referencing a site, based on the official plant list.",
+        q: t.glossary.faqs.aiSummaryPlantLabels.q,
+        a: t.glossary.faqs.aiSummaryPlantLabels.a,
       },
       {
-        q: "What is the Data Lineage page for?",
-        a: "It documents which data sources feed which parsers/APIs, what outputs are produced, and where those outputs are used (pages/charts). It also reflects last upload timestamps from Upload History when available.",
+        q: t.glossary.faqs.dataLineage.q,
+        a: t.glossary.faqs.dataLineage.a,
       },
       {
-        q: "How do I report an issue?",
-        a: "Use the Contact button on this page. It opens an email with a template including issue title and helpful context (page, timestamp, last uploads).",
+        q: t.glossary.faqs.reportIssue.q,
+        a: t.glossary.faqs.reportIssue.a,
       },
     ],
-    []
+    [t]
   );
 
   const filteredFaqs = useMemo(() => {
@@ -143,60 +139,60 @@ export function GlossaryClient() {
 
   const glossary = useMemo<GlossaryItem[]>(
     () => [
-      { category: "Navigation", term: "QOS ET Dashboard", definition: "Main dashboard aggregating customer/supplier/internal metrics and charts across the selected time window." },
-      { category: "Navigation", term: "Customer Performance", definition: "Customer-only view (Q1 + customer deliveries/PPM) with customer-related charts and tables." },
-      { category: "Navigation", term: "Supplier Performance", definition: "Supplier-only view (Q2 + supplier deliveries/PPM) with supplier-related charts and tables." },
-      { category: "Navigation", term: "Upload Data", definition: "Structured file upload and manual entry page. Also provides KPI recalculation and change history." },
-      { category: "Navigation", term: "Data Lineage", definition: "Catalog view that maps data sources → processing → outputs → pages/charts." },
+      { category: t.glossary.categories.navigation, categoryKey: "Navigation", term: t.glossary.termsList.navigation.qosEtDashboard.term, definition: t.glossary.termsList.navigation.qosEtDashboard.definition },
+      { category: t.glossary.categories.navigation, categoryKey: "Navigation", term: t.glossary.termsList.navigation.customerPerformance.term, definition: t.glossary.termsList.navigation.customerPerformance.definition },
+      { category: t.glossary.categories.navigation, categoryKey: "Navigation", term: t.glossary.termsList.navigation.supplierPerformance.term, definition: t.glossary.termsList.navigation.supplierPerformance.definition },
+      { category: t.glossary.categories.navigation, categoryKey: "Navigation", term: t.glossary.termsList.navigation.uploadData.term, definition: t.glossary.termsList.navigation.uploadData.definition },
+      { category: t.glossary.categories.navigation, categoryKey: "Navigation", term: t.glossary.termsList.navigation.dataLineage.term, definition: t.glossary.termsList.navigation.dataLineage.definition },
 
-      { category: "Data Sources", term: "Complaints extract (Q Cockpit)", definition: "Excel export containing quality notifications (Q1/Q2/Q3) including defective parts and plant references." },
-      { category: "Data Sources", term: "Outbound deliveries files", definition: "Excel extracts containing customer deliveries by plant/date. Used as denominator for Customer PPM." },
-      { category: "Data Sources", term: "Inbound deliveries files", definition: "Excel extracts containing supplier deliveries by plant/date. Used as denominator for Supplier PPM." },
-      { category: "Data Sources", term: "Plant master data (Webasto ET Plants)", definition: "Official plant code-to-location mapping used across filters, legends, and AI prompts." },
-      { category: "Data Sources", term: "PPAP base + status extracts", definition: "Two Excel files: a notification list + a status list used to classify PPAP status." },
-      { category: "Data Sources", term: "Deviations base + status extracts", definition: "Two Excel files: a deviation notification list + a status list used to classify deviation status." },
+      { category: t.glossary.categories.dataSources, categoryKey: "Data Sources", term: t.glossary.termsList.dataSources.complaintsExtract.term, definition: t.glossary.termsList.dataSources.complaintsExtract.definition },
+      { category: t.glossary.categories.dataSources, categoryKey: "Data Sources", term: t.glossary.termsList.dataSources.outboundDeliveries.term, definition: t.glossary.termsList.dataSources.outboundDeliveries.definition },
+      { category: t.glossary.categories.dataSources, categoryKey: "Data Sources", term: t.glossary.termsList.dataSources.inboundDeliveries.term, definition: t.glossary.termsList.dataSources.inboundDeliveries.definition },
+      { category: t.glossary.categories.dataSources, categoryKey: "Data Sources", term: t.glossary.termsList.dataSources.plantMasterData.term, definition: t.glossary.termsList.dataSources.plantMasterData.definition },
+      { category: t.glossary.categories.dataSources, categoryKey: "Data Sources", term: t.glossary.termsList.dataSources.ppapExtracts.term, definition: t.glossary.termsList.dataSources.ppapExtracts.definition },
+      { category: t.glossary.categories.dataSources, categoryKey: "Data Sources", term: t.glossary.termsList.dataSources.deviationsExtracts.term, definition: t.glossary.termsList.dataSources.deviationsExtracts.definition },
 
-      { category: "Notifications", term: "Notification Number", definition: "Unique identifier for each SAP quality notification." },
-      { category: "Notifications", term: "Notification Type", definition: "SAP notification classification: Q1/Q2/Q3 (complaints), D1/D2/D3 (deviations), P1/P2/P3 (PPAP)." },
-      { category: "Notifications", term: "Q1 (Customer Complaint)", definition: "Customer-originated quality notifications; contributes to customer complaints and Customer PPM." },
-      { category: "Notifications", term: "Q2 (Supplier Complaint)", definition: "Supplier-related quality notifications; contributes to supplier complaints and Supplier PPM." },
-      { category: "Notifications", term: "Q3 (Internal Complaint)", definition: "Internal quality notifications; used in internal complaint reporting (e.g., Poor Quality Costs placeholders)." },
-      { category: "Notifications", term: "D1/D2/D3 (Deviation)", definition: "Deviation notifications representing exceptions or approvals. Reported on Deviations Overview." },
-      { category: "Notifications", term: "P1/P2/P3 (PPAP)", definition: "PPAP notifications representing approval process states. Reported on PPAPs Overview." },
-      { category: "Notifications", term: "NOCO / OSNO", definition: "SAP system-status tokens used to infer status (NOCO ≈ Completed, OSNO ≈ In Progress)." },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.notificationNumber.term, definition: t.glossary.termsList.notifications.notificationNumber.definition },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.notificationType.term, definition: t.glossary.termsList.notifications.notificationType.definition },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.q1.term, definition: t.glossary.termsList.notifications.q1.definition },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.q2.term, definition: t.glossary.termsList.notifications.q2.definition },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.q3.term, definition: t.glossary.termsList.notifications.q3.definition },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.d1d2d3.term, definition: t.glossary.termsList.notifications.d1d2d3.definition },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.p1p2p3.term, definition: t.glossary.termsList.notifications.p1p2p3.definition },
+      { category: t.glossary.categories.notifications, categoryKey: "Notifications", term: t.glossary.termsList.notifications.nocoOsno.term, definition: t.glossary.termsList.notifications.nocoOsno.definition },
 
-      { category: "Metrics", term: "PPM (Parts Per Million)", definition: "Quality metric: (Defective Parts / Total Deliveries) × 1,000,000. Lower is better." },
-      { category: "Metrics", term: "Customer PPM", definition: "PPM computed from Q1 defective parts and customer deliveries (Outbound)." },
-      { category: "Metrics", term: "Supplier PPM", definition: "PPM computed from Q2 defective parts and supplier deliveries (Inbound)." },
-      { category: "Metrics", term: "Defective Parts", definition: "Quantity of non-conforming parts recorded in a notification. Used in PPM." },
-      { category: "Metrics", term: "Deliveries", definition: "Total delivered quantity used as PPM denominator (customer outbound / supplier inbound)." },
-      { category: "Metrics", term: "Global PPM", definition: "Overall PPM aggregated across all selected plants/months." },
-      { category: "Metrics", term: "12-month lookback window", definition: "A rolling window ending at the selected month/year used for consistent trend visuals." },
+      { category: t.glossary.categories.metrics, categoryKey: "Metrics", term: t.glossary.termsList.metrics.ppm.term, definition: t.glossary.termsList.metrics.ppm.definition },
+      { category: t.glossary.categories.metrics, categoryKey: "Metrics", term: t.glossary.termsList.metrics.customerPpm.term, definition: t.glossary.termsList.metrics.customerPpm.definition },
+      { category: t.glossary.categories.metrics, categoryKey: "Metrics", term: t.glossary.termsList.metrics.supplierPpm.term, definition: t.glossary.termsList.metrics.supplierPpm.definition },
+      { category: t.glossary.categories.metrics, categoryKey: "Metrics", term: t.glossary.termsList.metrics.defectiveParts.term, definition: t.glossary.termsList.metrics.defectiveParts.definition },
+      { category: t.glossary.categories.metrics, categoryKey: "Metrics", term: t.glossary.termsList.metrics.deliveries.term, definition: t.glossary.termsList.metrics.deliveries.definition },
+      { category: t.glossary.categories.metrics, categoryKey: "Metrics", term: t.glossary.termsList.metrics.globalPpm.term, definition: t.glossary.termsList.metrics.globalPpm.definition },
+      { category: t.glossary.categories.metrics, categoryKey: "Metrics", term: t.glossary.termsList.metrics.lookbackWindow.term, definition: t.glossary.termsList.metrics.lookbackWindow.definition },
 
-      { category: "Charts & Views", term: "YTD Total Number of Notifications by Month and Plant", definition: "Stacked bar chart showing complaint counts per month split by plant." },
-      { category: "Charts & Views", term: "YTD Total Number of Defects by Month and Plant", definition: "Bar chart showing defective parts by month and plant (customer vs supplier)." },
-      { category: "Charts & Views", term: "Legend click filter", definition: "Chart-local filter triggered by clicking a plant badge in the legend; does not affect other charts." },
-      { category: "Charts & Views", term: "Fixed Y-axis domain", definition: "Y-axis max computed from unfiltered data so scale remains stable after local filtering." },
+      { category: t.glossary.categories.chartsViews, categoryKey: "Charts & Views", term: t.glossary.termsList.chartsViews.notificationsByMonth.term, definition: t.glossary.termsList.chartsViews.notificationsByMonth.definition },
+      { category: t.glossary.categories.chartsViews, categoryKey: "Charts & Views", term: t.glossary.termsList.chartsViews.defectsByMonth.term, definition: t.glossary.termsList.chartsViews.defectsByMonth.definition },
+      { category: t.glossary.categories.chartsViews, categoryKey: "Charts & Views", term: t.glossary.termsList.chartsViews.legendClickFilter.term, definition: t.glossary.termsList.chartsViews.legendClickFilter.definition },
+      { category: t.glossary.categories.chartsViews, categoryKey: "Charts & Views", term: t.glossary.termsList.chartsViews.fixedYAxis.term, definition: t.glossary.termsList.chartsViews.fixedYAxis.definition },
 
-      { category: "AI", term: "AI Summary", definition: "LLM-generated narrative summary of filtered KPIs with trends, risks, and recommended actions." },
-      { category: "AI", term: "AI Management Summary", definition: "Central page that summarizes KPIs and highlights anomalies and actions (German number formatting, plant labels included)." },
-      { category: "AI", term: "Provider / API key", definition: "Configured LLM backend (e.g., OpenAI-compatible or Anthropic) used by the AI Summary API route." },
+      { category: t.glossary.categories.ai, categoryKey: "AI", term: t.glossary.termsList.ai.aiSummary.term, definition: t.glossary.termsList.ai.aiSummary.definition },
+      { category: t.glossary.categories.ai, categoryKey: "AI", term: t.glossary.termsList.ai.aiManagementSummary.term, definition: t.glossary.termsList.ai.aiManagementSummary.definition },
+      { category: t.glossary.categories.ai, categoryKey: "AI", term: t.glossary.termsList.ai.providerApiKey.term, definition: t.glossary.termsList.ai.providerApiKey.definition },
 
-      { category: "General", term: "Site / Plant Code", definition: "3-digit code identifying a manufacturing site (e.g., 145, 235, 410). Displayed with city/location when available." },
-      { category: "General", term: "Upload History", definition: "Persistent log of file uploads/manual entries including timestamps, summaries, and where data is used." },
-      { category: "General", term: "Manual Entry (Template)", definition: "Form-based entry of monthly values per plant. Stored and merged into the KPI dataset for reporting." },
+      { category: t.glossary.categories.general, categoryKey: "General", term: t.glossary.termsList.general.sitePlantCode.term, definition: t.glossary.termsList.general.sitePlantCode.definition },
+      { category: t.glossary.categories.general, categoryKey: "General", term: t.glossary.termsList.general.uploadHistory.term, definition: t.glossary.termsList.general.uploadHistory.definition },
+      { category: t.glossary.categories.general, categoryKey: "General", term: t.glossary.termsList.general.manualEntry.term, definition: t.glossary.termsList.general.manualEntry.definition },
     ],
-    []
+    [t]
   );
 
   const filteredGlossary = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return glossary;
-    return glossary.filter((g) => `${g.term}\n${g.definition}\n${g.category}`.toLowerCase().includes(q));
+    return glossary.filter((g) => `${g.term}\n${g.definition}\n${g.category}\n${g.categoryKey}`.toLowerCase().includes(q));
   }, [glossary, searchQuery]);
 
   const glossaryByCategory = useMemo(() => {
-    const map = new Map<GlossaryItem["category"], GlossaryItem[]>();
+    const map = new Map<string, GlossaryItem[]>();
     for (const item of filteredGlossary) {
       const list = map.get(item.category) || [];
       list.push(item);
@@ -356,26 +352,26 @@ export function GlossaryClient() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <HelpCircle className="h-5 w-5 text-muted-foreground" />
-                <h2 className="text-2xl font-bold tracking-tight">FAQ & Glossary</h2>
+                <h2 className="text-2xl font-bold tracking-tight">{t.glossary.title}</h2>
               </div>
               <p className="text-muted-foreground">
-                Quick answers on navigation and calculations, plus a complete glossary of terms used across the report.
+                {t.glossary.subtitle}
               </p>
               <div className="flex items-center gap-2 flex-wrap pt-2">
                 <Badge variant="secondary" className="bg-[#00FF88]/15 text-[#00FF88] border-[#00FF88]/30">
-                  15 FAQs
+                  {t.glossary.faqsCount}
                 </Badge>
                 <Badge variant="secondary" className="bg-muted/50">
-                  Full glossary (no collapsing)
+                  {t.glossary.fullGlossary}
                 </Badge>
                 <Badge variant="secondary" className="bg-muted/50">
-                  Contact support
+                  {t.glossary.contactSupport}
                 </Badge>
               </div>
             </div>
             <Button variant="outline" onClick={() => (typeof window !== "undefined" ? window.location.assign("/upload") : undefined)}>
               <ExternalLink className="h-4 w-4 mr-2" />
-              Go to Upload Data
+              {t.glossary.goToUpload}
             </Button>
           </div>
         </CardContent>
@@ -389,21 +385,21 @@ export function GlossaryClient() {
             className="text-base font-semibold px-4 data-[state=active]:bg-[#00FF88] data-[state=active]:text-black data-[state=active]:shadow-sm"
           >
             <ListChecks className="h-4 w-4 mr-2" />
-            FAQ
+            {t.glossary.faqTab}
           </TabsTrigger>
           <TabsTrigger
             value="glossary"
             className="text-base font-semibold px-4 data-[state=active]:bg-[#00FF88] data-[state=active]:text-black data-[state=active]:shadow-sm"
           >
             <BookOpen className="h-4 w-4 mr-2" />
-            Glossary
+            {t.glossary.glossaryTab}
           </TabsTrigger>
         </TabsList>
           <div className="flex items-center gap-2">
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search FAQ + Glossary…"
+              placeholder={t.glossary.searchPlaceholder}
               className="w-[260px]"
             />
           </div>
@@ -413,8 +409,8 @@ export function GlossaryClient() {
           <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
             <Card className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
               <CardHeader>
-                <CardTitle>Frequently Asked Questions</CardTitle>
-                <CardDescription>Focused on navigation, data sources, and how metrics/charts are calculated.</CardDescription>
+                <CardTitle>{t.glossary.faqTitle}</CardTitle>
+                <CardDescription>{t.glossary.faqDescription}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Accordion type="single" collapsible className="w-full" value={openFaq} onValueChange={setOpenFaq}>
@@ -426,7 +422,7 @@ export function GlossaryClient() {
                           <button
                             type="button"
                             className="ml-2 p-2 rounded-md hover:bg-muted/50 transition-colors"
-                            title="Copy link to this FAQ"
+                            title={t.glossary.copyLink}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -456,9 +452,9 @@ export function GlossaryClient() {
             <div className="space-y-4">
               <Card className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
                 <CardHeader>
-                  <CardTitle>Dataset Health</CardTitle>
+                  <CardTitle>{t.glossary.datasetHealth}</CardTitle>
                   <CardDescription>
-                    Live status from Upload History. A dataset is considered stale after {datasetHealth.staleDays} days.
+                    {t.glossary.datasetHealthDescription.replace("{{days}}", datasetHealth.staleDays.toString())}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
@@ -467,10 +463,10 @@ export function GlossaryClient() {
                       <div className="space-y-0.5">
                         <div className="text-sm font-medium capitalize">{r.key}</div>
                         <div className="text-xs text-muted-foreground">
-                          {r.lastSuccessIso ? `Last success: ${formatWhen(r.lastSuccessIso)}` : "No successful upload yet"}
+                          {r.lastSuccessIso ? `${t.glossary.lastSuccess}: ${formatWhen(r.lastSuccessIso)}` : t.glossary.noSuccessfulUpload}
                         </div>
                         {typeof r.records === "number" && (
-                          <div className="text-xs text-muted-foreground">Records: {r.records}</div>
+                          <div className="text-xs text-muted-foreground">{t.glossary.records}: {r.records}</div>
                         )}
                       </div>
                       <Badge
@@ -484,7 +480,7 @@ export function GlossaryClient() {
                             : "bg-muted/50 text-muted-foreground border-border/50"
                         )}
                       >
-                        {r.lastSuccessIso ? (r.stale ? "Stale" : "OK") : "Missing"}
+                        {r.lastSuccessIso ? (r.stale ? t.glossary.stale : t.glossary.ok) : t.glossary.missing}
                       </Badge>
                     </div>
                   ))}
@@ -495,15 +491,15 @@ export function GlossaryClient() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-muted-foreground" />
-                    QM ET Triangle
+                    {t.glossary.qmTriangle}
                   </CardTitle>
-                  <CardDescription>How the report is built and structured.</CardDescription>
+                  <CardDescription>{t.glossary.qmTriangleDescription}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="relative w-full overflow-hidden rounded-xl border border-border/60 bg-muted/10">
                     <Image
                       src="/Media/QM ET Triangle.png"
-                      alt="QM ET Triangle"
+                      alt={t.glossary.qmTriangle}
                       width={1200}
                       height={800}
                       className="w-full h-auto object-contain"
@@ -511,7 +507,7 @@ export function GlossaryClient() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground mt-3">
-                    Tip: If a chart looks wrong, check data lineage (sources → parsing → KPIs → charts) and the upload history.
+                    {t.glossary.qmTriangleTip}
                   </p>
                 </CardContent>
               </Card>
@@ -520,21 +516,21 @@ export function GlossaryClient() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Mail className="h-5 w-5 text-muted-foreground" />
-                    Contact
+                    {t.glossary.contact}
                   </CardTitle>
-                  <CardDescription>Open an email with an issue title, remark, and basic context.</CardDescription>
+                  <CardDescription>{t.glossary.contactDescription}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="space-y-1.5">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Issue title</div>
-                    <Input value={issueTitle} onChange={(e) => setIssueTitle(e.target.value)} placeholder="e.g., Deviations chart shows 0 records" />
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.glossary.issueTitle}</div>
+                    <Input value={issueTitle} onChange={(e) => setIssueTitle(e.target.value)} placeholder={t.glossary.issueTitlePlaceholder} />
                   </div>
                   <div className="space-y-1.5">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Remark / description</div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.glossary.remark}</div>
                     <textarea
                       value={remark}
                       onChange={(e) => setRemark(e.target.value)}
-                      placeholder="Steps to reproduce, what you expected, what you saw…"
+                      placeholder={t.glossary.remarkPlaceholder}
                       className={cn(
                         "min-h-[110px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
                         "ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -542,8 +538,8 @@ export function GlossaryClient() {
                     />
                   </div>
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <div><span className="font-medium text-foreground">Page:</span> {pageUrl || "—"}</div>
-                    <div><span className="font-medium text-foreground">Last successful upload:</span> {lastSuccessfulUpload ? formatWhen(lastSuccessfulUpload.uploadedAtIso) : "—"}</div>
+                    <div><span className="font-medium text-foreground">{t.glossary.page}:</span> {pageUrl || "—"}</div>
+                    <div><span className="font-medium text-foreground">{t.glossary.lastSuccessfulUpload}:</span> {lastSuccessfulUpload ? formatWhen(lastSuccessfulUpload.uploadedAtIso) : "—"}</div>
                   </div>
                   <div className="grid gap-2">
                     <Button
@@ -553,12 +549,12 @@ export function GlossaryClient() {
                       className="w-full border-[#00FF88]/30 hover:bg-[#00FF88]/10"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Download diagnostics JSON
+                      {t.glossary.downloadDiagnostics}
                     </Button>
                     <a href={contactHref}>
                       <Button className="w-full bg-[#00FF88] hover:bg-[#00FF88]/90 text-black font-semibold">
                         <Mail className="h-4 w-4 mr-2" />
-                        Contact (Email)
+                        {t.glossary.contactEmail}
                       </Button>
                     </a>
                   </div>
@@ -569,22 +565,22 @@ export function GlossaryClient() {
 
           <Card id="improvement-ideas" className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
             <CardHeader>
-              <CardTitle>Improvement Ideas</CardTitle>
-              <CardDescription>Short form to capture suggestions and send them by email.</CardDescription>
+              <CardTitle>{t.glossary.improvementIdeas}</CardTitle>
+              <CardDescription>{t.glossary.improvementIdeasDescription}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1.5">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Idea title</div>
-                  <Input value={ideaTitle} onChange={(e) => setIdeaTitle(e.target.value)} placeholder="e.g., Add search + deep links across FAQ" />
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.glossary.ideaTitle}</div>
+                  <Input value={ideaTitle} onChange={(e) => setIdeaTitle(e.target.value)} placeholder={t.glossary.ideaTitlePlaceholder} />
                 </div>
               </div>
               <div className="space-y-1.5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Idea details</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t.glossary.ideaDetails}</div>
                 <textarea
                   value={ideaText}
                   onChange={(e) => setIdeaText(e.target.value)}
-                  placeholder="Describe the improvement and why it helps…"
+                  placeholder={t.glossary.ideaDetailsPlaceholder}
                   className={cn(
                     "min-h-[110px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
                     "ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -594,7 +590,7 @@ export function GlossaryClient() {
               <a href={improvementIdeaHref}>
                 <Button className="w-full bg-[#00FF88] hover:bg-[#00FF88]/90 text-black font-semibold">
                   <Mail className="h-4 w-4 mr-2" />
-                  Send Improvement Idea
+                  {t.glossary.sendIdea}
                 </Button>
               </a>
             </CardContent>
@@ -602,21 +598,21 @@ export function GlossaryClient() {
 
           <Card id="how-to-read-charts" className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
             <CardHeader>
-              <CardTitle>How to read key charts</CardTitle>
-              <CardDescription>These anchors are referenced by the “How to read this chart” tooltips in the dashboards.</CardDescription>
+              <CardTitle>{t.glossary.howToReadCharts.title}</CardTitle>
+              <CardDescription>{t.glossary.howToReadCharts.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-muted-foreground">
               <div id="how-to-notifications-by-month-plant">
-                <div className="font-medium text-foreground">YTD Total Number of Notifications by Month and Plant</div>
-                <div>Stacked bars: each color = plant, bar height = total notifications for that month. Clicking a plant in the legend filters only this chart.</div>
+                <div className="font-medium text-foreground">{t.glossary.howToReadCharts.notificationsByMonth.title}</div>
+                <div>{t.glossary.howToReadCharts.notificationsByMonth.description}</div>
               </div>
               <div id="how-to-defects-by-month-plant">
-                <div className="font-medium text-foreground">YTD Total Number of Defects by Month and Plant</div>
-                <div>Shows defective parts, split by plant. If the chart offers a defect type selector, it switches Customer vs Supplier defective parts.</div>
+                <div className="font-medium text-foreground">{t.glossary.howToReadCharts.defectsByMonth.title}</div>
+                <div>{t.glossary.howToReadCharts.defectsByMonth.description}</div>
               </div>
               <div id="how-to-ppm-trend">
-                <div className="font-medium text-foreground">YTD Cumulative PPM Trend</div>
-                <div>Line trend of cumulative PPM across the lookback window. PPM uses defective parts as numerator and deliveries as denominator.</div>
+                <div className="font-medium text-foreground">{t.glossary.howToReadCharts.ppmTrend.title}</div>
+                <div>{t.glossary.howToReadCharts.ppmTrend.description}</div>
               </div>
             </CardContent>
           </Card>
@@ -625,24 +621,24 @@ export function GlossaryClient() {
         <TabsContent value="glossary" className="space-y-6">
           <Card className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
             <CardHeader>
-              <CardTitle>Glossary (Complete)</CardTitle>
-              <CardDescription>All terms are visible at once (no collapsing), grouped by category.</CardDescription>
+              <CardTitle>{t.glossary.glossaryTab} ({t.glossary.fullGlossary})</CardTitle>
+              <CardDescription>{t.glossary.subtitle}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {(Array.from(glossaryByCategory.entries()) as Array<[GlossaryItem["category"], GlossaryItem[]]>).map(([category, items]) => (
+              {(Array.from(glossaryByCategory.entries()) as Array<[string, GlossaryItem[]]>).map(([category, items]) => (
                 <div key={category} className="space-y-3">
                   <div className="flex items-center gap-2">
                     <Badge variant="secondary" className="bg-[#00FF88]/15 text-[#00FF88] border-[#00FF88]/30">
                       {category}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">{items.length} terms</span>
+                    <span className="text-xs text-muted-foreground">{items.length} {t.glossary.terms}</span>
                   </div>
                   <div className="rounded-lg border border-border/60 overflow-hidden">
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[260px]">Term</TableHead>
-                          <TableHead>Definition</TableHead>
+                          <TableHead className="w-[260px]">{t.glossary.term}</TableHead>
+                          <TableHead>{t.glossary.definition}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>

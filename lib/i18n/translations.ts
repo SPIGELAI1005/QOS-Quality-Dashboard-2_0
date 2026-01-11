@@ -38,6 +38,10 @@ export interface Translations {
     clickToFilterBy: string;
     resetToShowAll: string;
     resetFilter: string;
+    total: string;
+    change: string;
+    defective: string;
+    average: string;
   };
   header: {
     title: string;
@@ -101,10 +105,135 @@ export interface Translations {
     allSites: string;
     ytdTotalNotificationsByMonth: string;
     ytdTotalDefectsByMonth: string;
-    customerPpmTrend: string;
-    supplierPpmTrend: string;
-    monthlyTrend: string;
-  };
+      customerPpmTrend: string;
+      supplierPpmTrend: string;
+      monthlyTrend: string;
+    };
+    aiSummary: {
+      title: string;
+      subtitle: string;
+      noDataMessage: string;
+    };
+    complaints: {
+      title: string;
+      subtitle: string;
+      noDataMessage: string;
+    };
+    ppm: {
+      title: string;
+      subtitle: string;
+      noDataMessage: string;
+    };
+    deviations: {
+      title: string;
+      subtitle: string;
+      noDataMessage: string;
+      inProgress: string;
+      completed: string;
+      pending: string;
+    };
+    ppaps: {
+      title: string;
+      subtitle: string;
+      noDataMessage: string;
+      inProgress: string;
+      completed: string;
+      pending: string;
+    };
+    auditManagement: {
+      title: string;
+      subtitle: string;
+      noDataMessage: string;
+      auditsByMonth: string;
+      auditsClosedVsOpen: string;
+      dataSourceMissing: string;
+      underConstruction: string;
+      dataSourceReference: string;
+      auditDataSource: string;
+    };
+    charts: {
+      howToRead: string;
+      resetToShowAll: string;
+      clickToFilterBy: string;
+      notificationsByMonth: {
+        title: string;
+        titleCustomer: string;
+        titleSupplier: string;
+        description: string;
+        descriptionCustomer: string;
+        descriptionSupplier: string;
+      };
+      defectsByMonth: {
+        title: string;
+        titleCustomer: string;
+        titleSupplier: string;
+        description: string;
+        descriptionCustomer: string;
+        descriptionSupplier: string;
+      };
+      customerPpmTrend: {
+        title: string;
+        description: string;
+        selectPeriod: string;
+        threeMonthsAverage: string;
+        sixMonthsAverage: string;
+        twelveMonthsAverage: string;
+        actualPpm: string;
+      };
+      supplierPpmTrend: {
+        title: string;
+        description: string;
+      };
+      siteContribution: {
+        customerTitle: string;
+        supplierTitle: string;
+        sourceCustomer: string;
+        sourceSupplier: string;
+        formula: string;
+        totalDefectiveParts: string;
+        totalDeliveries: string;
+        calculatedPpm: string;
+      };
+      complaints: {
+        totalComplaints: string;
+        customerComplaints: string;
+        supplierComplaints: string;
+        complaintsTrend: string;
+        monthlyBreakdown: string;
+      };
+      ppm: {
+        trendBySite: string;
+        customerAndSupplierTrends: string;
+        bySiteAndMonth: string;
+        detailedBreakdown: string;
+      };
+      deviations: {
+        notificationsByMonth: string;
+        notificationsDescription: string;
+        closedVsInProgress: string;
+        closedVsInProgressDescription: string;
+        closed: string;
+      };
+      ppaps: {
+        notificationsByMonth: string;
+        notificationsDescription: string;
+        closedVsInProgress: string;
+        closedVsInProgressDescription: string;
+      };
+      filterLabels: {
+        notificationType: string;
+        customerQ1: string;
+        supplierQ2: string;
+        internalQ3: string;
+        customerAndSupplier: string;
+        customerAndInternal: string;
+        supplierAndInternal: string;
+        defectType: string;
+        customerDefects: string;
+        supplierDefects: string;
+        allTypes: string;
+      };
+    };
   filterPanel: {
     plant: string;
     quickAccess: string;
@@ -231,7 +360,169 @@ export interface Translations {
     login: string;
     loginDescription: string;
   };
-  // Add more translation keys as needed for other pages
+  glossary: {
+    title: string;
+    subtitle: string;
+    faqTab: string;
+    glossaryTab: string;
+    searchPlaceholder: string;
+    faqTitle: string;
+    faqDescription: string;
+    datasetHealth: string;
+    datasetHealthDescription: string;
+    qmTriangle: string;
+    qmTriangleDescription: string;
+    qmTriangleTip: string;
+    contact: string;
+    contactDescription: string;
+    issueTitle: string;
+    issueTitlePlaceholder: string;
+    remark: string;
+    remarkPlaceholder: string;
+    page: string;
+    lastSuccessfulUpload: string;
+    downloadDiagnostics: string;
+    contactEmail: string;
+    improvementIdeas: string;
+    improvementIdeasDescription: string;
+    ideaTitle: string;
+    ideaTitlePlaceholder: string;
+    ideaDetails: string;
+    ideaDetailsPlaceholder: string;
+    sendIdea: string;
+    copyLink: string;
+    goToUpload: string;
+    noSuccessfulUpload: string;
+    records: string;
+    stale: string;
+    ok: string;
+    missing: string;
+    lastSuccess: string;
+    faqsCount: string;
+    fullGlossary: string;
+    contactSupport: string;
+    categories: {
+      navigation: string;
+      dataSources: string;
+      notifications: string;
+      metrics: string;
+      chartsViews: string;
+      ai: string;
+      general: string;
+    };
+    howToReadCharts: {
+      title: string;
+      description: string;
+      notificationsByMonth: {
+        title: string;
+        description: string;
+      };
+      defectsByMonth: {
+        title: string;
+        description: string;
+      };
+      ppmTrend: {
+        title: string;
+        description: string;
+      };
+    };
+    term: string;
+    definition: string;
+    terms: string;
+    termsList: {
+      navigation: {
+        qosEtDashboard: { term: string; definition: string };
+        customerPerformance: { term: string; definition: string };
+        supplierPerformance: { term: string; definition: string };
+        uploadData: { term: string; definition: string };
+        dataLineage: { term: string; definition: string };
+      };
+      dataSources: {
+        complaintsExtract: { term: string; definition: string };
+        outboundDeliveries: { term: string; definition: string };
+        inboundDeliveries: { term: string; definition: string };
+        plantMasterData: { term: string; definition: string };
+        ppapExtracts: { term: string; definition: string };
+        deviationsExtracts: { term: string; definition: string };
+      };
+      notifications: {
+        notificationNumber: { term: string; definition: string };
+        notificationType: { term: string; definition: string };
+        q1: { term: string; definition: string };
+        q2: { term: string; definition: string };
+        q3: { term: string; definition: string };
+        d1d2d3: { term: string; definition: string };
+        p1p2p3: { term: string; definition: string };
+        nocoOsno: { term: string; definition: string };
+      };
+      metrics: {
+        ppm: { term: string; definition: string };
+        customerPpm: { term: string; definition: string };
+        supplierPpm: { term: string; definition: string };
+        defectiveParts: { term: string; definition: string };
+        deliveries: { term: string; definition: string };
+        globalPpm: { term: string; definition: string };
+        lookbackWindow: { term: string; definition: string };
+      };
+      chartsViews: {
+        notificationsByMonth: { term: string; definition: string };
+        defectsByMonth: { term: string; definition: string };
+        legendClickFilter: { term: string; definition: string };
+        fixedYAxis: { term: string; definition: string };
+      };
+      ai: {
+        aiSummary: { term: string; definition: string };
+        aiManagementSummary: { term: string; definition: string };
+        providerApiKey: { term: string; definition: string };
+      };
+      general: {
+        sitePlantCode: { term: string; definition: string };
+        uploadHistory: { term: string; definition: string };
+        manualEntry: { term: string; definition: string };
+      };
+    };
+    faqs: {
+      howToUpload: { q: string; a: string };
+      sourceOfTruth: { q: string; a: string };
+      customerPpmCalculation: { q: string; a: string };
+      supplierPpmCalculation: { q: string; a: string };
+      q1q2q3Meaning: { q: string; a: string };
+      d1d2d3Meaning: { q: string; a: string };
+      p1p2p3Meaning: { q: string; a: string };
+      ytdLookback: { q: string; a: string };
+      plantFiltering: { q: string; a: string };
+      plantNamesEnrichment: { q: string; a: string };
+      fixedYAxis: { q: string; a: string };
+      aiSummaryError: { q: string; a: string };
+      aiSummaryPlantLabels: { q: string; a: string };
+      dataLineage: { q: string; a: string };
+      reportIssue: { q: string; a: string };
+    };
+  };
+  settings: {
+    title: string;
+    subtitle: string;
+    aiConfigurationTab: string;
+    columnMappingsTab: string;
+    aiConfiguration: string;
+    aiConfigurationDescription: string;
+    environmentVariablesRequired: string;
+    aiApiKeyDescription: string;
+    aiProviderDescription: string;
+    aiModelDescription: string;
+    apiKeyNote: string;
+    columnMappings: string;
+    columnMappingsDescription: string;
+    complaintFileMappings: string;
+    deliveryFileMappings: string;
+    commaSeparatedColumnNames: string;
+    mappingsConfigured: string;
+    saveMappings: string;
+    saved: string;
+    resetToDefaults: string;
+    mappingsSaved: string;
+    mappingsNote: string;
+  };
 }
 
 const translations: Record<LanguageKey, Translations> = {
@@ -273,6 +564,10 @@ const translations: Record<LanguageKey, Translations> = {
       clickToFilterBy: "Click to filter by",
       resetToShowAll: "Reset to show all plants",
       resetFilter: "Reset Filter",
+      total: "TOTAL",
+      change: "Change",
+      defective: "Defective",
+      average: "Average",
     },
     header: {
       title: "QOS ET Quality Report",
@@ -340,6 +635,155 @@ const translations: Record<LanguageKey, Translations> = {
       supplierPpmTrend: "Supplier PPM Trend",
       monthlyTrend: "Monthly Trend",
     },
+    aiSummary: {
+      title: "AI Management Summary",
+      subtitle: "Intelligent insights and automated quality analysis powered by AI",
+      noDataMessage: "No data available. Please upload data from the Upload Data page first.",
+    },
+    complaints: {
+      title: "Number of Complaints (Q)",
+      subtitle: "Track customer (Q1), supplier (Q2), and internal (Q3) complaints",
+      noDataMessage: "No data available. Please upload data from the Upload Data page first.",
+    },
+    ppm: {
+      title: "PPM (Parts Per Million)",
+      subtitle: "Track customer and supplier PPM trends across sites",
+      noDataMessage: "No data available. Please upload data from the Upload Data page first.",
+    },
+    deviations: {
+      title: "Deviations Overview",
+      subtitle: "Track deviation notifications (D1, D2, D3) by month and status",
+      noDataMessage: "No data available. Please upload data from the Upload Data page first.",
+      inProgress: "In Progress",
+      completed: "Completed",
+      pending: "Pending",
+    },
+    ppaps: {
+      title: "PPAPs Overview",
+      subtitle: "Track PPAP notifications (P1, P2, P3) by month and status",
+      noDataMessage: "No data available. Please upload data from the Upload Data page first.",
+      inProgress: "In Progress",
+      completed: "Completed",
+      pending: "Pending",
+    },
+    auditManagement: {
+      title: "Audit Management YTD //",
+      subtitle: "Track audit metrics across sites",
+      noDataMessage: "No data available. Please upload data from the Upload Data page first.",
+      auditsByMonth: "YTD Audits by Month and Plant",
+      auditsClosedVsOpen: "YTD Audit Findings Closed vs. Open by Month and Plant",
+      dataSourceMissing: "Data Source Missing (Under Construction)",
+      underConstruction: "Placeholder until audit data source is connected",
+      dataSourceReference: "Data Source Reference",
+      auditDataSource: "Audit Data Source",
+    },
+    settings: {
+      title: "Settings",
+      subtitle: "Configure application settings and preferences",
+      aiConfigurationTab: "AI Configuration",
+      columnMappingsTab: "Column Mappings",
+      aiConfiguration: "AI Configuration",
+      aiConfigurationDescription: "Configure AI insights API keys (set in environment variables)",
+      environmentVariablesRequired: "Environment Variables Required:",
+      aiApiKeyDescription: "Your LLM API key",
+      aiProviderDescription: "\"openai\" or \"anthropic\" (optional, defaults to \"openai\")",
+      aiModelDescription: "Model name override (optional)",
+      apiKeyNote: "Note: API keys are configured server-side in .env.local for security.",
+      columnMappings: "Column Mappings",
+      columnMappingsDescription: "Customize how Excel column names map to internal fields",
+      complaintFileMappings: "Complaint File Mappings",
+      deliveryFileMappings: "Delivery File Mappings",
+      commaSeparatedColumnNames: "Comma-separated column names",
+      mappingsConfigured: "mapping(s) configured",
+      saveMappings: "Save Mappings",
+      saved: "Saved!",
+      resetToDefaults: "Reset to Defaults",
+      mappingsSaved: "Mappings saved!",
+      mappingsNote: "Note: Custom mappings are currently stored in browser memory. Full persistence coming soon.",
+    },
+    charts: {
+      howToRead: "How to read this chart",
+      resetToShowAll: "Reset to show all plants",
+      clickToFilterBy: "Click to filter by",
+      notificationsByMonth: {
+        title: "YTD Total Number of Notifications by Month and Plant",
+        titleCustomer: "YTD Total Number of Customer Notifications by Month and Plant",
+        titleSupplier: "YTD Total Number of Supplier Notifications by Month and Plant",
+        description: "Number of complaints by month and plant",
+        descriptionCustomer: "Number of customer complaints (Q1) by month and plant",
+        descriptionSupplier: "Number of supplier complaints (Q2) by month and plant",
+      },
+      defectsByMonth: {
+        title: "YTD Total Number of Defects by Month and Plant",
+        titleCustomer: "YTD Total Number of Customer Defects by Month and Plant",
+        titleSupplier: "YTD Total Number of Supplier Defects by Month and Plant",
+        description: "Number of defective parts by month and plant",
+        descriptionCustomer: "Number of customer defective parts by month and plant",
+        descriptionSupplier: "Number of supplier defective parts by month and plant",
+      },
+      customerPpmTrend: {
+        title: "YTD Cumulative Customer PPM Trend - All Sites",
+        description: "Combined Customer PPM performance (PPM = Defective Parts / Total Deliveries × 1,000,000)",
+        selectPeriod: "Select period",
+        threeMonthsAverage: "3-Months Average Trend",
+        sixMonthsAverage: "6-Months Average Trend",
+        twelveMonthsAverage: "12-Months Average Trend",
+        actualPpm: "Actual PPM",
+      },
+      supplierPpmTrend: {
+        title: "YTD Cumulative Supplier PPM Trend - All Sites",
+        description: "Combined Supplier PPM performance (PPM = Defective Parts / Total Deliveries × 1,000,000)",
+      },
+      siteContribution: {
+        customerTitle: "Customer PPM Site Contribution",
+        supplierTitle: "Supplier PPM Site Contribution",
+        sourceCustomer: "Source: Defective Parts from Q Cockpit (Column AF - Return delivery qty) | Deliveries from Outbound files (Column E - Quantity)",
+        sourceSupplier: "Source: Defective Parts from Q Cockpit (Column AF - Return delivery qty) | Deliveries from Inbound files (Column E - Quantity)",
+        formula: "Formula: PPM = (Total Defective Parts / Total Deliveries) × 1,000,000",
+        totalDefectiveParts: "Total Defective Parts",
+        totalDeliveries: "Total Deliveries",
+        calculatedPpm: "Calculated PPM",
+      },
+      complaints: {
+        totalComplaints: "Total Complaints",
+        customerComplaints: "Customer Complaints (Q1)",
+        supplierComplaints: "Supplier Complaints (Q2)",
+        complaintsTrend: "Complaints Trend",
+        monthlyBreakdown: "Monthly breakdown of Q1, Q2, and Q3 complaints",
+      },
+      ppm: {
+        trendBySite: "PPM Trend by Site",
+        customerAndSupplierTrends: "Customer and Supplier PPM trends over time",
+        bySiteAndMonth: "PPM by Site and Month",
+        detailedBreakdown: "Detailed breakdown of PPM metrics",
+      },
+      deviations: {
+        notificationsByMonth: "YTD D Notifications by Month and Plant",
+        notificationsDescription: "Number of deviations by month and plant (stacked)",
+        closedVsInProgress: "YTD D Notifications Closed vs. In Progress by Month and Plant",
+        closedVsInProgressDescription: "Closed vs. In Progress across all selected plants",
+        closed: "Closed",
+      },
+      ppaps: {
+        notificationsByMonth: "YTD P Notifications by Month and Plant",
+        notificationsDescription: "Number of PPAP notifications by month and plant (stacked)",
+        closedVsInProgress: "YTD P Notifications Closed vs. In Progress by Month and Plant",
+        closedVsInProgressDescription: "Closed vs. In Progress across all selected plants",
+      },
+      filterLabels: {
+        notificationType: "Notification Type",
+        customerQ1: "Customer Complaints Q1",
+        supplierQ2: "Supplier Complaints Q2",
+        internalQ3: "Internal Complaints Q3",
+        customerAndSupplier: "Customer & Supplier",
+        customerAndInternal: "Customer & Internal",
+        supplierAndInternal: "Supplier & Internal",
+        defectType: "Defect Type",
+        customerDefects: "Customer Defects",
+        supplierDefects: "Supplier Defects",
+        allTypes: "All Types",
+      },
+    },
     filterPanel: {
       plant: "PLANT",
       quickAccess: "QUICK ACCESS",
@@ -387,10 +831,194 @@ const translations: Record<LanguageKey, Translations> = {
       qualityAssurance: "Quality\nAI-ssurance",
       qualityAssuranceDescription: "Comprehensive quality control and assurance across all operations using AI.",
       generateReport: "Generate QOS Report ET",
-      footerCopyright: "© 2025 QOS ET Report. Driving Excellence in Operations and Quality.",
+      footerCopyright: "© 2026 QOS ET Report. Driving Excellence in Operations & Quality.",
       qualityManagementSystem: "Quality Management System",
       login: "Log in",
       loginDescription: "Select your role to continue to the report.",
+    },
+    glossary: {
+      title: "FAQ & Glossary",
+      subtitle: "Quick answers on navigation and calculations, plus a complete glossary of terms used across the report.",
+      faqTab: "FAQ",
+      glossaryTab: "Glossary",
+      searchPlaceholder: "Search FAQ + Glossary…",
+      faqTitle: "Frequently Asked Questions",
+      faqDescription: "Focused on navigation, data sources, and how metrics/charts are calculated.",
+      datasetHealth: "Dataset Health",
+      datasetHealthDescription: "Live status from Upload History. A dataset is considered stale after {{days}} days.",
+      qmTriangle: "QM ET Triangle",
+      qmTriangleDescription: "How the report is built and structured.",
+      qmTriangleTip: "Tip: If a chart looks wrong, check data lineage (sources → parsing → KPIs → charts) and the upload history.",
+      contact: "Contact",
+      contactDescription: "Open an email with an issue title, remark, and basic context.",
+      issueTitle: "Issue title",
+      issueTitlePlaceholder: "e.g., Deviations chart shows 0 records",
+      remark: "Remark / description",
+      remarkPlaceholder: "Steps to reproduce, what you expected, what you saw…",
+      page: "Page",
+      lastSuccessfulUpload: "Last successful upload",
+      downloadDiagnostics: "Download diagnostics JSON",
+      contactEmail: "Contact (Email)",
+      improvementIdeas: "Improvement Ideas",
+      improvementIdeasDescription: "Short form to capture suggestions and send them by email.",
+      ideaTitle: "Idea title",
+      ideaTitlePlaceholder: "e.g., Add search + deep links across FAQ",
+      ideaDetails: "Idea details",
+      ideaDetailsPlaceholder: "Describe the improvement and why it helps…",
+      sendIdea: "Send Improvement Idea",
+      copyLink: "Copy link to this FAQ",
+      goToUpload: "Go to Upload Data",
+      noSuccessfulUpload: "No successful upload yet",
+      records: "Records",
+      stale: "Stale",
+      ok: "OK",
+      missing: "Missing",
+      lastSuccess: "Last success",
+      faqsCount: "15 FAQs",
+      fullGlossary: "Full glossary (no collapsing)",
+      contactSupport: "Contact support",
+      categories: {
+        navigation: "Navigation",
+        dataSources: "Data Sources",
+        notifications: "Notifications",
+        metrics: "Metrics",
+        chartsViews: "Charts & Views",
+        ai: "AI",
+        general: "General",
+      },
+      howToReadCharts: {
+        title: "How to read key charts",
+        description: "These anchors are referenced by the \"How to read this chart\" tooltips in the dashboards.",
+        notificationsByMonth: {
+          title: "YTD Total Number of Notifications by Month and Plant",
+          description: "Stacked bars: each color = plant, bar height = total notifications for that month. Clicking a plant in the legend filters only this chart.",
+        },
+        defectsByMonth: {
+          title: "YTD Total Number of Defects by Month and Plant",
+          description: "Shows defective parts, split by plant. If the chart offers a defect type selector, it switches Customer vs Supplier defective parts.",
+        },
+        ppmTrend: {
+          title: "YTD Cumulative PPM Trend",
+          description: "Line trend of cumulative PPM across the lookback window. PPM uses defective parts as numerator and deliveries as denominator.",
+        },
+      },
+      term: "Term",
+      definition: "Definition",
+      terms: "terms",
+      termsList: {
+        navigation: {
+          qosEtDashboard: { term: "QOS ET Dashboard", definition: "Main dashboard aggregating customer/supplier/internal metrics and charts across the selected time window." },
+          customerPerformance: { term: "Customer Performance", definition: "Customer-only view (Q1 + customer deliveries/PPM) with customer-related charts and tables." },
+          supplierPerformance: { term: "Supplier Performance", definition: "Supplier-only view (Q2 + supplier deliveries/PPM) with supplier-related charts and tables." },
+          uploadData: { term: "Upload Data", definition: "Structured file upload and manual entry page. Also provides KPI recalculation and change history." },
+          dataLineage: { term: "Data Lineage", definition: "Catalog view that maps data sources → processing → outputs → pages/charts." },
+        },
+        dataSources: {
+          complaintsExtract: { term: "Complaints extract (Q Cockpit)", definition: "Excel export containing quality notifications (Q1/Q2/Q3) including defective parts and plant references." },
+          outboundDeliveries: { term: "Outbound deliveries files", definition: "Excel extracts containing customer deliveries by plant/date. Used as denominator for Customer PPM." },
+          inboundDeliveries: { term: "Inbound deliveries files", definition: "Excel extracts containing supplier deliveries by plant/date. Used as denominator for Supplier PPM." },
+          plantMasterData: { term: "Plant master data (Webasto ET Plants)", definition: "Official plant code-to-location mapping used across filters, legends, and AI prompts." },
+          ppapExtracts: { term: "PPAP base + status extracts", definition: "Two Excel files: a notification list + a status list used to classify PPAP status." },
+          deviationsExtracts: { term: "Deviations base + status extracts", definition: "Two Excel files: a deviation notification list + a status list used to classify deviation status." },
+        },
+        notifications: {
+          notificationNumber: { term: "Notification Number", definition: "Unique identifier for each SAP quality notification." },
+          notificationType: { term: "Notification Type", definition: "SAP notification classification: Q1/Q2/Q3 (complaints), D1/D2/D3 (deviations), P1/P2/P3 (PPAP)." },
+          q1: { term: "Q1 (Customer Complaint)", definition: "Customer-originated quality notifications; contributes to customer complaints and Customer PPM." },
+          q2: { term: "Q2 (Supplier Complaint)", definition: "Supplier-related quality notifications; contributes to supplier complaints and Supplier PPM." },
+          q3: { term: "Q3 (Internal Complaint)", definition: "Internal quality notifications; used in internal complaint reporting (e.g., Poor Quality Costs placeholders)." },
+          d1d2d3: { term: "D1/D2/D3 (Deviation)", definition: "Deviation notifications representing exceptions or approvals. Reported on Deviations Overview." },
+          p1p2p3: { term: "P1/P2/P3 (PPAP)", definition: "PPAP notifications representing approval process states. Reported on PPAPs Overview." },
+          nocoOsno: { term: "NOCO / OSNO", definition: "SAP system-status tokens used to infer status (NOCO ≈ Completed, OSNO ≈ In Progress)." },
+        },
+        metrics: {
+          ppm: { term: "PPM (Parts Per Million)", definition: "Quality metric: (Defective Parts / Total Deliveries) × 1,000,000. Lower is better." },
+          customerPpm: { term: "Customer PPM", definition: "PPM computed from Q1 defective parts and customer deliveries (Outbound)." },
+          supplierPpm: { term: "Supplier PPM", definition: "PPM computed from Q2 defective parts and supplier deliveries (Inbound)." },
+          defectiveParts: { term: "Defective Parts", definition: "Quantity of non-conforming parts recorded in a notification. Used in PPM." },
+          deliveries: { term: "Deliveries", definition: "Total delivered quantity used as PPM denominator (customer outbound / supplier inbound)." },
+          globalPpm: { term: "Global PPM", definition: "Overall PPM aggregated across all selected plants/months." },
+          lookbackWindow: { term: "12-month lookback window", definition: "A rolling window ending at the selected month/year used for consistent trend visuals." },
+        },
+        chartsViews: {
+          notificationsByMonth: { term: "YTD Total Number of Notifications by Month and Plant", definition: "Stacked bar chart showing complaint counts per month split by plant." },
+          defectsByMonth: { term: "YTD Total Number of Defects by Month and Plant", definition: "Bar chart showing defective parts by month and plant (customer vs supplier)." },
+          legendClickFilter: { term: "Legend click filter", definition: "Chart-local filter triggered by clicking a plant badge in the legend; does not affect other charts." },
+          fixedYAxis: { term: "Fixed Y-axis domain", definition: "Y-axis max computed from unfiltered data so scale remains stable after local filtering." },
+        },
+        ai: {
+          aiSummary: { term: "AI Summary", definition: "LLM-generated narrative summary of filtered KPIs with trends, risks, and recommended actions." },
+          aiManagementSummary: { term: "AI Management Summary", definition: "Central page that summarizes KPIs and highlights anomalies and actions (German number formatting, plant labels included)." },
+          providerApiKey: { term: "Provider / API key", definition: "Configured LLM backend (e.g., OpenAI-compatible or Anthropic) used by the AI Summary API route." },
+        },
+        general: {
+          sitePlantCode: { term: "Site / Plant Code", definition: "3-digit code identifying a manufacturing site (e.g., 145, 235, 410). Displayed with city/location when available." },
+          uploadHistory: { term: "Upload History", definition: "Persistent log of file uploads/manual entries including timestamps, summaries, and where data is used." },
+          manualEntry: { term: "Manual Entry (Template)", definition: "Form-based entry of monthly values per plant. Stored and merged into the KPI dataset for reporting." },
+        },
+      },
+      faqs: {
+        howToUpload: {
+          q: "How do I upload data?",
+          a: "Go to Upload Data. Use the structured upload sections (Complaints, Deliveries, PPAP, Deviations, Plants). After upload, you can calculate KPIs and the report pages will read from the KPI dataset.",
+        },
+        sourceOfTruth: {
+          q: "Which files are the source of truth for complaints and PPM?",
+          a: "Complaints and defective parts are taken from the Q Cockpit complaints extract. Deliveries are taken from Outbound (customer deliveries) and Inbound (supplier deliveries) files. PPM is derived from defective parts and deliveries.",
+        },
+        customerPpmCalculation: {
+          q: "How is Customer PPM calculated?",
+          a: "Customer PPM = (Customer Defective Parts / Customer Deliveries) × 1,000,000 for the selected plants and time window.",
+        },
+        supplierPpmCalculation: {
+          q: "How is Supplier PPM calculated?",
+          a: "Supplier PPM = (Supplier Defective Parts / Supplier Deliveries) × 1,000,000 for the selected plants and time window.",
+        },
+        q1q2q3Meaning: {
+          q: "What do Q1, Q2, and Q3 mean?",
+          a: "Q1 = Customer complaints, Q2 = Supplier complaints, Q3 = Internal complaints. They represent different notification categories and drive different charts/metrics.",
+        },
+        d1d2d3Meaning: {
+          q: "What do D1, D2, D3 represent on the Deviations page?",
+          a: "D1/D2/D3 are deviation notification types. The Deviations Overview page shows counts by month and plant, and a status view (Closed vs In Progress).",
+        },
+        p1p2p3Meaning: {
+          q: "What do P1, P2, P3 represent on the PPAPs page?",
+          a: "P1/P2/P3 are PPAP notification types. The PPAPs Overview page shows PPAP counts by month/plant and a status view (Closed vs In Progress).",
+        },
+        ytdLookback: {
+          q: "Why do charts show a 12-month lookback even when the page says YTD?",
+          a: "The selector uses a 12-month lookback ending at the selected month/year to provide a consistent trend window across pages. The page title keeps \"YTD //\" for consistency with the dashboard naming.",
+        },
+        plantFiltering: {
+          q: "How does plant filtering work?",
+          a: "The global filter panel (right sidebar) filters most content. Some charts also support local chart-only filtering via clicking on the legend (it affects only that chart).",
+        },
+        plantNamesEnrichment: {
+          q: "Why do some legends show plant code plus city/location?",
+          a: "Plant names are enriched from the official Plant Overview file so users can recognize sites by city/location (e.g., \"410 (Fenton)\").",
+        },
+        fixedYAxis: {
+          q: "What does \"Fixed Y-axis scale\" mean on certain charts?",
+          a: "When a chart supports local filtering by plant, the Y-axis max is computed from the unfiltered dataset to prevent the scale from changing after selecting a plant.",
+        },
+        aiSummaryError: {
+          q: "Why does the AI Summary sometimes show an error?",
+          a: "AI Summary depends on the configured AI provider/key and the current filtered dataset. If the provider rejects the request (API key, rate limit, network), the UI shows a structured explanation and suggested fixes.",
+        },
+        aiSummaryPlantLabels: {
+          q: "Does AI Summary use the same plant labels as the dashboard?",
+          a: "Yes. The AI prompt is instructed to mention plant code and city/location when referencing a site, based on the official plant list.",
+        },
+        dataLineage: {
+          q: "What is the Data Lineage page for?",
+          a: "It documents which data sources feed which parsers/APIs, what outputs are produced, and where those outputs are used (pages/charts). It also reflects last upload timestamps from Upload History when available.",
+        },
+        reportIssue: {
+          q: "How do I report an issue?",
+          a: "Use the Contact button on this page. It opens an email with a template including issue title and helpful context (page, timestamp, last uploads).",
+        },
+      },
     },
     upload: {
       title: "Upload Data",
@@ -505,6 +1133,10 @@ const translations: Record<LanguageKey, Translations> = {
       clickToFilterBy: "Klicken, um nach",
       resetToShowAll: "Zurücksetzen, um alle Werke anzuzeigen",
       resetFilter: "Filter zurücksetzen",
+      total: "GESAMT",
+      change: "Änderung",
+      defective: "Defekt",
+      average: "Durchschnitt",
     },
     header: {
       title: "QOS ET Qualitätsbericht",
@@ -572,6 +1204,155 @@ const translations: Record<LanguageKey, Translations> = {
       supplierPpmTrend: "Lieferanten-PPM Trend",
       monthlyTrend: "Monatlicher Trend",
     },
+    aiSummary: {
+      title: "KI-Management-Zusammenfassung",
+      subtitle: "Intelligente Erkenntnisse und automatisierte Qualitätsanalyse mit KI",
+      noDataMessage: "Keine Daten verfügbar. Bitte laden Sie zuerst Daten von der Upload-Daten-Seite hoch.",
+    },
+    complaints: {
+      title: "Anzahl der Reklamationen (Q)",
+      subtitle: "Verfolgen Sie Kunden- (Q1), Lieferanten- (Q2) und interne (Q3) Reklamationen",
+      noDataMessage: "Keine Daten verfügbar. Bitte laden Sie zuerst Daten von der Upload-Daten-Seite hoch.",
+    },
+    ppm: {
+      title: "PPM (Parts Per Million)",
+      subtitle: "Verfolgen Sie Kunden- und Lieferanten-PPM-Trends über alle Werke",
+      noDataMessage: "Keine Daten verfügbar. Bitte laden Sie zuerst Daten von der Upload-Daten-Seite hoch.",
+    },
+    deviations: {
+      title: "Abweichungen Übersicht",
+      subtitle: "Verfolgen Sie Abweichungsbenachrichtigungen (D1, D2, D3) nach Monat und Status",
+      noDataMessage: "Keine Daten verfügbar. Bitte laden Sie zuerst Daten von der Upload-Daten-Seite hoch.",
+      inProgress: "In Bearbeitung",
+      completed: "Abgeschlossen",
+      pending: "Ausstehend",
+    },
+    ppaps: {
+      title: "PPAPs Übersicht",
+      subtitle: "Verfolgen Sie PPAP-Benachrichtigungen (P1, P2, P3) nach Monat und Status",
+      noDataMessage: "Keine Daten verfügbar. Bitte laden Sie zuerst Daten von der Upload-Daten-Seite hoch.",
+      inProgress: "In Bearbeitung",
+      completed: "Abgeschlossen",
+      pending: "Ausstehend",
+    },
+    auditManagement: {
+      title: "Audit-Management JTD //",
+      subtitle: "Verfolgen Sie Audit-Metriken über alle Werke",
+      noDataMessage: "Keine Daten verfügbar. Bitte laden Sie zuerst Daten von der Upload-Daten-Seite hoch.",
+      auditsByMonth: "JTD Audits nach Monat und Werk",
+      auditsClosedVsOpen: "JTD Audit-Befunde Abgeschlossen vs. Offen nach Monat und Werk",
+      dataSourceMissing: "Datenquelle fehlt (in Bearbeitung)",
+      underConstruction: "Platzhalter bis Audit-Datenquelle verbunden ist",
+      dataSourceReference: "Datenquellen-Referenz",
+      auditDataSource: "Audit-Datenquelle",
+    },
+    settings: {
+      title: "Einstellungen",
+      subtitle: "Anwendungseinstellungen und Präferenzen konfigurieren",
+      aiConfigurationTab: "KI-Konfiguration",
+      columnMappingsTab: "Spalten-Zuordnungen",
+      aiConfiguration: "KI-Konfiguration",
+      aiConfigurationDescription: "KI-Insights-API-Schlüssel konfigurieren (in Umgebungsvariablen setzen)",
+      environmentVariablesRequired: "Erforderliche Umgebungsvariablen:",
+      aiApiKeyDescription: "Ihr LLM-API-Schlüssel",
+      aiProviderDescription: "\"openai\" oder \"anthropic\" (optional, Standard: \"openai\")",
+      aiModelDescription: "Modellname-Überschreibung (optional)",
+      apiKeyNote: "Hinweis: API-Schlüssel werden serverseitig in .env.local für die Sicherheit konfiguriert.",
+      columnMappings: "Spalten-Zuordnungen",
+      columnMappingsDescription: "Anpassen, wie Excel-Spaltennamen internen Feldern zugeordnet werden",
+      complaintFileMappings: "Reklamationsdatei-Zuordnungen",
+      deliveryFileMappings: "Lieferungsdatei-Zuordnungen",
+      commaSeparatedColumnNames: "Durch Komma getrennte Spaltennamen",
+      mappingsConfigured: "Zuordnung(en) konfiguriert",
+      saveMappings: "Zuordnungen speichern",
+      saved: "Gespeichert!",
+      resetToDefaults: "Auf Standard zurücksetzen",
+      mappingsSaved: "Zuordnungen gespeichert!",
+      mappingsNote: "Hinweis: Benutzerdefinierte Zuordnungen werden derzeit im Browser-Speicher gespeichert. Vollständige Persistenz kommt bald.",
+    },
+    charts: {
+      howToRead: "So lesen Sie dieses Diagramm",
+      resetToShowAll: "Zurücksetzen, um alle Werke anzuzeigen",
+      clickToFilterBy: "Klicken, um nach",
+      notificationsByMonth: {
+        title: "JTD Gesamtzahl der Benachrichtigungen nach Monat und Werk",
+        titleCustomer: "JTD Gesamtzahl der Kundenbenachrichtigungen nach Monat und Werk",
+        titleSupplier: "JTD Gesamtzahl der Lieferantenbenachrichtigungen nach Monat und Werk",
+        description: "Anzahl der Reklamationen nach Monat und Werk",
+        descriptionCustomer: "Anzahl der Kundenreklamationen (Q1) nach Monat und Werk",
+        descriptionSupplier: "Anzahl der Lieferantenreklamationen (Q2) nach Monat und Werk",
+      },
+      defectsByMonth: {
+        title: "JTD Gesamtzahl der Defekte nach Monat und Werk",
+        titleCustomer: "JTD Gesamtzahl der Kunden-Defekte nach Monat und Werk",
+        titleSupplier: "JTD Gesamtzahl der Lieferanten-Defekte nach Monat und Werk",
+        description: "Anzahl der fehlerhaften Teile nach Monat und Werk",
+        descriptionCustomer: "Anzahl der Kunden-defekten Teile nach Monat und Werk",
+        descriptionSupplier: "Anzahl der Lieferanten-defekten Teile nach Monat und Werk",
+      },
+      customerPpmTrend: {
+        title: "JTD kumulativer Kunden-PPM-Trend - Alle Werke",
+        description: "Kombinierte Kunden-PPM-Leistung (PPM = Fehlerhafte Teile / Gesamte Lieferungen × 1.000.000)",
+        selectPeriod: "Zeitraum auswählen",
+        threeMonthsAverage: "3-Monate Durchschnitts-Trend",
+        sixMonthsAverage: "6-Monate Durchschnitts-Trend",
+        twelveMonthsAverage: "12-Monate Durchschnitts-Trend",
+        actualPpm: "Tatsächlicher PPM",
+      },
+      supplierPpmTrend: {
+        title: "JTD kumulativer Lieferanten-PPM-Trend - Alle Werke",
+        description: "Kombinierte Lieferanten-PPM-Leistung (PPM = Fehlerhafte Teile / Gesamte Lieferungen × 1.000.000)",
+      },
+      siteContribution: {
+        customerTitle: "Kunden-PPM Werkbeitrag",
+        supplierTitle: "Lieferanten-PPM Werkbeitrag",
+        sourceCustomer: "Quelle: Fehlerhafte Teile aus Q Cockpit (Spalte AF - Rücksendemenge) | Lieferungen aus Outbound-Dateien (Spalte E - Menge)",
+        sourceSupplier: "Quelle: Fehlerhafte Teile aus Q Cockpit (Spalte AF - Rücksendemenge) | Lieferungen aus Inbound-Dateien (Spalte E - Menge)",
+        formula: "Formel: PPM = (Gesamte fehlerhafte Teile / Gesamte Lieferungen) × 1.000.000",
+        totalDefectiveParts: "Gesamte fehlerhafte Teile",
+        totalDeliveries: "Gesamte Lieferungen",
+        calculatedPpm: "Berechneter PPM",
+      },
+      complaints: {
+        totalComplaints: "Gesamte Reklamationen",
+        customerComplaints: "Kundenreklamationen (Q1)",
+        supplierComplaints: "Lieferantenreklamationen (Q2)",
+        complaintsTrend: "Reklamations-Trend",
+        monthlyBreakdown: "Monatliche Aufschlüsselung von Q1, Q2 und Q3 Reklamationen",
+      },
+      ppm: {
+        trendBySite: "PPM-Trend nach Werk",
+        customerAndSupplierTrends: "Kunden- und Lieferanten-PPM-Trends über die Zeit",
+        bySiteAndMonth: "PPM nach Werk und Monat",
+        detailedBreakdown: "Detaillierte Aufschlüsselung der PPM-Metriken",
+      },
+      deviations: {
+        notificationsByMonth: "JTD D-Benachrichtigungen nach Monat und Werk",
+        notificationsDescription: "Anzahl der Abweichungen nach Monat und Werk (gestapelt)",
+        closedVsInProgress: "JTD D-Benachrichtigungen Abgeschlossen vs. In Bearbeitung nach Monat und Werk",
+        closedVsInProgressDescription: "Abgeschlossen vs. In Bearbeitung über alle ausgewählten Werke",
+        closed: "Abgeschlossen",
+      },
+      ppaps: {
+        notificationsByMonth: "JTD P-Benachrichtigungen nach Monat und Werk",
+        notificationsDescription: "Anzahl der PPAP-Benachrichtigungen nach Monat und Werk (gestapelt)",
+        closedVsInProgress: "JTD P-Benachrichtigungen Abgeschlossen vs. In Bearbeitung nach Monat und Werk",
+        closedVsInProgressDescription: "Abgeschlossen vs. In Bearbeitung über alle ausgewählten Werke",
+      },
+      filterLabels: {
+        notificationType: "Benachrichtigungstyp",
+        customerQ1: "Kundenreklamationen Q1",
+        supplierQ2: "Lieferantenreklamationen Q2",
+        internalQ3: "Interne Reklamationen Q3",
+        customerAndSupplier: "Kunde & Lieferant",
+        customerAndInternal: "Kunde & Intern",
+        supplierAndInternal: "Lieferant & Intern",
+        defectType: "Defekttyp",
+        customerDefects: "Kunden-Defekte",
+        supplierDefects: "Lieferanten-Defekte",
+        allTypes: "Alle Typen",
+      },
+    },
     filterPanel: {
       plant: "WERK",
       quickAccess: "SCHNELLZUGRIFF",
@@ -619,10 +1400,194 @@ const translations: Record<LanguageKey, Translations> = {
       qualityAssurance: "Qualitäts\nKI-sicherung",
       qualityAssuranceDescription: "Umfassende Qualitätskontrolle und -sicherung in allen Bereichen mit KI.",
       generateReport: "QOS ET Bericht erstellen",
-      footerCopyright: "© 2025 QOS ET Report. Exzellenz in Betrieb und Qualität vorantreiben.",
+      footerCopyright: "© 2026 QOS ET Report. Exzellenz in Betrieb & Qualität vorantreiben.",
       qualityManagementSystem: "Qualitätsmanagementsystem",
       login: "Anmelden",
       loginDescription: "Wählen Sie Ihre Rolle, um zum Bericht fortzufahren.",
+    },
+    glossary: {
+      title: "FAQ & Glossar",
+      subtitle: "Schnelle Antworten zu Navigation und Berechnungen sowie ein vollständiges Glossar der im Bericht verwendeten Begriffe.",
+      faqTab: "FAQ",
+      glossaryTab: "Glossar",
+      searchPlaceholder: "FAQ + Glossar durchsuchen…",
+      faqTitle: "Häufig gestellte Fragen",
+      faqDescription: "Fokus auf Navigation, Datenquellen und wie Metriken/Diagramme berechnet werden.",
+      datasetHealth: "Datensatz-Gesundheit",
+      datasetHealthDescription: "Live-Status aus Upload-Verlauf. Ein Datensatz gilt nach {{days}} Tagen als veraltet.",
+      qmTriangle: "QM ET Dreieck",
+      qmTriangleDescription: "Wie der Bericht aufgebaut und strukturiert ist.",
+      qmTriangleTip: "Tipp: Wenn ein Diagramm falsch aussieht, überprüfen Sie die Datenherkunft (Quellen → Parsing → KPIs → Diagramme) und den Upload-Verlauf.",
+      contact: "Kontakt",
+      contactDescription: "E-Mail mit Titel, Bemerkung und grundlegendem Kontext öffnen.",
+      issueTitle: "Titel des Problems",
+      issueTitlePlaceholder: "z.B., Abweichungsdiagramm zeigt 0 Datensätze",
+      remark: "Bemerkung / Beschreibung",
+      remarkPlaceholder: "Schritte zur Reproduktion, was Sie erwartet haben, was Sie gesehen haben…",
+      page: "Seite",
+      lastSuccessfulUpload: "Letzter erfolgreicher Upload",
+      downloadDiagnostics: "Diagnose-JSON herunterladen",
+      contactEmail: "Kontakt (E-Mail)",
+      improvementIdeas: "Verbesserungsvorschläge",
+      improvementIdeasDescription: "Kurzes Formular zur Erfassung von Vorschlägen und zum Versenden per E-Mail.",
+      ideaTitle: "Titel der Idee",
+      ideaTitlePlaceholder: "z.B., Suche + Deep-Links in FAQ hinzufügen",
+      ideaDetails: "Ideen-Details",
+      ideaDetailsPlaceholder: "Beschreiben Sie die Verbesserung und warum sie hilft…",
+      sendIdea: "Verbesserungsvorschlag senden",
+      copyLink: "Link zu dieser FAQ kopieren",
+      goToUpload: "Zu Upload-Daten gehen",
+      noSuccessfulUpload: "Noch kein erfolgreicher Upload",
+      records: "Datensätze",
+      stale: "Veraltet",
+      ok: "OK",
+      missing: "Fehlt",
+      lastSuccess: "Letzter Erfolg",
+      faqsCount: "15 FAQs",
+      fullGlossary: "Vollständiges Glossar (ohne Zusammenklappen)",
+      contactSupport: "Support kontaktieren",
+      categories: {
+        navigation: "Navigation",
+        dataSources: "Datenquellen",
+        notifications: "Benachrichtigungen",
+        metrics: "Metriken",
+        chartsViews: "Diagramme & Ansichten",
+        ai: "KI",
+        general: "Allgemein",
+      },
+      howToReadCharts: {
+        title: "So lesen Sie wichtige Diagramme",
+        description: "Diese Anker werden von den \"So lesen Sie dieses Diagramm\"-Tooltips in den Dashboards referenziert.",
+        notificationsByMonth: {
+          title: "JTD Gesamtzahl der Benachrichtigungen nach Monat und Werk",
+          description: "Gestapelte Balken: Jede Farbe = Werk, Balkenhöhe = Gesamtzahl der Benachrichtigungen für diesen Monat. Durch Klicken auf ein Werk in der Legende wird nur dieses Diagramm gefiltert.",
+        },
+        defectsByMonth: {
+          title: "JTD Gesamtzahl der Defekte nach Monat und Werk",
+          description: "Zeigt fehlerhafte Teile, aufgeteilt nach Werk. Wenn das Diagramm einen Defekttyp-Selektor anbietet, schaltet es zwischen Kunden- und Lieferanten-defekten Teilen um.",
+        },
+        ppmTrend: {
+          title: "JTD kumulativer PPM-Trend",
+          description: "Liniendiagramm des kumulativen PPM über den Betrachtungszeitraum. PPM verwendet fehlerhafte Teile als Zähler und Lieferungen als Nenner.",
+        },
+      },
+      term: "Begriff",
+      definition: "Definition",
+      terms: "Begriffe",
+      termsList: {
+        navigation: {
+          qosEtDashboard: { term: "QOS ET Dashboard", definition: "Haupt-Dashboard, das Kunden-/Lieferanten-/interne Metriken und Diagramme über das ausgewählte Zeitfenster aggregiert." },
+          customerPerformance: { term: "Kundenleistung", definition: "Nur-Kunden-Ansicht (Q1 + Kundenlieferungen/PPM) mit kundenbezogenen Diagrammen und Tabellen." },
+          supplierPerformance: { term: "Lieferantenleistung", definition: "Nur-Lieferanten-Ansicht (Q2 + Lieferantenlieferungen/PPM) mit lieferantenbezogenen Diagrammen und Tabellen." },
+          uploadData: { term: "Daten hochladen", definition: "Strukturierte Datei-Upload- und manuelle Eingabeseite. Bietet auch KPI-Neuberechnung und Änderungsverlauf." },
+          dataLineage: { term: "Datenherkunft", definition: "Katalogansicht, die Datenquellen → Verarbeitung → Ausgaben → Seiten/Diagramme abbildet." },
+        },
+        dataSources: {
+          complaintsExtract: { term: "Reklamationsextrakt (Q Cockpit)", definition: "Excel-Export mit Qualitätsbenachrichtigungen (Q1/Q2/Q3) einschließlich fehlerhafter Teile und Werkreferenzen." },
+          outboundDeliveries: { term: "Outbound-Lieferungsdateien", definition: "Excel-Extrakte mit Kundenlieferungen nach Werk/Datum. Wird als Nenner für Kunden-PPM verwendet." },
+          inboundDeliveries: { term: "Inbound-Lieferungsdateien", definition: "Excel-Extrakte mit Lieferantenlieferungen nach Werk/Datum. Wird als Nenner für Lieferanten-PPM verwendet." },
+          plantMasterData: { term: "Werkstammdaten (Webasto ET Plants)", definition: "Offizielle Werkcode-zu-Standort-Zuordnung, die in Filtern, Legenden und KI-Prompts verwendet wird." },
+          ppapExtracts: { term: "PPAP-Basis + Status-Extrakte", definition: "Zwei Excel-Dateien: eine Benachrichtigungsliste + eine Statusliste zur Klassifizierung des PPAP-Status." },
+          deviationsExtracts: { term: "Abweichungs-Basis + Status-Extrakte", definition: "Zwei Excel-Dateien: eine Abweichungsbenachrichtigungsliste + eine Statusliste zur Klassifizierung des Abweichungsstatus." },
+        },
+        notifications: {
+          notificationNumber: { term: "Benachrichtigungsnummer", definition: "Eindeutiger Identifikator für jede SAP-Qualitätsbenachrichtigung." },
+          notificationType: { term: "Benachrichtigungstyp", definition: "SAP-Benachrichtigungsklassifizierung: Q1/Q2/Q3 (Reklamationen), D1/D2/D3 (Abweichungen), P1/P2/P3 (PPAP)." },
+          q1: { term: "Q1 (Kundenreklamation)", definition: "Kunden-originierte Qualitätsbenachrichtigungen; trägt zu Kundenreklamationen und Kunden-PPM bei." },
+          q2: { term: "Q2 (Lieferantenreklamation)", definition: "Lieferantenbezogene Qualitätsbenachrichtigungen; trägt zu Lieferantenreklamationen und Lieferanten-PPM bei." },
+          q3: { term: "Q3 (Interne Reklamation)", definition: "Interne Qualitätsbenachrichtigungen; wird in der internen Reklamationsberichterstattung verwendet (z.B. Poor Quality Costs Platzhalter)." },
+          d1d2d3: { term: "D1/D2/D3 (Abweichung)", definition: "Abweichungsbenachrichtigungen, die Ausnahmen oder Genehmigungen darstellen. Wird in der Abweichungsübersicht gemeldet." },
+          p1p2p3: { term: "P1/P2/P3 (PPAP)", definition: "PPAP-Benachrichtigungen, die Genehmigungsprozesszustände darstellen. Wird in der PPAPs-Übersicht gemeldet." },
+          nocoOsno: { term: "NOCO / OSNO", definition: "SAP-Systemstatus-Token zur Statusableitung (NOCO ≈ Abgeschlossen, OSNO ≈ In Bearbeitung)." },
+        },
+        metrics: {
+          ppm: { term: "PPM (Parts Per Million)", definition: "Qualitätsmetrik: (Fehlerhafte Teile / Gesamte Lieferungen) × 1.000.000. Niedriger ist besser." },
+          customerPpm: { term: "Kunden-PPM", definition: "PPM berechnet aus Q1 fehlerhaften Teilen und Kundenlieferungen (Outbound)." },
+          supplierPpm: { term: "Lieferanten-PPM", definition: "PPM berechnet aus Q2 fehlerhaften Teilen und Lieferantenlieferungen (Inbound)." },
+          defectiveParts: { term: "Fehlerhafte Teile", definition: "Menge nicht konformer Teile, die in einer Benachrichtigung erfasst wurden. Wird in PPM verwendet." },
+          deliveries: { term: "Lieferungen", definition: "Gesamte gelieferte Menge, die als PPM-Nenner verwendet wird (Kunden-Outbound / Lieferanten-Inbound)." },
+          globalPpm: { term: "Globaler PPM", definition: "Gesamt-PPM aggregiert über alle ausgewählten Werke/Monate." },
+          lookbackWindow: { term: "12-Monats-Rückblickfenster", definition: "Ein rollierendes Fenster, das am ausgewählten Monat/Jahr endet und für konsistente Trendvisualisierungen verwendet wird." },
+        },
+        chartsViews: {
+          notificationsByMonth: { term: "JTD Gesamtzahl der Benachrichtigungen nach Monat und Werk", definition: "Gestapeltes Balkendiagramm, das Reklamationszählungen pro Monat, aufgeteilt nach Werk, zeigt." },
+          defectsByMonth: { term: "JTD Gesamtzahl der Defekte nach Monat und Werk", definition: "Balkendiagramm, das fehlerhafte Teile nach Monat und Werk zeigt (Kunde vs. Lieferant)." },
+          legendClickFilter: { term: "Legenden-Klick-Filter", definition: "Diagramm-lokaler Filter, der durch Klicken auf ein Werk-Badge in der Legende ausgelöst wird; betrifft keine anderen Diagramme." },
+          fixedYAxis: { term: "Feste Y-Achsen-Domäne", definition: "Y-Achsen-Maximum, berechnet aus ungefilterten Daten, damit die Skala nach lokalem Filtern stabil bleibt." },
+        },
+        ai: {
+          aiSummary: { term: "KI-Zusammenfassung", definition: "Von LLM generierte narrative Zusammenfassung gefilterter KPIs mit Trends, Risiken und empfohlenen Maßnahmen." },
+          aiManagementSummary: { term: "KI-Management-Zusammenfassung", definition: "Zentrale Seite, die KPIs zusammenfasst und Anomalien und Maßnahmen hervorhebt (deutsche Zahlenformatierung, Werkbezeichnungen enthalten)." },
+          providerApiKey: { term: "Anbieter / API-Schlüssel", definition: "Konfiguriertes LLM-Backend (z.B. OpenAI-kompatibel oder Anthropic), das von der KI-Zusammenfassungs-API-Route verwendet wird." },
+        },
+        general: {
+          sitePlantCode: { term: "Standort / Werkcode", definition: "3-stelliger Code zur Identifizierung eines Fertigungsstandorts (z.B. 145, 235, 410). Wird mit Stadt/Standort angezeigt, wenn verfügbar." },
+          uploadHistory: { term: "Upload-Verlauf", definition: "Persistente Protokollierung von Datei-Uploads/manuellen Einträgen einschließlich Zeitstempeln, Zusammenfassungen und wo Daten verwendet werden." },
+          manualEntry: { term: "Manuelle Eingabe (Vorlage)", definition: "Formularbasierte Eingabe monatlicher Werte pro Werk. Gespeichert und in den KPI-Datensatz für die Berichterstattung eingefügt." },
+        },
+      },
+      faqs: {
+        howToUpload: {
+          q: "Wie lade ich Daten hoch?",
+          a: "Gehen Sie zu Upload-Daten. Verwenden Sie die strukturierten Upload-Bereiche (Reklamationen, Lieferungen, PPAP, Abweichungen, Werke). Nach dem Upload können Sie KPIs berechnen und die Berichtsseiten lesen aus dem KPI-Datensatz.",
+        },
+        sourceOfTruth: {
+          q: "Welche Dateien sind die Quelle der Wahrheit für Reklamationen und PPM?",
+          a: "Reklamationen und fehlerhafte Teile stammen aus dem Q Cockpit-Reklamationsextrakt. Lieferungen stammen aus Outbound- (Kundenlieferungen) und Inbound- (Lieferantenlieferungen) Dateien. PPM wird aus fehlerhaften Teilen und Lieferungen abgeleitet.",
+        },
+        customerPpmCalculation: {
+          q: "Wie wird Customer PPM berechnet?",
+          a: "Customer PPM = (Kunden-defekte Teile / Kundenlieferungen) × 1.000.000 für die ausgewählten Werke und den Zeitraum.",
+        },
+        supplierPpmCalculation: {
+          q: "Wie wird Supplier PPM berechnet?",
+          a: "Supplier PPM = (Lieferanten-defekte Teile / Lieferantenlieferungen) × 1.000.000 für die ausgewählten Werke und den Zeitraum.",
+        },
+        q1q2q3Meaning: {
+          q: "Was bedeuten Q1, Q2 und Q3?",
+          a: "Q1 = Kundenreklamationen, Q2 = Lieferantenreklamationen, Q3 = Interne Reklamationen. Sie repräsentieren verschiedene Benachrichtigungskategorien und steuern verschiedene Diagramme/Metriken.",
+        },
+        d1d2d3Meaning: {
+          q: "Was repräsentieren D1, D2, D3 auf der Abweichungsseite?",
+          a: "D1/D2/D3 sind Abweichungsbenachrichtigungstypen. Die Abweichungsübersichtsseite zeigt Zählungen nach Monat und Werk sowie eine Statusansicht (Abgeschlossen vs. In Bearbeitung).",
+        },
+        p1p2p3Meaning: {
+          q: "Was repräsentieren P1, P2, P3 auf der PPAPs-Seite?",
+          a: "P1/P2/P3 sind PPAP-Benachrichtigungstypen. Die PPAPs-Übersichtsseite zeigt PPAP-Zählungen nach Monat/Werk und eine Statusansicht (Abgeschlossen vs. In Bearbeitung).",
+        },
+        ytdLookback: {
+          q: "Warum zeigen Diagramme einen 12-Monats-Rückblick, auch wenn die Seite JTD sagt?",
+          a: "Der Selektor verwendet einen 12-Monats-Rückblick, der am ausgewählten Monat/Jahr endet, um ein konsistentes Trendfenster über alle Seiten hinweg zu bieten. Der Seitentitel behält \"JTD //\" für Konsistenz mit der Dashboard-Benennung bei.",
+        },
+        plantFiltering: {
+          q: "Wie funktioniert die Werkfilterung?",
+          a: "Das globale Filterpanel (rechte Sidebar) filtert die meisten Inhalte. Einige Diagramme unterstützen auch lokale diagrammspezifische Filterung durch Klicken auf die Legende (betrifft nur dieses Diagramm).",
+        },
+        plantNamesEnrichment: {
+          q: "Warum zeigen einige Legenden Werkcode plus Stadt/Standort?",
+          a: "Werksnamen werden aus der offiziellen Werk-Übersichtsdatei angereichert, damit Benutzer Standorte anhand von Stadt/Standort erkennen können (z.B. \"410 (Fenton)\").",
+        },
+        fixedYAxis: {
+          q: "Was bedeutet \"Feste Y-Achsen-Skalierung\" bei bestimmten Diagrammen?",
+          a: "Wenn ein Diagramm die lokale Filterung nach Werk unterstützt, wird das Y-Achsen-Maximum aus dem ungefilterten Datensatz berechnet, um zu verhindern, dass sich die Skalierung nach der Auswahl eines Werks ändert.",
+        },
+        aiSummaryError: {
+          q: "Warum zeigt die KI-Zusammenfassung manchmal einen Fehler?",
+          a: "Die KI-Zusammenfassung hängt vom konfigurierten KI-Anbieter/Schlüssel und dem aktuellen gefilterten Datensatz ab. Wenn der Anbieter die Anfrage ablehnt (API-Schlüssel, Ratenlimit, Netzwerk), zeigt die Benutzeroberfläche eine strukturierte Erklärung und vorgeschlagene Lösungen.",
+        },
+        aiSummaryPlantLabels: {
+          q: "Verwendet die KI-Zusammenfassung dieselben Werkbezeichnungen wie das Dashboard?",
+          a: "Ja. Der KI-Prompt ist angewiesen, Werkcode und Stadt/Standort zu erwähnen, wenn auf einen Standort verwiesen wird, basierend auf der offiziellen Werkliste.",
+        },
+        dataLineage: {
+          q: "Wofür ist die Datenherkunftsseite?",
+          a: "Sie dokumentiert, welche Datenquellen welche Parser/APIs speisen, welche Ausgaben produziert werden und wo diese Ausgaben verwendet werden (Seiten/Diagramme). Sie spiegelt auch letzte Upload-Zeitstempel aus dem Upload-Verlauf wider, wenn verfügbar.",
+        },
+        reportIssue: {
+          q: "Wie melde ich ein Problem?",
+          a: "Verwenden Sie die Kontakt-Schaltfläche auf dieser Seite. Es öffnet eine E-Mail mit einer Vorlage, die Problemtitel und hilfreichen Kontext (Seite, Zeitstempel, letzte Uploads) enthält.",
+        },
+      },
     },
     upload: {
       title: "Daten hochladen",
@@ -738,6 +1703,10 @@ const translations: Record<LanguageKey, Translations> = {
       clickToFilterBy: "Clicca per filtrare per",
       resetToShowAll: "Ripristina per mostrare tutti gli impianti",
       resetFilter: "Reimposta Filtro",
+      total: "TOTALE",
+      change: "Cambiamento",
+      defective: "Difettoso",
+      average: "Media",
     },
     header: {
       title: "Rapporto Qualità QOS ET",
@@ -805,6 +1774,155 @@ const translations: Record<LanguageKey, Translations> = {
       supplierPpmTrend: "Trend PPM Fornitore",
       monthlyTrend: "Trend Mensile",
     },
+    aiSummary: {
+      title: "Riepilogo Gestione AI",
+      subtitle: "Approfondimenti intelligenti e analisi qualità automatizzata con AI",
+      noDataMessage: "Nessun dato disponibile. Carica prima i dati dalla pagina Carica Dati.",
+    },
+    complaints: {
+      title: "Numero di Reclami (Q)",
+      subtitle: "Traccia reclami cliente (Q1), fornitore (Q2) e interni (Q3)",
+      noDataMessage: "Nessun dato disponibile. Carica prima i dati dalla pagina Carica Dati.",
+    },
+    ppm: {
+      title: "PPM (Parti per Milione)",
+      subtitle: "Traccia trend PPM cliente e fornitore tra gli impianti",
+      noDataMessage: "Nessun dato disponibile. Carica prima i dati dalla pagina Carica Dati.",
+    },
+    deviations: {
+      title: "Panoramica Deviazioni",
+      subtitle: "Traccia notifiche deviazioni (D1, D2, D3) per mese e stato",
+      noDataMessage: "Nessun dato disponibile. Carica prima i dati dalla pagina Carica Dati.",
+      inProgress: "In Corso",
+      completed: "Completato",
+      pending: "In Attesa",
+    },
+    ppaps: {
+      title: "Panoramica PPAP",
+      subtitle: "Traccia notifiche PPAP (P1, P2, P3) per mese e stato",
+      noDataMessage: "Nessun dato disponibile. Carica prima i dati dalla pagina Carica Dati.",
+      inProgress: "In Corso",
+      completed: "Completato",
+      pending: "In Attesa",
+    },
+    auditManagement: {
+      title: "Gestione Audit YTD //",
+      subtitle: "Traccia metriche audit tra gli impianti",
+      noDataMessage: "Nessun dato disponibile. Carica prima i dati dalla pagina Carica Dati.",
+      auditsByMonth: "Audit YTD per Mese e Impianto",
+      auditsClosedVsOpen: "Reperti Audit Chiusi vs. Aperti YTD per Mese e Impianto",
+      dataSourceMissing: "Fonte Dati Mancante (In Costruzione)",
+      underConstruction: "Segnaposto fino al collegamento della fonte dati audit",
+      dataSourceReference: "Riferimento Fonte Dati",
+      auditDataSource: "Fonte Dati Audit",
+    },
+    settings: {
+      title: "Impostazioni",
+      subtitle: "Configura impostazioni e preferenze dell'applicazione",
+      aiConfigurationTab: "Configurazione AI",
+      columnMappingsTab: "Mappature Colonne",
+      aiConfiguration: "Configurazione AI",
+      aiConfigurationDescription: "Configura chiavi API Insights AI (impostate nelle variabili d'ambiente)",
+      environmentVariablesRequired: "Variabili d'Ambiente Richieste:",
+      aiApiKeyDescription: "La tua chiave API LLM",
+      aiProviderDescription: "\"openai\" o \"anthropic\" (opzionale, default: \"openai\")",
+      aiModelDescription: "Override nome modello (opzionale)",
+      apiKeyNote: "Nota: Le chiavi API sono configurate lato server in .env.local per la sicurezza.",
+      columnMappings: "Mappature Colonne",
+      columnMappingsDescription: "Personalizza come i nomi delle colonne Excel si mappano ai campi interni",
+      complaintFileMappings: "Mappature File Reclami",
+      deliveryFileMappings: "Mappature File Consegne",
+      commaSeparatedColumnNames: "Nomi colonne separati da virgola",
+      mappingsConfigured: "mappatura(e) configurata(e)",
+      saveMappings: "Salva Mappature",
+      saved: "Salvato!",
+      resetToDefaults: "Ripristina Predefiniti",
+      mappingsSaved: "Mappature salvate!",
+      mappingsNote: "Nota: Le mappature personalizzate sono attualmente memorizzate nella memoria del browser. La persistenza completa arriverà presto.",
+    },
+    charts: {
+      howToRead: "Come leggere questo diagramma",
+      resetToShowAll: "Reimposta per mostrare tutti gli impianti",
+      clickToFilterBy: "Clicca per filtrare per",
+      notificationsByMonth: {
+        title: "Numero totale notifiche YTD per Mese e Impianto",
+        titleCustomer: "Numero totale notifiche Cliente YTD per Mese e Impianto",
+        titleSupplier: "Numero totale notifiche Fornitore YTD per Mese e Impianto",
+        description: "Numero di reclami per mese e impianto",
+        descriptionCustomer: "Numero di reclami cliente (Q1) per mese e impianto",
+        descriptionSupplier: "Numero di reclami fornitore (Q2) per mese e impianto",
+      },
+      defectsByMonth: {
+        title: "Numero totale difetti YTD per Mese e Impianto",
+        titleCustomer: "Numero totale difetti Cliente YTD per Mese e Impianto",
+        titleSupplier: "Numero totale difetti Fornitore YTD per Mese e Impianto",
+        description: "Numero di parti difettose per mese e impianto",
+        descriptionCustomer: "Numero di parti difettose cliente per mese e impianto",
+        descriptionSupplier: "Numero di parti difettose fornitore per mese e impianto",
+      },
+      customerPpmTrend: {
+        title: "Trend PPM Cliente cumulativo YTD - Tutti gli Impianti",
+        description: "Prestazioni PPM Cliente combinate (PPM = Parti Difettose / Totale Consegne × 1.000.000)",
+        selectPeriod: "Seleziona periodo",
+        threeMonthsAverage: "Trend Media 3 Mesi",
+        sixMonthsAverage: "Trend Media 6 Mesi",
+        twelveMonthsAverage: "Trend Media 12 Mesi",
+        actualPpm: "PPM Effettivo",
+      },
+      supplierPpmTrend: {
+        title: "Trend PPM Fornitore cumulativo YTD - Tutti gli Impianti",
+        description: "Prestazioni PPM Fornitore combinate (PPM = Parti Difettose / Totale Consegne × 1.000.000)",
+      },
+      siteContribution: {
+        customerTitle: "Contributo Impianto PPM Cliente",
+        supplierTitle: "Contributo Impianto PPM Fornitore",
+        sourceCustomer: "Fonte: Parti Difettose da Q Cockpit (Colonna AF - Quantità resa) | Consegne da file Outbound (Colonna E - Quantità)",
+        sourceSupplier: "Fonte: Parti Difettose da Q Cockpit (Colonna AF - Quantità resa) | Consegne da file Inbound (Colonna E - Quantità)",
+        formula: "Formula: PPM = (Totale Parti Difettose / Totale Consegne) × 1.000.000",
+        totalDefectiveParts: "Totale Parti Difettose",
+        totalDeliveries: "Totale Consegne",
+        calculatedPpm: "PPM Calcolato",
+      },
+      complaints: {
+        totalComplaints: "Totale Reclami",
+        customerComplaints: "Reclami Cliente (Q1)",
+        supplierComplaints: "Reclami Fornitore (Q2)",
+        complaintsTrend: "Trend Reclami",
+        monthlyBreakdown: "Ripartizione mensile di reclami Q1, Q2 e Q3",
+      },
+      ppm: {
+        trendBySite: "Trend PPM per Impianto",
+        customerAndSupplierTrends: "Trend PPM Cliente e Fornitore nel tempo",
+        bySiteAndMonth: "PPM per Impianto e Mese",
+        detailedBreakdown: "Ripartizione dettagliata delle metriche PPM",
+      },
+      deviations: {
+        notificationsByMonth: "Notifiche D YTD per Mese e Impianto",
+        notificationsDescription: "Numero di deviazioni per mese e impianto (impilate)",
+        closedVsInProgress: "Notifiche D YTD Chiuse vs. In Corso per Mese e Impianto",
+        closedVsInProgressDescription: "Chiuse vs. In Corso tra tutti gli impianti selezionati",
+        closed: "Chiuso",
+      },
+      ppaps: {
+        notificationsByMonth: "Notifiche P YTD per Mese e Impianto",
+        notificationsDescription: "Numero di notifiche PPAP per mese e impianto (impilate)",
+        closedVsInProgress: "Notifiche P YTD Chiuse vs. In Corso per Mese e Impianto",
+        closedVsInProgressDescription: "Chiuse vs. In Corso tra tutti gli impianti selezionati",
+      },
+      filterLabels: {
+        notificationType: "Tipo Notifica",
+        customerQ1: "Reclami Cliente Q1",
+        supplierQ2: "Reclami Fornitore Q2",
+        internalQ3: "Reclami Interni Q3",
+        customerAndSupplier: "Cliente e Fornitore",
+        customerAndInternal: "Cliente e Interno",
+        supplierAndInternal: "Fornitore e Interno",
+        defectType: "Tipo Difetto",
+        customerDefects: "Difetti Cliente",
+        supplierDefects: "Difetti Fornitore",
+        allTypes: "Tutti i Tipi",
+      },
+    },
     filterPanel: {
       plant: "IMPIANTO",
       quickAccess: "ACCESSO RAPIDO",
@@ -852,10 +1970,194 @@ const translations: Record<LanguageKey, Translations> = {
       qualityAssurance: "Garanzia\nQualità AI",
       qualityAssuranceDescription: "Controllo e garanzia della qualità completi in tutte le operazioni utilizzando l'AI.",
       generateReport: "Genera Rapporto QOS ET",
-      footerCopyright: "© 2025 QOS ET Report. Guidare l'Eccellenza nelle Operazioni e nella Qualità.",
+      footerCopyright: "© 2026 QOS ET Report. Guidare l'Eccellenza nelle Operazioni & Qualità.",
       qualityManagementSystem: "Sistema di Gestione Qualità",
       login: "Accedi",
       loginDescription: "Seleziona il tuo ruolo per continuare al rapporto.",
+    },
+    glossary: {
+      title: "FAQ e Glossario",
+      subtitle: "Risposte rapide su navigazione e calcoli, oltre a un glossario completo dei termini utilizzati nel report.",
+      faqTab: "FAQ",
+      glossaryTab: "Glossario",
+      searchPlaceholder: "Cerca FAQ + Glossario…",
+      faqTitle: "Domande Frequenti",
+      faqDescription: "Focalizzato su navigazione, fonti dati e come vengono calcolate metriche/diagrammi.",
+      datasetHealth: "Stato Dataset",
+      datasetHealthDescription: "Stato in tempo reale dalla Cronologia Upload. Un dataset è considerato obsoleto dopo {{days}} giorni.",
+      qmTriangle: "Triangolo QM ET",
+      qmTriangleDescription: "Come è costruito e strutturato il report.",
+      qmTriangleTip: "Suggerimento: Se un diagramma sembra errato, controlla la provenienza dei dati (fonti → parsing → KPI → diagrammi) e la cronologia upload.",
+      contact: "Contatto",
+      contactDescription: "Apri un'email con titolo problema, osservazione e contesto di base.",
+      issueTitle: "Titolo problema",
+      issueTitlePlaceholder: "es., Il diagramma Deviazioni mostra 0 record",
+      remark: "Osservazione / descrizione",
+      remarkPlaceholder: "Passaggi per riprodurre, cosa ti aspettavi, cosa hai visto…",
+      page: "Pagina",
+      lastSuccessfulUpload: "Ultimo upload riuscito",
+      downloadDiagnostics: "Scarica JSON diagnostica",
+      contactEmail: "Contatto (Email)",
+      improvementIdeas: "Idee di Miglioramento",
+      improvementIdeasDescription: "Modulo breve per catturare suggerimenti e inviarli via email.",
+      ideaTitle: "Titolo idea",
+      ideaTitlePlaceholder: "es., Aggiungi ricerca + link profondi in FAQ",
+      ideaDetails: "Dettagli idea",
+      ideaDetailsPlaceholder: "Descrivi il miglioramento e perché aiuta…",
+      sendIdea: "Invia Idea di Miglioramento",
+      copyLink: "Copia link a questa FAQ",
+      goToUpload: "Vai a Carica Dati",
+      noSuccessfulUpload: "Nessun upload riuscito ancora",
+      records: "Record",
+      stale: "Obsoleto",
+      ok: "OK",
+      missing: "Mancante",
+      lastSuccess: "Ultimo successo",
+      faqsCount: "15 FAQ",
+      fullGlossary: "Glossario completo (senza comprimere)",
+      contactSupport: "Contatta supporto",
+      categories: {
+        navigation: "Navigazione",
+        dataSources: "Fonti Dati",
+        notifications: "Notifiche",
+        metrics: "Metriche",
+        chartsViews: "Diagrammi e Viste",
+        ai: "AI",
+        general: "Generale",
+      },
+      howToReadCharts: {
+        title: "Come leggere i diagrammi chiave",
+        description: "Questi ancoraggi sono referenziati dai tooltip \"Come leggere questo diagramma\" nelle dashboard.",
+        notificationsByMonth: {
+          title: "Numero totale notifiche YTD per Mese e Impianto",
+          description: "Barre impilate: ogni colore = impianto, altezza barra = totale notifiche per quel mese. Cliccando un impianto nella legenda si filtra solo questo diagramma.",
+        },
+        defectsByMonth: {
+          title: "Numero totale difetti YTD per Mese e Impianto",
+          description: "Mostra parti difettose, divise per impianto. Se il diagramma offre un selettore tipo difetto, passa tra parti difettose Cliente e Fornitore.",
+        },
+        ppmTrend: {
+          title: "Trend PPM cumulativo YTD",
+          description: "Andamento lineare del PPM cumulativo sulla finestra di lookback. Il PPM usa parti difettose come numeratore e consegne come denominatore.",
+        },
+      },
+      term: "Termine",
+      definition: "Definizione",
+      terms: "termini",
+      termsList: {
+        navigation: {
+          qosEtDashboard: { term: "Dashboard QOS ET", definition: "Dashboard principale che aggrega metriche e diagrammi cliente/fornitore/interni nel periodo selezionato." },
+          customerPerformance: { term: "Prestazioni Cliente", definition: "Vista solo cliente (Q1 + consegne cliente/PPM) con diagrammi e tabelle relative al cliente." },
+          supplierPerformance: { term: "Prestazioni Fornitore", definition: "Vista solo fornitore (Q2 + consegne fornitore/PPM) con diagrammi e tabelle relative al fornitore." },
+          uploadData: { term: "Carica Dati", definition: "Pagina di caricamento file strutturato e inserimento manuale. Fornisce anche ricalcolo KPI e cronologia modifiche." },
+          dataLineage: { term: "Provenienza Dati", definition: "Vista catalogo che mappa fonti dati → elaborazione → output → pagine/diagrammi." },
+        },
+        dataSources: {
+          complaintsExtract: { term: "Estratto reclami (Q Cockpit)", definition: "Esportazione Excel contenente notifiche qualità (Q1/Q2/Q3) inclusi parti difettose e riferimenti impianto." },
+          outboundDeliveries: { term: "File consegne Outbound", definition: "Estratti Excel contenenti consegne cliente per impianto/data. Usato come denominatore per PPM Cliente." },
+          inboundDeliveries: { term: "File consegne Inbound", definition: "Estratti Excel contenenti consegne fornitore per impianto/data. Usato come denominatore per PPM Fornitore." },
+          plantMasterData: { term: "Dati master impianti (Webasto ET Plants)", definition: "Mappatura ufficiale codice impianto-ubicazione usata in filtri, legende e prompt AI." },
+          ppapExtracts: { term: "Estratti PPAP base + stato", definition: "Due file Excel: un elenco notifiche + un elenco stato usato per classificare lo stato PPAP." },
+          deviationsExtracts: { term: "Estratti deviazioni base + stato", definition: "Due file Excel: un elenco notifiche deviazione + un elenco stato usato per classificare lo stato deviazione." },
+        },
+        notifications: {
+          notificationNumber: { term: "Numero Notifica", definition: "Identificatore univoco per ogni notifica qualità SAP." },
+          notificationType: { term: "Tipo Notifica", definition: "Classificazione notifica SAP: Q1/Q2/Q3 (reclami), D1/D2/D3 (deviazioni), P1/P2/P3 (PPAP)." },
+          q1: { term: "Q1 (Reclamo Cliente)", definition: "Notifiche qualità originate dal cliente; contribuisce a reclami cliente e PPM Cliente." },
+          q2: { term: "Q2 (Reclamo Fornitore)", definition: "Notifiche qualità relative al fornitore; contribuisce a reclami fornitore e PPM Fornitore." },
+          q3: { term: "Q3 (Reclamo Interno)", definition: "Notifiche qualità interne; usate nella segnalazione reclami interni (es. segnaposto Poor Quality Costs)." },
+          d1d2d3: { term: "D1/D2/D3 (Deviazione)", definition: "Notifiche deviazione che rappresentano eccezioni o approvazioni. Segnalate nella Panoramica Deviazioni." },
+          p1p2p3: { term: "P1/P2/P3 (PPAP)", definition: "Notifiche PPAP che rappresentano stati del processo di approvazione. Segnalate nella Panoramica PPAP." },
+          nocoOsno: { term: "NOCO / OSNO", definition: "Token stato sistema SAP usati per dedurre lo stato (NOCO ≈ Completato, OSNO ≈ In Corso)." },
+        },
+        metrics: {
+          ppm: { term: "PPM (Parti Per Milione)", definition: "Metrica qualità: (Parti Difettose / Totale Consegne) × 1.000.000. Più basso è meglio." },
+          customerPpm: { term: "PPM Cliente", definition: "PPM calcolato da parti difettose Q1 e consegne cliente (Outbound)." },
+          supplierPpm: { term: "PPM Fornitore", definition: "PPM calcolato da parti difettose Q2 e consegne fornitore (Inbound)." },
+          defectiveParts: { term: "Parti Difettose", definition: "Quantità di parti non conformi registrate in una notifica. Usato in PPM." },
+          deliveries: { term: "Consegne", definition: "Quantità totale consegnata usata come denominatore PPM (outbound cliente / inbound fornitore)." },
+          globalPpm: { term: "PPM Globale", definition: "PPM complessivo aggregato su tutti gli impianti/mesi selezionati." },
+          lookbackWindow: { term: "Finestra lookback 12 mesi", definition: "Una finestra mobile che termina al mese/anno selezionato usata per visualizzazioni trend coerenti." },
+        },
+        chartsViews: {
+          notificationsByMonth: { term: "Numero totale notifiche YTD per Mese e Impianto", definition: "Grafico a barre impilate che mostra conteggi reclami per mese divisi per impianto." },
+          defectsByMonth: { term: "Numero totale difetti YTD per Mese e Impianto", definition: "Grafico a barre che mostra parti difettose per mese e impianto (cliente vs fornitore)." },
+          legendClickFilter: { term: "Filtro click legenda", definition: "Filtro locale al diagramma attivato cliccando un badge impianto nella legenda; non influisce su altri diagrammi." },
+          fixedYAxis: { term: "Dominio asse Y fisso", definition: "Massimo asse Y calcolato da dati non filtrati così la scala rimane stabile dopo filtraggio locale." },
+        },
+        ai: {
+          aiSummary: { term: "Riepilogo AI", definition: "Riepilogo narrativo generato da LLM di KPIs filtrati con trend, rischi e azioni raccomandate." },
+          aiManagementSummary: { term: "Riepilogo Management AI", definition: "Pagina centrale che riassume KPIs e evidenzia anomalie e azioni (formattazione numeri tedesca, etichette impianti incluse)." },
+          providerApiKey: { term: "Provider / Chiave API", definition: "Backend LLM configurato (es. compatibile OpenAI o Anthropic) usato dalla route API Riepilogo AI." },
+        },
+        general: {
+          sitePlantCode: { term: "Codice Sito / Impianto", definition: "Codice a 3 cifre che identifica un sito di produzione (es. 145, 235, 410). Mostrato con città/ubicazione quando disponibile." },
+          uploadHistory: { term: "Cronologia Upload", definition: "Log persistente di upload file/inserimenti manuali inclusi timestamp, riepiloghi e dove i dati sono usati." },
+          manualEntry: { term: "Inserimento Manuale (Modello)", definition: "Inserimento basato su form di valori mensili per impianto. Memorizzato e unito nel dataset KPI per la reportistica." },
+        },
+      },
+      faqs: {
+        howToUpload: {
+          q: "Come carico i dati?",
+          a: "Vai a Carica Dati. Usa le sezioni di caricamento strutturate (Reclami, Consegne, PPAP, Deviazioni, Impianti). Dopo il caricamento, puoi calcolare i KPI e le pagine del report leggeranno dal dataset KPI.",
+        },
+        sourceOfTruth: {
+          q: "Quali file sono la fonte di verità per reclami e PPM?",
+          a: "Reclami e parti difettose provengono dall'estratto reclami Q Cockpit. Le consegne provengono da file Outbound (consegne cliente) e Inbound (consegne fornitore). Il PPM è derivato da parti difettose e consegne.",
+        },
+        customerPpmCalculation: {
+          q: "Come viene calcolato il PPM Cliente?",
+          a: "PPM Cliente = (Parti difettose Cliente / Consegne Cliente) × 1.000.000 per gli impianti e la finestra temporale selezionati.",
+        },
+        supplierPpmCalculation: {
+          q: "Come viene calcolato il PPM Fornitore?",
+          a: "PPM Fornitore = (Parti difettose Fornitore / Consegne Fornitore) × 1.000.000 per gli impianti e la finestra temporale selezionati.",
+        },
+        q1q2q3Meaning: {
+          q: "Cosa significano Q1, Q2 e Q3?",
+          a: "Q1 = Reclami cliente, Q2 = Reclami fornitore, Q3 = Reclami interni. Rappresentano diverse categorie di notifiche e guidano diversi diagrammi/metriche.",
+        },
+        d1d2d3Meaning: {
+          q: "Cosa rappresentano D1, D2, D3 nella pagina Deviazioni?",
+          a: "D1/D2/D3 sono tipi di notifica deviazione. La pagina Panoramica Deviazioni mostra conteggi per mese e impianto e una vista stato (Completato vs In Corso).",
+        },
+        p1p2p3Meaning: {
+          q: "Cosa rappresentano P1, P2, P3 nella pagina PPAP?",
+          a: "P1/P2/P3 sono tipi di notifica PPAP. La pagina Panoramica PPAP mostra conteggi PPAP per mese/impianto e una vista stato (Completato vs In Corso).",
+        },
+        ytdLookback: {
+          q: "Perché i diagrammi mostrano un lookback di 12 mesi anche quando la pagina dice YTD?",
+          a: "Il selettore usa un lookback di 12 mesi che termina al mese/anno selezionato per fornire una finestra di tendenza coerente tra le pagine. Il titolo della pagina mantiene \"YTD //\" per coerenza con la denominazione della dashboard.",
+        },
+        plantFiltering: {
+          q: "Come funziona il filtraggio impianti?",
+          a: "Il pannello filtro globale (barra laterale destra) filtra la maggior parte del contenuto. Alcuni diagrammi supportano anche il filtraggio locale solo per diagramma cliccando sulla legenda (influisce solo quel diagramma).",
+        },
+        plantNamesEnrichment: {
+          q: "Perché alcune legende mostrano codice impianto più città/ubicazione?",
+          a: "I nomi degli impianti sono arricchiti dal file Panoramica Impianti ufficiale così gli utenti possono riconoscere i siti per città/ubicazione (es., \"410 (Fenton)\").",
+        },
+        fixedYAxis: {
+          q: "Cosa significa \"Scala asse Y fissa\" su certi diagrammi?",
+          a: "Quando un diagramma supporta il filtraggio locale per impianto, il massimo dell'asse Y è calcolato dal dataset non filtrato per prevenire che la scala cambi dopo aver selezionato un impianto.",
+        },
+        aiSummaryError: {
+          q: "Perché il Riepilogo AI a volte mostra un errore?",
+          a: "Il Riepilogo AI dipende dal provider/chiave AI configurato e dal dataset filtrato corrente. Se il provider rifiuta la richiesta (chiave API, limite di velocità, rete), l'UI mostra una spiegazione strutturata e correzioni suggerite.",
+        },
+        aiSummaryPlantLabels: {
+          q: "Il Riepilogo AI usa le stesse etichette impianti della dashboard?",
+          a: "Sì. Il prompt AI è istruito a menzionare codice impianto e città/ubicazione quando si fa riferimento a un sito, basato sull'elenco impianti ufficiale.",
+        },
+        dataLineage: {
+          q: "A cosa serve la pagina Provenienza Dati?",
+          a: "Documenta quali fonti dati alimentano quali parser/API, quali output sono prodotti e dove quegli output sono usati (pagine/diagrammi). Riflette anche i timestamp dell'ultimo caricamento dalla Cronologia Upload quando disponibili.",
+        },
+        reportIssue: {
+          q: "Come segnalo un problema?",
+          a: "Usa il pulsante Contatto su questa pagina. Apre un'email con un template che include titolo problema e contesto utile (pagina, timestamp, ultimi caricamenti).",
+        },
+      },
     },
     upload: {
       title: "Carica Dati",

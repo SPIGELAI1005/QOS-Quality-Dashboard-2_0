@@ -20,20 +20,11 @@ import {
   ShieldAlert,
   Sparkles,
   TrendingUp,
+  AlertCircle,
 } from "lucide-react";
+import { getDatasetHealth, getDatasetHealthSummary, type UploadSectionKey } from "@/lib/data/datasetHealth";
 
-type UploadSectionKey = "complaints" | "deliveries" | "ppap" | "deviations" | "audit" | "plants";
-
-interface UploadHistoryEntry {
-  id: string;
-  uploadedAtIso: string;
-  section: UploadSectionKey;
-  files: { name: string; size: number }[];
-  summary: Record<string, string | number>;
-  usedIn: string[];
-  success: boolean;
-  notes?: string;
-}
+import type { UploadHistoryEntry } from "@/lib/data/datasetHealth";
 
 function formatWhen(iso: string): string {
   try {
@@ -70,7 +61,7 @@ export function DataLineageClient() {
       parserOrApi: string[];
       outputs: string[];
       usedIn: Array<{ page: string; charts: string[] }>;
-      status: { lastUploadIso: string | null; lastSuccessIso: string | null; lastFiles: string[]; hasAny: boolean };
+      status: { lastUploadIso: string | null; lastSuccessIso: string | null; lastFiles: string[]; hasAny: boolean; healthStatus?: "ok" | "missing" | "stale" };
     }> = [
       {
         key: "complaints",
@@ -165,15 +156,21 @@ export function DataLineageClient() {
       bySection.set(h.section, list);
     }
 
+    // Get health summary for all datasets
+    const healthSummary = getDatasetHealthSummary(history, 30);
+
     for (const d of items) {
       const list = bySection.get(d.key) || [];
       const last = list[0] || null;
       const lastSuccess = list.find((x) => x.success) || null;
+      const health = healthSummary[d.key];
+      
       d.status = {
         lastUploadIso: last?.uploadedAtIso || null,
         lastSuccessIso: lastSuccess?.uploadedAtIso || null,
         lastFiles: last?.files?.map((f) => f.name) || [],
         hasAny: list.length > 0,
+        healthStatus: health.status, // Add health status
       };
     }
 
@@ -253,7 +250,11 @@ export function DataLineageClient() {
         <TabsContent value="catalog" className="space-y-6">
           <div className="grid gap-4 lg:grid-cols-3">
             {datasets.map((d) => {
-              const isOk = Boolean(d.status.lastSuccessIso);
+              const healthStatus = d.status.healthStatus || (d.status.lastSuccessIso ? "ok" : "missing");
+              const isOk = healthStatus === "ok";
+              const isStale = healthStatus === "stale";
+              const isMissing = healthStatus === "missing";
+              
               return (
                 <Card key={d.key} className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
                   <CardHeader className="pb-3">
@@ -274,13 +275,32 @@ export function DataLineageClient() {
                       <Badge
                         variant="secondary"
                         className={cn(
-                          "border",
+                          "border flex items-center gap-1.5",
                           isOk
                             ? "bg-[#00FF88]/15 text-[#00FF88] border-[#00FF88]/30"
+                            : isStale
+                            ? "bg-[#FF8A00]/15 text-[#FF8A00] border-[#FF8A00]/30"
                             : "bg-muted/50 text-muted-foreground border-border/50"
                         )}
                       >
-                        {isOk ? "Connected" : d.key === "audit" ? "Under Construction" : "Not Uploaded Yet"}
+                        {isOk ? (
+                          <>
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            OK
+                          </>
+                        ) : isStale ? (
+                          <>
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            Stale
+                          </>
+                        ) : d.key === "audit" ? (
+                          "Under Construction"
+                        ) : (
+                          <>
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            Missing
+                          </>
+                        )}
                       </Badge>
                     </div>
                   </CardHeader>

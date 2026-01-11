@@ -24,8 +24,10 @@ import {
 import { AlertTriangle, FileText } from "lucide-react";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export function ComplaintsClient() {
+  const { t } = useTranslation();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
   const [filters, setFilters] = useState<FilterState>({
     selectedPlants: [],
@@ -90,16 +92,16 @@ export function ComplaintsClient() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Number of Complaints (Q)</h2>
+          <h2 className="text-2xl font-bold tracking-tight">{t.complaints.title}</h2>
           <p className="text-muted-foreground">
-            Track customer (Q1), supplier (Q2), and internal (Q3) complaints
+            {t.complaints.subtitle}
           </p>
         </div>
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-center">
-              No data available. Please upload data from the Upload Data page first.
+              {t.complaints.noDataMessage}
             </p>
           </CardContent>
         </Card>
@@ -110,9 +112,9 @@ export function ComplaintsClient() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold tracking-tight">Number of Complaints (Q)</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{t.complaints.title}</h2>
         <p className="text-muted-foreground">
-          Track customer (Q1), supplier (Q2), and internal (Q3) complaints
+          {t.complaints.subtitle}
         </p>
       </div>
 
@@ -121,7 +123,7 @@ export function ComplaintsClient() {
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Total Complaints</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.charts.complaints.totalComplaints}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">{totalComplaints.toLocaleString()}</div>
@@ -130,7 +132,7 @@ export function ComplaintsClient() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Customer Complaints (Q1)</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.charts.complaints.customerComplaints}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">
@@ -140,7 +142,7 @@ export function ComplaintsClient() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm font-medium">Supplier Complaints (Q2)</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.charts.complaints.supplierComplaints}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold">
@@ -152,8 +154,8 @@ export function ComplaintsClient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Complaints Trend</CardTitle>
-              <CardDescription>Monthly breakdown of Q1, Q2, and Q3 complaints</CardDescription>
+              <CardTitle>{t.charts.complaints.complaintsTrend}</CardTitle>
+              <CardDescription>{t.charts.complaints.monthlyBreakdown}</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>

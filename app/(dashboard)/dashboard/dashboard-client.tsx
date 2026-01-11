@@ -60,7 +60,8 @@ import {
   RefreshCw,
   CheckCircle,
   XCircle,
-  AlertCircle as AlertCircleIcon
+  AlertCircle as AlertCircleIcon,
+  MessageCircle
 } from "lucide-react";
 import {
   Select,
@@ -73,6 +74,8 @@ import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
 import { cn } from "@/lib/utils";
 import { TooltipProvider, Tooltip as UiTooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
+import { useTheme } from "next-themes";
 import {
   getPlantColorHex,
   getPlantColorByIndex,
@@ -112,10 +115,13 @@ interface TrendData {
 export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: propsPpm, viewMode = "full" }: DashboardClientProps) {
   const { t } = useTranslation();
   const router = useRouter();
+  const { theme } = useTheme();
+  const themeValue = (theme === "light" ? "light" : "dark") as "dark" | "light";
   const isCustomerView = viewMode === "customer";
   const isSupplierView = viewMode === "supplier";
   const isFullView = viewMode === "full";
   const [mounted, setMounted] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>(propsKpis);
   const [globalPpm, setGlobalPpm] = useState<{ customerPpm: number | null; supplierPpm: number | null } | undefined>(propsPpm);
@@ -129,6 +135,8 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
   const [selectedDefectType, setSelectedDefectType] = useState<"Customer" | "Supplier" | "Both">("Both");
   // Local chart filter: selected plant for "YTD Total Number of Defects by Month and Plant" chart only
   const [selectedPlantForDefectsChart, setSelectedPlantForDefectsChart] = useState<string | null>(null);
+  // Local chart filter: selected notification type for "YTD Number of Notifications by Month and Notification Type" chart only
+  const [selectedNotificationTypeForChart, setSelectedNotificationTypeForChart] = useState<"Q1" | "Q2" | "Q3" | null>(null);
   // Refs for scrolling to charts
   const notificationsChartRef = useRef<HTMLDivElement>(null);
   const customerDeliveriesChartRef = useRef<HTMLDivElement>(null);
@@ -160,6 +168,61 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
       .catch((error) => {
         console.error('[Dashboard] Error loading plants from API:', error);
       });
+  }, []);
+
+  // Load upload history for info tooltips
+  type UploadHistoryEntry = {
+    id: string;
+    uploadedAtIso: string;
+    section: "complaints" | "deliveries" | "ppap" | "deviations" | "audit" | "plants";
+    files: { name: string; size: number }[];
+    summary: Record<string, string | number>;
+    usedIn: string[];
+    success: boolean;
+    notes?: string;
+  };
+  const [uploadHistory, setUploadHistory] = useState<UploadHistoryEntry[]>([]);
+  
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem("qos-et-upload-history");
+      if (stored) {
+        const parsed = JSON.parse(stored) as UploadHistoryEntry[];
+        if (Array.isArray(parsed)) {
+          setUploadHistory(parsed);
+        }
+      }
+    } catch (e) {
+      console.error('[Dashboard] Failed to parse upload history:', e);
+    }
+  }, []);
+
+  // Helper function to get last upload timestamp for a section
+  const getLastUploadTimestamp = useCallback((section: UploadHistoryEntry["section"]): string | null => {
+    const sectionHistory = uploadHistory.filter(h => h.section === section && h.success);
+    if (sectionHistory.length === 0) return null;
+    const last = sectionHistory.sort((a, b) => 
+      new Date(b.uploadedAtIso).getTime() - new Date(a.uploadedAtIso).getTime()
+    )[0];
+    return last.uploadedAtIso;
+  }, [uploadHistory]);
+
+  // Helper function to format upload timestamp
+  const formatUploadTimestamp = useCallback((iso: string | null): string => {
+    if (!iso) return "No upload data available";
+    try {
+      const date = new Date(iso);
+      return date.toLocaleString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    } catch {
+      return "Invalid date";
+    }
   }, []);
 
   // Plant color mapping (Tailwind classes) - matches filter-panel.tsx
@@ -273,8 +336,16 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     );
   }, [plantsData, getPlantColorClass]);
 
-  // Custom Notification Type Legend Component - similar style to Plant Legend
-  const NotificationTypeLegend = useCallback(({ types }: { types: string[] }) => {
+  // Custom Notification Type Legend Component - similar style to Plant Legend, with click filtering
+  const NotificationTypeLegend = useCallback(({ 
+    types, 
+    selectedType, 
+    onTypeClick 
+  }: { 
+    types: string[]; 
+    selectedType?: "Q1" | "Q2" | "Q3" | null;
+    onTypeClick?: (type: "Q1" | "Q2" | "Q3" | null) => void;
+  }) => {
     if (types.length === 0) return null;
     
     const typeLabels: Record<string, string> = {
@@ -290,16 +361,38 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
         {types.map((type) => {
           const colorHex = getNotificationTypeColor(type);
           const label = typeLabels[type] || type;
+          // Only allow clicking on Q1, Q2, Q3 notification types
+          const isClickable = (type === "Q1" || type === "Q2" || type === "Q3") && onTypeClick;
+          const isSelected = selectedType === type;
           
           return (
-            <div key={type} className="flex items-center gap-2">
+            <div 
+              key={type} 
+              className={cn(
+                "flex items-center gap-2",
+                isClickable && "cursor-pointer transition-all hover:opacity-80 active:scale-95",
+                isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg p-1"
+              )}
+              onClick={() => {
+                if (isClickable) {
+                  onTypeClick?.(isSelected ? null : type as "Q1" | "Q2" | "Q3");
+                }
+              }}
+              title={isClickable ? (isSelected ? t.common.clickToShowAll : `${t.common.clickToFilterBy} ${label}`) : undefined}
+            >
               <div 
-                className="h-6 w-6 rounded flex items-center justify-center text-xs font-semibold text-white flex-shrink-0"
+                className={cn(
+                  "h-6 w-6 rounded flex items-center justify-center text-xs font-semibold text-white flex-shrink-0",
+                  isSelected && "ring-2 ring-white"
+                )}
                 style={{ backgroundColor: colorHex }}
               >
                 {type}
               </div>
-              <span className="text-sm text-foreground whitespace-nowrap">
+              <span className={cn(
+                "text-sm whitespace-nowrap",
+                isSelected ? "text-primary font-semibold" : "text-foreground"
+              )}>
                 {label}
               </span>
             </div>
@@ -307,7 +400,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
         })}
       </div>
     );
-  }, []);
+  }, [t]);
   
   // Filter state - load from localStorage or use default
   const [filters, setFilters] = useState<FilterState>(() => {
@@ -436,6 +529,59 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
       lastMonthYear: sorted.length > 0 ? sorted[sorted.length - 1] : null, // Last available month
     };
   }, [kpis]);
+
+  // Helper function to format period string
+  const getPeriodString = useCallback(() => {
+    if (selectedMonth === null || selectedYear === null) {
+      return "Period not selected";
+    }
+    const monthNames = t.common.months;
+    const endDate = new Date(selectedYear, selectedMonth - 1, 1);
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 11);
+    const startMonthName = monthNames[startDate.getMonth()];
+    const endMonthName = monthNames[endDate.getMonth()];
+    const startYear = startDate.getFullYear();
+    const endYear = endDate.getFullYear();
+    if (startYear === endYear) {
+      return `${startMonthName} - ${endMonthName} ${endYear}`;
+    }
+    return `${startMonthName} ${startYear} - ${endMonthName} ${endYear}`;
+  }, [selectedMonth, selectedYear, t]);
+
+  // Helper function to create infoContent for metrics
+  const createMetricInfoContent = useCallback((sections: UploadHistoryEntry["section"][], additionalContent?: React.ReactNode) => {
+    const period = getPeriodString();
+    const uploadTimestamps = sections.map(section => ({
+      section,
+      timestamp: getLastUploadTimestamp(section)
+    })).filter(u => u.timestamp !== null);
+    
+    return (
+      <div className="space-y-3">
+        {additionalContent}
+        <div className="space-y-2">
+          <div>
+            <span className="font-semibold text-sm">Period: </span>
+            <span className="text-sm">{period}</span>
+          </div>
+          {uploadTimestamps.length > 0 && (
+            <div>
+              <span className="font-semibold text-sm">Last Upload: </span>
+              <span className="text-sm">
+                {uploadTimestamps.map((u, idx) => (
+                  <span key={u.section}>
+                    {u.section === "complaints" ? "Complaints" : u.section === "deliveries" ? "Deliveries" : u.section} - {formatUploadTimestamp(u.timestamp)}
+                    {idx < uploadTimestamps.length - 1 && ", "}
+                  </span>
+                ))}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }, [getPeriodString, getLastUploadTimestamp, formatUploadTimestamp]);
 
   // Initialize selected month/year to January 2026
   useEffect(() => {
@@ -1150,16 +1296,18 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
   // Sparkline data for metric tiles - shows YTD cumulative values by month
   // This shows the running YTD total as each month progresses
   const sparklineData = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth() + 1; // 1-12
+    if (selectedMonth === null || selectedYear === null) {
+      return [];
+    }
+    const targetYear = selectedYear;
+    const targetMonth = selectedMonth; // 1-12
 
-    // Filter KPIs for current year only (YTD)
+    // Filter KPIs for selected year only (YTD up to selected month)
     const currentYearKpis = filteredKpis.filter((kpi) => {
       const kpiDate = new Date(kpi.month + "-01");
       const kpiYear = kpiDate.getFullYear();
       const kpiMonth = kpiDate.getMonth() + 1;
-      return kpiYear === currentYear && kpiMonth <= currentMonth;
+      return kpiYear === targetYear && kpiMonth <= targetMonth;
     });
 
     // Group by month and calculate cumulative YTD values
@@ -1228,7 +1376,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
         supplierPpm: cumulativeSupplierPpm,
       };
     });
-  }, [filteredKpis]);
+  }, [filteredKpis, selectedMonth, selectedYear]);
 
   // Calculate summary metrics
   const summaryMetrics = useMemo(() => {
@@ -1572,11 +1720,19 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     const byMonth = new Map<string, { Q1: number; Q2: number; Q3: number; D: number; P: number }>();
     
     // In customer view mode, only show Q1 notifications
-    const effectiveNotificationTypes = isCustomerView
-      ? new Set(["Q1"])
-      : isSupplierView
-        ? new Set(["Q2"])
-        : selectedNotificationTypes;
+    // If a notification type is selected via legend click, show only that type
+    let effectiveNotificationTypes: Set<"Q1" | "Q2" | "Q3">;
+    if (selectedNotificationTypeForChart) {
+      // Local chart filter: show only selected notification type
+      effectiveNotificationTypes = new Set([selectedNotificationTypeForChart]);
+    } else {
+      // Use global filter selection
+      effectiveNotificationTypes = isCustomerView
+        ? new Set(["Q1"])
+        : isSupplierView
+          ? new Set(["Q2"])
+          : selectedNotificationTypes;
+    }
     
     filteredKpis.forEach((kpi) => {
       if (!byMonth.has(kpi.month)) {
@@ -1593,7 +1749,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     const months = Array.from(byMonth.keys()).sort();
     return months.map((month) => {
       const monthData = byMonth.get(month)!;
-      // Calculate total for label display (only selected Q1, Q2, Q3) - force Q1 in customer view
+      // Calculate total for label display (only selected Q1, Q2, Q3) - force Q1 in customer view or use legend filter
       const total = (effectiveNotificationTypes.has("Q1") ? (monthData.Q1 || 0) : 0) +
                     (effectiveNotificationTypes.has("Q2") ? (monthData.Q2 || 0) : 0) +
                     (effectiveNotificationTypes.has("Q3") ? (monthData.Q3 || 0) : 0);
@@ -1603,7 +1759,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
         total,
       };
     });
-  }, [filteredKpis, selectedNotificationTypes, isCustomerView, isSupplierView]);
+  }, [filteredKpis, selectedNotificationTypes, isCustomerView, isSupplierView, selectedNotificationTypeForChart]);
 
   // Customer PPM Trend Data with configurable average period
   // Calculate PPM the same way as metrics: aggregate defective parts and deliveries per month, then calculate PPM
@@ -2290,30 +2446,34 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                         <>
                           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parts</span>
                           {infoContent && (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
-                                  <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-96 max-h-96 overflow-y-auto">
-                                {infoContent}
-                              </PopoverContent>
-                            </Popover>
+                            <TooltipProvider>
+                              <UiTooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
+                                    <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-md p-4 text-sm" side="right">
+                                  {infoContent}
+                                </TooltipContent>
+                              </UiTooltip>
+                            </TooltipProvider>
                           )}
                         </>
                       )}
                       {!title.includes('Parts') && infoContent && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
-                              <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-96 max-h-96 overflow-y-auto">
-                            {infoContent}
-                          </PopoverContent>
-                        </Popover>
+                        <TooltipProvider>
+                          <UiTooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
+                                <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-md p-4 text-sm" side="right">
+                              {infoContent}
+                            </TooltipContent>
+                          </UiTooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   </>
@@ -2330,30 +2490,34 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                         <>
                           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Parts</span>
                           {infoContent && (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
-                                  <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-96 max-h-96 overflow-y-auto">
-                                {infoContent}
-                              </PopoverContent>
-                            </Popover>
+                            <TooltipProvider>
+                              <UiTooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
+                                    <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-md p-4 text-sm" side="right">
+                                  {infoContent}
+                                </TooltipContent>
+                              </UiTooltip>
+                            </TooltipProvider>
                           )}
                         </>
                       )}
                       {!title.includes('Parts') && infoContent && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
-                              <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-96 max-h-96 overflow-y-auto">
-                            {infoContent}
-                          </PopoverContent>
-                        </Popover>
+                        <TooltipProvider>
+                          <UiTooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5 ml-0.5">
+                                <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-md p-4 text-sm" side="right">
+                              {infoContent}
+                            </TooltipContent>
+                          </UiTooltip>
+                        </TooltipProvider>
                       )}
                     </div>
                   </>
@@ -2363,16 +2527,18 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       {title}
                     </p>
                     {infoContent && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5">
-                            <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                      <TooltipProvider>
+                        <UiTooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-3 w-3 p-0 hover:bg-transparent -mt-0.5">
+                              <Info className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                           </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-96 max-h-96 overflow-y-auto">
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-md p-4 text-sm" side="right">
                           {infoContent}
-                        </PopoverContent>
-                      </Popover>
+                        </TooltipContent>
+                      </UiTooltip>
+                      </TooltipProvider>
                     )}
                   </div>
                 )}
@@ -2533,6 +2699,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             color="#06b6d4"
             trend={customerMetrics.complaints}
             sparklineDataKey="customerComplaints"
+            infoContent={createMetricInfoContent(["complaints"])}
             onClick={() => {
               // Set notification type filter to show only Q1 (Customer Complaints)
               setSelectedNotificationTypes(new Set(["Q1"]));
@@ -2552,6 +2719,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             color="#00BCD4"
             trend={customerMetrics.deliveries}
             sparklineDataKey="customerDeliveries"
+            infoContent={createMetricInfoContent(["deliveries"])}
             onClick={() => {
               // Scroll to the Customer Deliveries chart
               setTimeout(() => {
@@ -2567,6 +2735,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             color="#F44336"
             trend={customerMetrics.defective}
             sparklineDataKey="customerDefective"
+            infoContent={createMetricInfoContent(["complaints"])}
             onClick={() => {
               // Set defect type filter to show only Customer defects
               setSelectedDefectType("Customer");
@@ -2575,82 +2744,6 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 defectsChartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }, 100);
             }}
-            infoContent={
-              customerMetrics.conversions?.hasConversions ? (
-                <div className="space-y-3">
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2">Unit Conversion Summary</h4>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Some customer defective parts were converted to PC (pieces) based on unit specifications found in material descriptions.
-                      Supported conversions: ML → PC (bottle size), M → PC (length per piece), M² → PC (area per piece).
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Total Converted:</span>
-                      <span className="font-medium">{customerMetrics.conversions.totalConverted} complaints</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Total Original Units:</span>
-                      <span className="font-medium">
-                        {formatGermanNumber(customerMetrics.conversions.details.reduce((sum, c) => sum + c.originalML, 0), 0)} 
-                        {' '}
-                        {customerMetrics.conversions.details.length > 0 && customerMetrics.conversions.details[0].originalUnit}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Total PC (converted):</span>
-                      <span className="font-medium">{formatGermanNumber(customerMetrics.conversions.totalPC, 0)} PC</span>
-                    </div>
-                  </div>
-                  {customerMetrics.conversions.details.length > 0 && (
-                    <div className="mt-3 pt-3 border-t">
-                      <p className="text-xs font-semibold mb-2">Sample Conversions:</p>
-                      <div className="space-y-1 max-h-48 overflow-y-auto">
-                        {customerMetrics.conversions.details.slice(0, 10).map((conv, idx) => {
-                          const unit = conv.originalUnit || 'ML';
-                          let unitLabel = '';
-                          if (unit === 'ML') {
-                            unitLabel = `${conv.bottleSize} ML/bottle`;
-                          } else if (unit === 'M') {
-                            unitLabel = `${conv.bottleSize} M/piece`;
-                          } else if (unit === 'M2') {
-                            unitLabel = `${conv.bottleSize} M²/piece`;
-                          }
-                          
-                          return (
-                            <div key={idx} className="text-xs p-2 bg-muted rounded">
-                              <div className="font-medium">Notif: {conv.notificationNumber}</div>
-                              <div className="text-muted-foreground">
-                                {formatGermanNumber(conv.originalML, 0)} {unit} → {formatGermanNumber(conv.convertedPC, 0)} PC
-                                {conv.bottleSize && ` (${unitLabel})`}
-                              </div>
-                              {conv.materialDescription && (
-                                <div className="text-muted-foreground text-[10px] mt-1 truncate">
-                                  {conv.materialDescription}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                        {customerMetrics.conversions.details.length > 10 && (
-                          <p className="text-xs text-muted-foreground text-center pt-1">
-                            +{customerMetrics.conversions.details.length - 10} more conversions
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <h4 className="font-semibold text-sm">Unit Information</h4>
-                  <p className="text-xs text-muted-foreground">
-                    All customer defective parts are shown in PC (pieces). All other units of measure, like ML or M have been converted to PC, based on calculation of the delivery unit. E.g. if in description is mentioned 600 ML, this means that it is considered as 1 PC.
-                  </p>
-                </div>
-              )
-            }
           />
           <MetricTile
             title={t.dashboard.customerPpm}
@@ -2662,6 +2755,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             color="#4CAF50"
             trend={customerMetrics.ppm}
             sparklineDataKey="customerPpm"
+            infoContent={createMetricInfoContent(["complaints", "deliveries"])}
             onClick={() => {
               // Scroll to the Customer PPM Trend chart
               setTimeout(() => {
@@ -2682,6 +2776,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   color="#14b8a6"
                   trend={supplierMetrics.complaints}
                   sparklineDataKey="supplierComplaints"
+                  infoContent={createMetricInfoContent(["complaints"])}
                   onClick={() => {
                     setSelectedNotificationTypes(new Set(["Q2"]));
                     setTimeout(() => {
@@ -2701,6 +2796,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   color="#00BCD4"
                   trend={supplierMetrics.deliveries}
                   sparklineDataKey="supplierDeliveries"
+                  infoContent={createMetricInfoContent(["deliveries"])}
                   onClick={() => {
                     setTimeout(() => {
                       supplierDeliveriesChartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2721,43 +2817,59 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       defectsChartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                     }, 100);
                   }}
-                  infoContent={supplierMetrics.conversions?.hasConversions ? (
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="font-semibold text-sm mb-2">Unit Conversion Summary</h4>
-                        <p className="text-xs text-muted-foreground mb-3">
-                          Some supplier defective parts were converted to PC (pieces) based on unit specifications found in material descriptions.
-                          Supported conversions: ML → PC (bottle size), M → PC (length per piece), M² → PC (area per piece).
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total Converted:</span>
-                          <span className="font-medium">{supplierMetrics.conversions.totalConverted} complaints</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total Original Units:</span>
-                          <span className="font-medium">
-                            {formatGermanNumber(
-                              supplierMetrics.conversions.details.reduce((sum, c) => sum + c.originalML, 0),
-                              0
-                            )}{" "}
-                            {supplierMetrics.conversions.details.length > 0 && supplierMetrics.conversions.details[0].originalUnit}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Total PC (converted):</span>
-                          <span className="font-medium">{formatGermanNumber(supplierMetrics.conversions.totalPC, 0)} PC</span>
+                  infoContent={createMetricInfoContent(
+                    ["complaints"],
+                    <>
+                      <div className="space-y-3 pb-2 border-b border-border">
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">PPM Calculation</h4>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Supplier PPM = (Supplier Defective Parts / Supplier Deliveries) × 1,000,000
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            This metric shows the total defective parts from Q2 (Supplier) complaints used in the Supplier PPM calculation.
+                          </p>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-sm">Unit Information</h4>
-                      <p className="text-xs text-muted-foreground">
-                        All supplier defective parts are shown in PC (pieces). All other units of measure, like ML or M have been converted to PC, based on calculation of the delivery unit.
-                      </p>
-                    </div>
+                      {supplierMetrics.conversions?.hasConversions ? (
+                        <div className="space-y-3 pb-2 border-b border-border">
+                          <div>
+                            <h4 className="font-semibold text-sm mb-2">Unit Conversion Summary</h4>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              Some supplier defective parts were converted to PC (pieces) based on unit specifications found in material descriptions.
+                              Supported conversions: ML → PC (bottle size), M → PC (length per piece), M² → PC (area per piece).
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Total Converted:</span>
+                              <span className="font-medium">{supplierMetrics.conversions.totalConverted} complaints</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Total Original Units:</span>
+                              <span className="font-medium">
+                                {formatGermanNumber(
+                                  supplierMetrics.conversions.details.reduce((sum, c) => sum + c.originalML, 0),
+                                  0
+                                )}{" "}
+                                {supplierMetrics.conversions.details.length > 0 && supplierMetrics.conversions.details[0].originalUnit}
+                              </span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Total PC (converted):</span>
+                              <span className="font-medium">{formatGermanNumber(supplierMetrics.conversions.totalPC, 0)} PC</span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 pb-2 border-b border-border">
+                          <h4 className="font-semibold text-sm">Unit Information</h4>
+                          <p className="text-xs text-muted-foreground">
+                            All supplier defective parts are shown in PC (pieces). All other units of measure, like ML or M have been converted to PC, based on calculation of the delivery unit.
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 />
                 <MetricTile
@@ -2768,6 +2880,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   color="#4CAF50"
                   trend={supplierMetrics.ppm}
                   sparklineDataKey="supplierPpm"
+                  infoContent={createMetricInfoContent(["complaints", "deliveries"])}
                   onClick={() => {
                     setTimeout(() => {
                       supplierPpmTrendChartRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2792,6 +2905,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             color="#14b8a6"
             trend={supplierMetrics.complaints}
             sparklineDataKey="supplierComplaints"
+            infoContent={createMetricInfoContent(["complaints"])}
             onClick={() => {
               // Set notification type filter to show only Q2 (Supplier Complaints)
               setSelectedNotificationTypes(new Set(["Q2"]));
@@ -2811,6 +2925,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             color="#00BCD4"
             trend={supplierMetrics.deliveries}
             sparklineDataKey="supplierDeliveries"
+            infoContent={createMetricInfoContent(["deliveries"])}
             onClick={() => {
               // Scroll to the Supplier Deliveries chart
               setTimeout(() => {
@@ -2834,16 +2949,29 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 defectsChartRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
               }, 100);
             }}
-            infoContent={
-              supplierMetrics.conversions?.hasConversions ? (
-                <div className="space-y-3">
+            infoContent={createMetricInfoContent(
+              ["complaints"],
+              <>
+                <div className="space-y-3 pb-2 border-b border-border">
                   <div>
-                    <h4 className="font-semibold text-sm mb-2">Unit Conversion Summary</h4>
-                    <p className="text-xs text-muted-foreground mb-3">
-                      Some supplier defective parts were converted to PC (pieces) based on unit specifications found in material descriptions.
-                      Supported conversions: ML → PC (bottle size), M → PC (length per piece), M² → PC (area per piece).
+                    <h4 className="font-semibold text-sm mb-2">PPM Calculation</h4>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Supplier PPM = (Supplier Defective Parts / Supplier Deliveries) × 1,000,000
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      This metric shows the total defective parts from Q2 (Supplier) complaints used in the Supplier PPM calculation.
                     </p>
                   </div>
+                </div>
+                {supplierMetrics.conversions?.hasConversions ? (
+                  <div className="space-y-3 pb-2 border-b border-border">
+                    <div>
+                      <h4 className="font-semibold text-sm mb-2">Unit Conversion Summary</h4>
+                      <p className="text-xs text-muted-foreground mb-3">
+                        Some supplier defective parts were converted to PC (pieces) based on unit specifications found in material descriptions.
+                        Supported conversions: ML → PC (bottle size), M → PC (length per piece), M² → PC (area per piece).
+                      </p>
+                    </div>
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Total Converted:</span>
@@ -2902,14 +3030,15 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   )}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2 pb-2 border-b border-border">
                   <h4 className="font-semibold text-sm">Unit Information</h4>
                   <p className="text-xs text-muted-foreground">
                     All supplier defective parts are shown in PC (pieces). All other units of measure, like ML or M have been converted to PC, based on calculation of the delivery unit. E.g. if in description is mentioned 600 ML, this means that it is considered as 1 PC.
                   </p>
                 </div>
-              )
-            }
+              )}
+              </>
+            )}
           />
           <MetricTile
             title="Supplier PPM"
@@ -2921,6 +3050,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             color="#4CAF50"
             trend={supplierMetrics.ppm}
             sparklineDataKey="supplierPpm"
+            infoContent={createMetricInfoContent(["complaints", "deliveries"])}
             onClick={() => {
               // Scroll to the Supplier PPM Trend chart
               setTimeout(() => {
@@ -2992,6 +3122,19 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       <RefreshCw 
                         className={`h-3.5 w-3.5 ${aiSummaryLoading ? 'animate-spin' : ''}`} 
                         style={{ color: "#9E9E9E" }} 
+                      />
+                    </button>
+                    <button
+                      onClick={() => setIsChatOpen(true)}
+                      className={cn(
+                        "p-2 rounded-lg bg-[#00FF88] text-black hover:bg-[#00FF88] hover:border-black border-[#00FF88] border-2 font-semibold shadow-sm hover:shadow-md transition-all",
+                        themeValue === "light" && "hover:text-black"
+                      )}
+                      title="I A:M Q"
+                      aria-label="Open I A:M Q Chat"
+                    >
+                      <MessageCircle 
+                        className={cn("h-3.5 w-3.5 scale-x-[-1] text-black", themeValue === "light" && "hover:text-black")} 
                       />
                     </button>
                   <div className="p-3 rounded-lg" style={{ backgroundColor: "#9E9E9E20", borderColor: "#9E9E9E50", borderWidth: '1px' }}>
@@ -3276,10 +3419,10 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
               <CardTitle className="flex items-center gap-2">
                 <span>
                   {isCustomerView
-                    ? "YTD Total Number of Customer Notifications by Month and Plant"
+                    ? t.charts.notificationsByMonth.titleCustomer
                     : isSupplierView
-                      ? "YTD Total Number of Supplier Notifications by Month and Plant"
-                      : "YTD Total Number of Notifications by Month and Plant"}
+                      ? t.charts.notificationsByMonth.titleSupplier
+                      : t.charts.notificationsByMonth.title}
                 </span>
                 <TooltipProvider>
                   <UiTooltip>
@@ -3287,21 +3430,21 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       <a
                         href="/glossary#how-to-notifications-by-month-plant"
                         className="inline-flex items-center justify-center rounded-md p-1 hover:bg-muted/50 transition-colors"
-                        title="How to read this chart"
+                        title={t.charts.howToRead}
                       >
                         <Info className="h-4 w-4 text-muted-foreground" />
                       </a>
                     </TooltipTrigger>
-                    <TooltipContent>How to read this chart</TooltipContent>
+                    <TooltipContent>{t.charts.howToRead}</TooltipContent>
                   </UiTooltip>
                 </TooltipProvider>
               </CardTitle>
               <CardDescription>
                 {isCustomerView
-                  ? "Number of customer complaints (Q1) by month and plant"
+                  ? t.charts.notificationsByMonth.descriptionCustomer
                   : isSupplierView
-                    ? "Number of supplier complaints (Q2) by month and plant"
-                    : "Number of complaints by month and plant"}
+                    ? t.charts.notificationsByMonth.descriptionSupplier
+                    : t.charts.notificationsByMonth.description}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -3310,10 +3453,10 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   variant="outline" 
                   size="sm"
                   onClick={() => setSelectedPlantForChart(null)}
-                  title="Reset to show all plants"
+                  title={t.charts.resetToShowAll}
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Reset Filter
+                  {t.common.resetFilter}
                 </Button>
               )}
               {/* Only show notification type filter in full dashboard view */}
@@ -3324,23 +3467,23 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                         {(() => {
                           const selected = Array.from(selectedNotificationTypes);
                           if (selected.length === 1) {
-                            if (selected[0] === "Q1") return "Customer Complaints Q1";
-                            if (selected[0] === "Q2") return "Supplier Complaints Q2";
-                            if (selected[0] === "Q3") return "Internal Complaints Q3";
+                            if (selected[0] === "Q1") return t.charts.filterLabels.customerQ1;
+                            if (selected[0] === "Q2") return t.charts.filterLabels.supplierQ2;
+                            if (selected[0] === "Q3") return t.charts.filterLabels.internalQ3;
                           }
                           if (selected.length === 2) {
                             const types = selected.sort();
-                            if (types[0] === "Q1" && types[1] === "Q2") return "Customer & Supplier";
-                            if (types[0] === "Q1" && types[1] === "Q3") return "Customer & Internal";
-                            if (types[0] === "Q2" && types[1] === "Q3") return "Supplier & Internal";
+                            if (types[0] === "Q1" && types[1] === "Q2") return t.charts.filterLabels.customerAndSupplier;
+                            if (types[0] === "Q1" && types[1] === "Q3") return t.charts.filterLabels.customerAndInternal;
+                            if (types[0] === "Q2" && types[1] === "Q3") return t.charts.filterLabels.supplierAndInternal;
                           }
-                          return "Notification Type";
+                          return t.charts.filterLabels.notificationType;
                         })()}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-56" align="end">
                     <div className="space-y-3">
-                      <div className="font-semibold text-sm mb-2">Notification Types</div>
+                      <div className="font-semibold text-sm mb-2">{t.charts.filterLabels.notificationType}</div>
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2">
                           <Checkbox
@@ -3357,7 +3500,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             }}
                           />
                           <Label htmlFor="filter-plant-q1" className="text-sm cursor-pointer">
-                            Customer Complaints Q1
+                            {t.charts.filterLabels.customerQ1}
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -3375,7 +3518,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             }}
                           />
                           <Label htmlFor="filter-plant-q2" className="text-sm cursor-pointer">
-                            Supplier Complaints Q2
+                            {t.charts.filterLabels.supplierQ2}
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -3393,7 +3536,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             }}
                           />
                           <Label htmlFor="filter-plant-q3" className="text-sm cursor-pointer">
-                            Internal Complaints Q3
+                            {t.charts.filterLabels.internalQ3}
                           </Label>
                         </div>
                       </div>
@@ -3479,10 +3622,10 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
               <CardTitle className="flex items-center gap-2">
                 <span>
                   {isCustomerView
-                    ? "YTD Total Number of Customer Defects by Month and Plant"
+                    ? t.charts.defectsByMonth.titleCustomer
                     : isSupplierView
-                      ? "YTD Total Number of Supplier Defects by Month and Plant"
-                      : "YTD Total Number of Defects by Month and Plant"}
+                      ? t.charts.defectsByMonth.titleSupplier
+                      : t.charts.defectsByMonth.title}
                 </span>
                 <TooltipProvider>
                   <UiTooltip>
@@ -3490,21 +3633,21 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       <a
                         href="/glossary#how-to-defects-by-month-plant"
                         className="inline-flex items-center justify-center rounded-md p-1 hover:bg-muted/50 transition-colors"
-                        title="How to read this chart"
+                        title={t.charts.howToRead}
                       >
                         <Info className="h-4 w-4 text-muted-foreground" />
                       </a>
                     </TooltipTrigger>
-                    <TooltipContent>How to read this chart</TooltipContent>
+                    <TooltipContent>{t.charts.howToRead}</TooltipContent>
                   </UiTooltip>
                 </TooltipProvider>
               </CardTitle>
               <CardDescription>
                 {isCustomerView
-                  ? "Number of customer defective parts by month and plant"
+                  ? t.charts.defectsByMonth.descriptionCustomer
                   : isSupplierView
-                    ? "Number of supplier defective parts by month and plant"
-                    : "Number of defective parts by month and plant"}
+                    ? t.charts.defectsByMonth.descriptionSupplier
+                    : t.charts.defectsByMonth.description}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -3513,10 +3656,10 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   variant="outline" 
                   size="sm"
                   onClick={() => setSelectedPlantForDefectsChart(null)}
-                  title="Reset to show all plants"
+                  title={t.charts.resetToShowAll}
                 >
                   <RefreshCw className="h-4 w-4 mr-1" />
-                  Reset Filter
+                  {t.common.resetFilter}
                 </Button>
               )}
               {/* Only show defect type filter in full dashboard view */}
@@ -3525,15 +3668,15 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   <PopoverTrigger asChild>
                     <Button variant="outline" size="sm">
                       {selectedDefectType === "Customer" 
-                        ? "Customer Defects" 
+                        ? t.charts.filterLabels.customerDefects
                         : selectedDefectType === "Supplier" 
-                        ? "Supplier Defects" 
-                        : "Defect Type"}
+                        ? t.charts.filterLabels.supplierDefects
+                        : t.charts.filterLabels.defectType}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-56" align="end">
                     <div className="space-y-3">
-                      <div className="font-semibold text-sm mb-2">Defect Types</div>
+                      <div className="font-semibold text-sm mb-2">{t.charts.filterLabels.defectType}</div>
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2">
                           <Checkbox
@@ -3558,7 +3701,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             }}
                           />
                           <Label htmlFor="filter-defect-customer" className="text-sm cursor-pointer">
-                            Customer Defects
+                            {t.charts.filterLabels.customerDefects}
                           </Label>
                         </div>
                         <div className="flex items-center space-x-2">
@@ -3584,7 +3727,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             }}
                           />
                           <Label htmlFor="filter-defect-supplier" className="text-sm cursor-pointer">
-                            Supplier Defects
+                            {t.charts.filterLabels.supplierDefects}
                           </Label>
                         </div>
                       </div>
@@ -3680,11 +3823,23 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   : isSupplierView
                     ? "Number of supplier complaints (Q2) by month"
                     : "Number of complaints by month and notification type (Q1, Q2, Q3)"}
-              </CardDescription>
+                  </CardDescription>
             </div>
-            {/* Only show notification type filter in full dashboard view */}
-            {isFullView && (
-              <Popover>
+            <div className="flex items-center gap-2">
+              {selectedNotificationTypeForChart && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setSelectedNotificationTypeForChart(null)}
+                  title={t.charts.resetToShowAll}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  {t.common.resetFilter}
+                </Button>
+              )}
+              {/* Only show notification type filter in full dashboard view */}
+              {isFullView && (
+                <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" size="sm">
                     Notification Type
@@ -3752,7 +3907,8 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   </div>
                 </PopoverContent>
               </Popover>
-            )}
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -3772,12 +3928,15 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   }}
                 />
                 {(() => {
-                  // In customer view mode, only show Q1; otherwise use selectedNotificationTypes
-                  const effectiveTypes = isCustomerView
-                    ? new Set(["Q1"])
-                    : isSupplierView
-                      ? new Set(["Q2"])
-                      : selectedNotificationTypes;
+                  // If a notification type is selected via legend click, show only that type
+                  // Otherwise, in customer view mode, only show Q1; otherwise use selectedNotificationTypes
+                  const effectiveTypes = selectedNotificationTypeForChart
+                    ? new Set([selectedNotificationTypeForChart])
+                    : isCustomerView
+                      ? new Set(["Q1"])
+                      : isSupplierView
+                        ? new Set(["Q2"])
+                        : selectedNotificationTypes;
                   const typesArray = Array.from(effectiveTypes) as ("Q1" | "Q2" | "Q3")[];
                   
                   return typesArray.map((type, index) => {
@@ -3877,6 +4036,8 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             </ResponsiveContainer>
               <NotificationTypeLegend
                 types={isCustomerView ? ["Q1"] : isSupplierView ? ["Q2"] : Array.from(selectedNotificationTypes)}
+                selectedType={selectedNotificationTypeForChart}
+                onTypeClick={setSelectedNotificationTypeForChart}
               />
             </>
           ) : (
@@ -3951,7 +4112,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                     borderRadius: "8px",
                   }}
                   formatter={(value: number, name: string) => {
-                    if (name === "Actual PPM" || name.includes("Avg Target")) {
+                    if (name === t.charts.customerPpmTrend.actualPpm || name.includes(t.charts.customerPpmTrend.threeMonthsAverage) || name.includes(t.charts.customerPpmTrend.sixMonthsAverage) || name.includes(t.charts.customerPpmTrend.twelveMonthsAverage)) {
                       return [formatGermanNumber(value, 2), name];
                     }
                     return [value, name];
@@ -3982,7 +4143,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   type="monotone" 
                   dataKey="averageTarget" 
                   stroke={getNotificationTypeColor("Q2")} 
-                  name={`${customerPpmAveragePeriod}-Month Avg Target`}
+                  name={customerPpmAveragePeriod === "3" ? `${customerPpmAveragePeriod}-${t.charts.customerPpmTrend.threeMonthsAverage}` : customerPpmAveragePeriod === "6" ? `${customerPpmAveragePeriod}-${t.charts.customerPpmTrend.sixMonthsAverage}` : `${customerPpmAveragePeriod}-${t.charts.customerPpmTrend.twelveMonthsAverage}`}
                   strokeDasharray="5 5"
                   strokeWidth={2}
                   dot={{ r: 4, fill: getNotificationTypeColor("Q2"), strokeWidth: 2, stroke: "rgba(255, 255, 255, 0.8)" }}
@@ -4033,11 +4194,11 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-center">Month</TableHead>
+                  <TableHead className="text-center">{t.common.month}</TableHead>
                   <TableHead className="text-center">PPM</TableHead>
-                  <TableHead className="text-center">Change</TableHead>
-                  <TableHead className="text-center">Defective</TableHead>
-                  <TableHead className="text-center">Deliveries</TableHead>
+                  <TableHead className="text-center">{t.common.change}</TableHead>
+                  <TableHead className="text-center">{t.common.defective}</TableHead>
+                  <TableHead className="text-center">{t.dashboard.customerDeliveries}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -4094,7 +4255,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
 
           {/* Summary Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t">
-            <div>
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">Avg PPM</p>
               <p className="text-2xl font-bold text-green-500">
                 {monthlyTrendTable.length > 0
@@ -4102,7 +4263,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   : 'N/A'}
               </p>
             </div>
-            <div>
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">Best PPM</p>
               <p className="text-2xl font-bold text-green-500">
                 {monthlyTrendTable.length > 0
@@ -4110,7 +4271,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   : 'N/A'}
               </p>
             </div>
-            <div>
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">Worst PPM</p>
               <p className="text-2xl font-bold text-red-500">
                 {monthlyTrendTable.length > 0
@@ -4118,10 +4279,10 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   : 'N/A'}
               </p>
             </div>
-            <div>
+            <div className="text-center">
               <p className="text-sm text-muted-foreground">Total Defective</p>
               <p className="text-2xl font-bold">
-                {monthlyTrendTable.reduce((sum, r) => sum + r.defective, 0)}
+                {formatGermanNumber(monthlyTrendTable.reduce((sum, r) => sum + r.defective, 0), 0)}
               </p>
             </div>
           </div>
@@ -4157,7 +4318,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       const header = ['DATA', ...months.map(m => {
                         const date = new Date(m + "-01");
                         return date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                      }), 'TOTAL'];
+                      }), t.common.total];
                       wsData.push(header);
                       
                       // Site rows
@@ -4235,7 +4396,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                         </TableHead>
                       );
                     })}
-                    <TableHead className="text-center bg-muted/30 font-bold">TOTAL</TableHead>
+                    <TableHead className="text-center bg-muted/30 font-bold">{t.common.total}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -4692,7 +4853,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                         borderRadius: "8px",
                       }}
                       formatter={(value: number, name: string) => {
-                        if (name === "Actual PPM" || name.includes("Avg Target")) {
+                        if (name === t.charts.customerPpmTrend.actualPpm || name.includes(t.charts.customerPpmTrend.threeMonthsAverage) || name.includes(t.charts.customerPpmTrend.sixMonthsAverage) || name.includes(t.charts.customerPpmTrend.twelveMonthsAverage)) {
                           return [formatGermanNumber(value, 2), name];
                         }
                         return [value, name];
@@ -4702,7 +4863,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                     <Bar 
                       dataKey="ppm" 
                       fill={getNotificationTypeColor("Q2")}
-                      name="Actual PPM"
+                      name={t.charts.customerPpmTrend.actualPpm}
                       radius={[4, 4, 0, 0]}
                       {...getBarAnimation(0)}
                     >
@@ -4723,7 +4884,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       type="monotone" 
                       dataKey="averageTarget" 
                       stroke={getNotificationTypeColor("Q1")} 
-                      name={`${supplierPpmAveragePeriod}-Month Avg Target`}
+                      name={supplierPpmAveragePeriod === "3" ? `${supplierPpmAveragePeriod}-${t.charts.customerPpmTrend.threeMonthsAverage}` : supplierPpmAveragePeriod === "6" ? `${supplierPpmAveragePeriod}-${t.charts.customerPpmTrend.sixMonthsAverage}` : `${supplierPpmAveragePeriod}-${t.charts.customerPpmTrend.twelveMonthsAverage}`}
                       strokeDasharray="5 5"
                       strokeWidth={2}
                       dot={{ r: 4, fill: getNotificationTypeColor("Q1"), strokeWidth: 2, stroke: "rgba(255, 255, 255, 0.8)" }}
@@ -4811,7 +4972,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
 
               {/* Summary Stats */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t">
-                <div>
+                <div className="text-center">
                   <p className="text-sm text-muted-foreground">Avg PPM</p>
                   <p className="text-2xl font-bold text-green-500">
                     {supplierMonthlyTrendTable.length > 0
@@ -4819,7 +4980,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       : 'N/A'}
                   </p>
                 </div>
-                <div>
+                <div className="text-center">
                   <p className="text-sm text-muted-foreground">Best PPM</p>
                   <p className="text-2xl font-bold text-green-500">
                     {supplierMonthlyTrendTable.length > 0
@@ -4827,7 +4988,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       : 'N/A'}
                   </p>
                 </div>
-                <div>
+                <div className="text-center">
                   <p className="text-sm text-muted-foreground">Worst PPM</p>
                   <p className="text-2xl font-bold text-red-500">
                     {supplierMonthlyTrendTable.length > 0
@@ -4835,7 +4996,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       : 'N/A'}
                   </p>
                 </div>
-                <div>
+                <div className="text-center">
                   <p className="text-sm text-muted-foreground">Total Defective</p>
                   <p className="text-2xl font-bold">
                     {formatGermanNumber(supplierMonthlyTrendTable.reduce((sum, r) => sum + r.defective, 0), 0)}
@@ -4873,7 +5034,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       const header = ['DATA', ...months.map(m => {
                         const date = new Date(m + "-01");
                         return date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                      }), 'TOTAL'];
+                      }), t.common.total];
                       wsData.push(header);
                       
                       // Site rows
@@ -4951,7 +5112,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             </TableHead>
                           );
                         })}
-                        <TableHead className="text-center bg-muted/30 font-bold">TOTAL</TableHead>
+                        <TableHead className="text-center bg-muted/30 font-bold">{t.common.total}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -5436,6 +5597,22 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
           onFiltersChange={setFilters}
         />
       </div>
+      <IAmQChatPanel 
+        open={isChatOpen} 
+        onOpenChange={setIsChatOpen}
+        filters={filters}
+        metrics={{
+          customerComplaints: customerMetrics.complaints.value,
+          supplierComplaints: supplierMetrics.complaints.value,
+          customerDeliveries: customerMetrics.deliveries.value,
+          supplierDeliveries: supplierMetrics.deliveries.value,
+          customerDefective: customerMetrics.defective.value,
+          supplierDefective: supplierMetrics.defective.value,
+          customerPpm: customerMetrics.ppm.value,
+          supplierPpm: supplierMetrics.ppm.value,
+          selectedSitesCount: availableSites.length,
+        }}
+      />
     </div>
   );
 }
