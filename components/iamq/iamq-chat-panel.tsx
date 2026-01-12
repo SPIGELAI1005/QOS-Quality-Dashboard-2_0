@@ -12,6 +12,7 @@ import type { FilterState } from "@/components/dashboard/filter-panel";
 import { getDatasetHealthSummary, type UploadHistoryEntry } from "@/lib/data/datasetHealth";
 import { useToast } from "@/components/ui/use-toast";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
+import ReactMarkdown from "react-markdown";
 
 // Type declarations for Web Speech API
 interface SpeechRecognition extends EventTarget {
@@ -665,7 +666,28 @@ export function IAmQChatPanel({
                     : "bg-muted/80 text-foreground border border-border/40"
                 )}
               >
-                {message.content}
+                {message.role === "assistant" && !message.isError ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="mb-3 ml-4 list-disc space-y-1">{children}</ul>,
+                        ol: ({ children }) => <ol className="mb-3 ml-4 list-decimal space-y-1">{children}</ol>,
+                        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                        h2: ({ children }) => <h2 className="text-base font-semibold mt-4 mb-2 first:mt-0">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-sm font-semibold mt-3 mb-2 first:mt-0">{children}</h3>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        em: ({ children }) => <em className="italic">{children}</em>,
+                        code: ({ children }) => <code className="bg-background/50 px-1.5 py-0.5 rounded text-xs font-mono">{children}</code>,
+                        blockquote: ({ children }) => <blockquote className="border-l-2 border-border pl-3 italic my-2">{children}</blockquote>,
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                )}
               </div>
             </div>
           ))}
