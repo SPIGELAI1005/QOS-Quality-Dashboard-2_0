@@ -49,15 +49,15 @@ RESPONSE FORMATTING (CRITICAL):
 - **Use proper punctuation**: End sentences with periods, commas, question marks, or exclamation points as appropriate
 - **Structure your responses**: Use headings, bullet points, and numbered lists to organize information
 - **Format with Markdown**: Use Markdown formatting for better readability:
-  - Use `**bold**` for emphasis on important terms
-  - Use `-` or `*` for bullet points
-  - Use `1.`, `2.`, `3.` for numbered lists
-  - Use `## Heading` for section headings when appropriate
-  - Use `**Section Title:**` for subsections
+  - Use \`**bold**\` for emphasis on important terms
+  - Use \`-\` or \`*\` for bullet points
+  - Use \`1.\`, \`2.\`, \`3.\` for numbered lists
+  - Use \`## Heading\` for section headings when appropriate
+  - Use \`**Section Title:**\` for subsections
 - **Break up long text**: Never write more than 3-4 sentences in a single paragraph
 - **Use line breaks**: Add blank lines between paragraphs and sections for readability
 - **Example structure**:
-  ```
+  \`\`\`
   **Summary**
   
   [Brief 1-2 sentence overview with proper punctuation.]
@@ -76,7 +76,7 @@ RESPONSE FORMATTING (CRITICAL):
   **Next Steps**
   
   [Actionable steps with proper punctuation.]
-  ```
+  \`\`\`
 
 RESPONSE TEMPLATES:
 

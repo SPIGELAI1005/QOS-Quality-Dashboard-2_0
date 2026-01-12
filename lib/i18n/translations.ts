@@ -295,6 +295,9 @@ export interface Translations {
     recalculateKpis: string;
     recalculateKpisDescription: string;
     calculateKpis: string;
+    calculatingKpis: string;
+    calculationCompleted: string;
+    calculationFailed: string;
     latestKpiCalculation: string;
     complaints: string;
     deliveries: string;
@@ -1092,6 +1095,9 @@ const translations: Record<LanguageKey, Translations> = {
       recalculateKpis: "Recalculate KPIs (Complaints + Deliveries)",
       recalculateKpisDescription: "When both categories are uploaded, compute KPIs and update the dashboard dataset.",
       calculateKpis: "Calculate KPIs",
+      calculatingKpis: "Calculating KPIs...",
+      calculationCompleted: "Calculation completed",
+      calculationFailed: "Calculation failed",
       latestKpiCalculation: "Latest KPI Calculation",
       complaints: "Complaints:",
       deliveries: "Deliveries:",
@@ -1689,6 +1695,9 @@ const translations: Record<LanguageKey, Translations> = {
       recalculateKpis: "KPIs neu berechnen (Reklamationen + Lieferungen)",
       recalculateKpisDescription: "Wenn beide Kategorien hochgeladen wurden, KPIs berechnen und den Dashboard-Datensatz aktualisieren.",
       calculateKpis: "KPIs berechnen",
+      calculatingKpis: "KPIs werden berechnet...",
+      calculationCompleted: "Berechnung abgeschlossen",
+      calculationFailed: "Berechnung fehlgeschlagen",
       latestKpiCalculation: "Letzte KPI-Berechnung",
       complaints: "Reklamationen:",
       deliveries: "Lieferungen:",
@@ -2287,6 +2296,9 @@ const translations: Record<LanguageKey, Translations> = {
       recalculateKpis: "Ricalcola KPI (Reclami + Consegne)",
       recalculateKpisDescription: "Quando entrambe le categorie sono caricate, calcola i KPI e aggiorna il dataset della dashboard.",
       calculateKpis: "Calcola KPI",
+      calculatingKpis: "Calcolo KPI in corso...",
+      calculationCompleted: "Calcolo completato",
+      calculationFailed: "Calcolo fallito",
       latestKpiCalculation: "Ultimo Calcolo KPI",
       complaints: "Reclami:",
       deliveries: "Consegne:",

@@ -89,7 +89,7 @@ export function ComplaintRowEditor({
       defectiveParts: finalValue,
       unitOfMeasure: unitOfMeasure || undefined,
       materialDescription: materialDescription || undefined,
-      conversion: convertedValue !== null && status?.originalValue !== finalValue ? {
+      conversion: convertedValue !== null && status && status.originalValue !== finalValue ? {
         originalValue: status.originalValue,
         originalUnit: status.originalUnit,
         convertedValue: finalValue,

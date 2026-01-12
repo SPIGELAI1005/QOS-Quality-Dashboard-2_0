@@ -445,26 +445,6 @@ export default function UploadPage() {
             materialDescription: c.materialDescription,
           };
         });
-
-        const uploadSummary: UploadSummaryEntry = {
-          id: entry.id,
-          uploadedAtIso: entry.uploadedAtIso,
-          section: "complaints",
-          files: entry.files,
-          rawData: { complaints },
-          processedData: { complaints },
-          conversionStatus: { complaints: conversionStatus },
-          changeHistory: [],
-          summary: {
-            totalRecords: complaints.length,
-            recordsWithIssues: conversionStatus.filter(s => s.status === "failed" || s.status === "needs_attention").length,
-            recordsCorrected: 0,
-            recordsUnchanged: complaints.length,
-          },
-        };
-
-        saveUploadSummary(uploadSummary);
-        setUploadSummaries(prev => new Map(prev).set(entry.id, uploadSummary));
       }
       if (section === "deliveries") {
         const items = Array.isArray(data?.deliveries) ? data.deliveries : [];
