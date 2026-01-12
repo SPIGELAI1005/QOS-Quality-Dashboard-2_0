@@ -460,8 +460,8 @@ export function PPAPsClient() {
             {selectedMonth !== null && selectedYear !== null && (
               <div className="flex items-center gap-2">
                 <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(Number(v))}>
-                  <SelectTrigger className="w-[140px]">
-                    <SelectValue placeholder={t.common.month} />
+                  <SelectTrigger className="min-w-[180px] w-auto h-auto py-1 px-2 text-3xl font-bold tracking-tight border-none bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 hover:bg-transparent">
+                    <SelectValue className="text-3xl font-bold tracking-tight" />
                   </SelectTrigger>
                   <SelectContent>
                     {monthNames.map((name, idx) => (
@@ -472,8 +472,8 @@ export function PPAPsClient() {
                   </SelectContent>
                 </Select>
                 <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(Number(v))}>
-                  <SelectTrigger className="w-[110px]">
-                    <SelectValue placeholder={t.common.year} />
+                  <SelectTrigger className="min-w-[120px] w-auto h-auto py-1 px-2 text-3xl font-bold tracking-tight border-none bg-transparent shadow-none focus:ring-0 focus:ring-offset-0 hover:bg-transparent">
+                    <SelectValue className="text-3xl font-bold tracking-tight" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableMonthsYears.years.map((y) => (

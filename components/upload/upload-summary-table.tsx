@@ -11,7 +11,16 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, CheckCircle2, Edit, X, Save, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AlertTriangle, CheckCircle2, Edit, X, Save, AlertCircle, Filter } from "lucide-react";
 import type { Complaint } from "@/lib/domain/types";
 import type { UploadSummaryEntry, ChangeHistoryEntry } from "@/lib/data/uploadSummary";
 import { ComplaintRowEditor } from "./complaint-row-editor";
@@ -27,8 +36,14 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editedComplaints, setEditedComplaints] = useState<Map<string, Complaint>>(new Map());
   const [pendingChanges, setPendingChanges] = useState<ChangeHistoryEntry[]>([]);
+  
+  // Filter states
+  const [filterByIssues, setFilterByIssues] = useState<boolean>(false);
+  const [filterByPlant, setFilterByPlant] = useState<string>("all");
+  const [filterByUnit, setFilterByUnit] = useState<string>("all");
+  const [filterByType, setFilterByType] = useState<string>("all");
 
-  const complaints = useMemo(() => {
+  const allComplaints = useMemo(() => {
     // Use edited complaints if available, otherwise use processed data, fallback to raw
     const base = summary.processedData.complaints || summary.rawData.complaints || [];
     const edited = Array.from(editedComplaints.values());
@@ -38,6 +53,49 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
   }, [summary, editedComplaints]);
 
   const conversionStatus = summary.conversionStatus.complaints || [];
+  
+  // Get unique values for filters
+  const availablePlants = useMemo(() => {
+    return Array.from(new Set(allComplaints.map(c => c.siteCode))).sort();
+  }, [allComplaints]);
+  
+  const availableUnits = useMemo(() => {
+    return Array.from(new Set(allComplaints.map(c => c.unitOfMeasure || "PC"))).sort();
+  }, [allComplaints]);
+  
+  const availableTypes = useMemo(() => {
+    return Array.from(new Set(allComplaints.map(c => c.notificationType))).sort();
+  }, [allComplaints]);
+
+  // Filter complaints based on filter criteria
+  const complaints = useMemo(() => {
+    let filtered = allComplaints;
+    
+    // Filter by issues
+    if (filterByIssues) {
+      filtered = filtered.filter(c => {
+        const status = conversionStatus.find(s => s.complaintId === c.id);
+        return status?.status === "failed" || status?.status === "needs_attention";
+      });
+    }
+    
+    // Filter by plant
+    if (filterByPlant !== "all") {
+      filtered = filtered.filter(c => c.siteCode === filterByPlant);
+    }
+    
+    // Filter by unit of measure
+    if (filterByUnit !== "all") {
+      filtered = filtered.filter(c => (c.unitOfMeasure || "PC") === filterByUnit);
+    }
+    
+    // Filter by notification type
+    if (filterByType !== "all") {
+      filtered = filtered.filter(c => c.notificationType === filterByType);
+    }
+    
+    return filtered;
+  }, [allComplaints, conversionStatus, filterByIssues, filterByPlant, filterByUnit, filterByType]);
 
   const handleEdit = (complaint: Complaint) => {
     setEditingId(complaint.id);
@@ -135,6 +193,103 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
           </Button>
         </div>
       )}
+
+      {/* Filter Section */}
+      <div className="rounded-md border p-4 space-y-4 bg-muted/30">
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">Filters</h3>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Filter by Issues */}
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="filter-issues"
+              checked={filterByIssues}
+              onChange={(e) => setFilterByIssues(e.target.checked)}
+              className="h-4 w-4 rounded border-border"
+            />
+            <Label htmlFor="filter-issues" className="text-sm cursor-pointer">
+              Show only records with issues
+            </Label>
+          </div>
+
+          {/* Filter by Plant */}
+          <div className="space-y-1.5">
+            <Label htmlFor="filter-plant" className="text-xs text-muted-foreground">Plant</Label>
+            <Select value={filterByPlant} onValueChange={setFilterByPlant}>
+              <SelectTrigger id="filter-plant" className="h-9">
+                <SelectValue placeholder="All plants" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All plants</SelectItem>
+                {availablePlants.map((plant) => (
+                  <SelectItem key={plant} value={plant}>
+                    {plant}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filter by Unit of Measure */}
+          <div className="space-y-1.5">
+            <Label htmlFor="filter-unit" className="text-xs text-muted-foreground">Unit of Measure</Label>
+            <Select value={filterByUnit} onValueChange={setFilterByUnit}>
+              <SelectTrigger id="filter-unit" className="h-9">
+                <SelectValue placeholder="All units" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All units</SelectItem>
+                {availableUnits.map((unit) => (
+                  <SelectItem key={unit} value={unit}>
+                    {unit}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filter by Notification Type */}
+          <div className="space-y-1.5">
+            <Label htmlFor="filter-type" className="text-xs text-muted-foreground">Notification Type</Label>
+            <Select value={filterByType} onValueChange={setFilterByType}>
+              <SelectTrigger id="filter-type" className="h-9">
+                <SelectValue placeholder="All types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                {availableTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        {(filterByIssues || filterByPlant !== "all" || filterByUnit !== "all" || filterByType !== "all") && (
+          <div className="flex items-center justify-between pt-2 border-t">
+            <div className="text-xs text-muted-foreground">
+              Showing {complaints.length} of {allComplaints.length} records
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setFilterByIssues(false);
+                setFilterByPlant("all");
+                setFilterByUnit("all");
+                setFilterByType("all");
+              }}
+              className="h-7 text-xs"
+            >
+              Clear filters
+            </Button>
+          </div>
+        )}
+      </div>
 
       <div className="rounded-md border">
         <Table>
