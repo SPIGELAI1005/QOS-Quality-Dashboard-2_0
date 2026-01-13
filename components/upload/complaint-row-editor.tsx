@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Save, X } from "lucide-react";
+import { Save, X, AlertTriangle } from "lucide-react";
 import type { Complaint } from "@/lib/domain/types";
 import type { ChangeHistoryEntry } from "@/lib/data/uploadSummary";
 import { getAffectedMetricsForComplaint } from "@/lib/data/uploadSummary";
@@ -206,8 +206,8 @@ export function ComplaintRowEditor({
         )}
 
         {conversionError && (
-          <div className="col-span-2 p-2 bg-destructive/10 border border-destructive/20 rounded text-sm text-destructive">
-            Conversion Error: {conversionError}
+          <div className="col-span-2 p-3 bg-red-500/20 dark:bg-red-500/30 border-2 border-red-500 dark:border-red-400 rounded-md text-sm font-medium text-red-700 dark:text-red-300">
+            <span className="font-bold">Conversion Error:</span> {conversionError}
           </div>
         )}
 
@@ -223,7 +223,7 @@ export function ComplaintRowEditor({
 
         <div className="space-y-2 col-span-2">
           <Label>
-            Conversion made by <span className="text-destructive">*</span>
+            Conversion made by <span className="text-red-600 dark:text-red-400 font-bold">*</span>
           </Label>
           <Input
             type="text"
@@ -231,7 +231,7 @@ export function ComplaintRowEditor({
             onChange={(e) => setConversionMadeBy(e.target.value)}
             placeholder="Enter your name"
             required
-            className={!conversionMadeBy || conversionMadeBy.trim() === "" ? "border-destructive" : ""}
+            className={!conversionMadeBy || conversionMadeBy.trim() === "" ? "border-2 border-red-500 dark:border-red-400 focus:border-red-600 dark:focus:border-red-400 focus:ring-red-500 dark:focus:ring-red-400" : ""}
           />
           <div className="text-xs text-muted-foreground">
             This field is required before saving the conversion.
@@ -240,11 +240,12 @@ export function ComplaintRowEditor({
       </div>
 
       {status?.status === "failed" && (
-        <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded text-sm">
-          <div className="font-medium text-amber-900 dark:text-amber-100 mb-1">
+        <div className="p-4 bg-red-500/20 dark:bg-red-500/30 border-2 border-red-500 dark:border-red-400 rounded-md text-sm">
+          <div className="font-bold text-red-700 dark:text-red-300 mb-2 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
             Conversion Failed
           </div>
-          <div className="text-amber-700 dark:text-amber-300">
+          <div className="text-red-800 dark:text-red-200 font-medium">
             {status.error || "Could not convert to PC. Please provide material description or enter converted value manually."}
           </div>
         </div>

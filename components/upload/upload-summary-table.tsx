@@ -191,7 +191,7 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
         );
       case "failed":
         return (
-          <Badge variant="destructive">
+          <Badge variant="destructive" className="bg-red-600 dark:bg-red-500 text-white font-semibold border-2 border-red-700 dark:border-red-400">
             <AlertTriangle className="h-3 w-3 mr-1" />
             Failed
           </Badge>
