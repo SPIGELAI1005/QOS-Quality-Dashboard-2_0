@@ -148,19 +148,19 @@ export const DEFAULT_COMPLAINT_COLUMN_MAPPING: ComplaintColumnMapping = {
     'unit measure',
   ],
   materialDescription: [
-    'material description',
+    'material description', // Primary match for "Material description" column
     'material desc',
-    'material',
-    'description',
     'material text',
     'material name',
     'part description',
+    'description',
+    // Note: "material" is intentionally excluded to avoid conflict with materialNumber
   ],
   materialNumber: [
+    'material', // Primary match for "Material" column
     'material number',
     'material no',
     'material nr',
-    'material',
     'matnr',
     'material code',
     'part number',
