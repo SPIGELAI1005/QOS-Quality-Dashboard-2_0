@@ -521,6 +521,8 @@ export default function UploadPage() {
             convertedValue: c.conversion?.convertedValue,
             error,
             materialDescription: c.materialDescription,
+            siteCode: c.siteCode,
+            notificationType: c.notificationType,
           };
         });
       }

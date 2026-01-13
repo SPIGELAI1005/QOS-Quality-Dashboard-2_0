@@ -46,33 +46,48 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
   const conversionStatus = summary.conversionStatus.complaints || [];
 
   const allComplaints = useMemo(() => {
-    // Use edited complaints if available, otherwise use processed data, fallback to raw
-    const base = summary.processedData.complaints || summary.rawData.complaints || [];
-    // Handle case where stored data might be minimal (only essential fields)
-    // If complaints don't have all required fields, we need to reconstruct from conversionStatus
-    const fullComplaints = base.map(c => {
-      // If complaint is already full, return as is
-      if ('siteName' in c || (c as any).materialDescription !== undefined) {
+    // Use edited complaints if available, otherwise reconstruct from minimal stored data
+    const base: any[] = summary.processedData.complaints || summary.rawData.complaints || [];
+    
+    // Reconstruct full complaints from minimal stored data + conversion status
+    const fullComplaints = base.map((c: any) => {
+      // If complaint is already full (has all required fields), return as is
+      if ('category' in c && 'plant' in c && 'source' in c && 'defectiveParts' in c) {
         return c as Complaint;
       }
-      // Otherwise, reconstruct minimal complaint from stored data
+      
+      // Otherwise, reconstruct from minimal data + conversion status
       const status = conversionStatus.find(s => s.complaintId === c.id);
+      const notificationType = c.notificationType || status?.notificationType || status?.notificationNumber?.match(/^Q[123]/)?.[0] || 'Q1';
+      
+      // Determine category from notification type
+      let category: any = 'CustomerComplaint';
+      if (notificationType === 'Q2') category = 'SupplierComplaint';
+      else if (notificationType === 'Q3') category = 'InternalComplaint';
+      
       return {
         id: c.id,
-        notificationNumber: c.notificationNumber || '',
-        notificationType: (c.notificationType || 'Q1') as any,
-        category: (c as any).category || 'CustomerComplaint' as any,
-        plant: (c as any).plant || c.siteCode || '',
-        siteCode: c.siteCode || '',
-        siteName: (c as any).siteName,
-        createdOn: c.createdOn || new Date().toISOString(),
-        defectiveParts: status?.originalValue || (c as any).defectiveParts || 0,
-        source: (c as any).source || 'Import' as any,
-        unitOfMeasure: status?.originalUnit || (c as any).unitOfMeasure || 'PC',
-        materialDescription: status?.materialDescription || (c as any).materialDescription || '',
-        conversion: (c as any).conversion,
+        notificationNumber: c.notificationNumber || status?.notificationNumber || '',
+        notificationType: notificationType as any,
+        category,
+        plant: c.plant || c.siteCode || status?.siteCode || '',
+        siteCode: c.siteCode || status?.siteCode || '',
+        siteName: c.siteName,
+        createdOn: typeof c.createdOn === 'string' ? new Date(c.createdOn) : (c.createdOn || new Date()),
+        defectiveParts: status?.originalValue || c.defectiveParts || 0,
+        source: 'Import' as any,
+        unitOfMeasure: status?.originalUnit || c.unitOfMeasure || 'PC',
+        materialDescription: status?.materialDescription || c.materialDescription || '',
+        conversion: status?.convertedValue ? {
+          originalValue: status.originalValue,
+          originalUnit: status.originalUnit,
+          convertedValue: status.convertedValue,
+          wasConverted: true,
+          materialDescription: status.materialDescription,
+        } : undefined,
       } as Complaint;
     });
+    
     const edited = Array.from(editedComplaints.values());
     const editedIds = new Set(edited.map(c => c.id));
     const unchanged = fullComplaints.filter(c => !editedIds.has(c.id));

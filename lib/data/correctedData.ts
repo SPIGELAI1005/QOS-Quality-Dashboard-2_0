@@ -28,8 +28,11 @@ export function getCorrectedComplaints(): Complaint[] {
         );
         
         if (wasCorrected && !seenIds.has(complaint.id)) {
-          correctedComplaints.push(complaint);
-          seenIds.add(complaint.id);
+          // Ensure complaint has all required fields before pushing
+          if ('category' in complaint && 'plant' in complaint && 'source' in complaint && 'defectiveParts' in complaint) {
+            correctedComplaints.push(complaint as Complaint);
+            seenIds.add(complaint.id);
+          }
         }
       });
     }
@@ -56,8 +59,15 @@ export function getCorrectedDeliveries(): Delivery[] {
         );
         
         if (wasCorrected && !seenIds.has(delivery.id)) {
-          correctedDeliveries.push(delivery);
-          seenIds.add(delivery.id);
+          // Ensure delivery has all required fields and convert date if needed
+          if ('plant' in delivery && 'siteCode' in delivery && 'kind' in delivery && 'quantity' in delivery) {
+            const fullDelivery: Delivery = {
+              ...delivery,
+              date: delivery.date instanceof Date ? delivery.date : new Date(delivery.date),
+            } as Delivery;
+            correctedDeliveries.push(fullDelivery);
+            seenIds.add(delivery.id);
+          }
         }
       });
     }

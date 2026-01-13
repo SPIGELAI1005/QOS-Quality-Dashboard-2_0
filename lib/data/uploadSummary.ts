@@ -43,17 +43,47 @@ export interface UploadSummaryEntry {
   section: "complaints" | "deliveries" | "ppap" | "deviations" | "audit" | "plants";
   files: { name: string; size: number }[];
   
-  // Raw imported data
+  // Raw imported data (stored as minimal metadata to save space)
   rawData: {
-    complaints?: Complaint[];
-    deliveries?: Delivery[];
+    complaints?: Array<{
+      id: string;
+      notificationNumber: string;
+      notificationType: string;
+      siteCode: string;
+      createdOn: string | Date;
+      [key: string]: any; // Allow additional fields for full complaints
+    }>;
+    deliveries?: Array<{
+      id: string;
+      plant: string;
+      siteCode: string;
+      date: string | Date;
+      kind: string;
+      quantity: number;
+      [key: string]: any;
+    }>;
     // Add other types as needed
   };
   
-  // Processed data (after editor corrections)
+  // Processed data (after editor corrections, stored as minimal metadata to save space)
   processedData: {
-    complaints?: Complaint[];
-    deliveries?: Delivery[];
+    complaints?: Array<{
+      id: string;
+      notificationNumber: string;
+      notificationType: string;
+      siteCode: string;
+      createdOn: string | Date;
+      [key: string]: any; // Allow additional fields for full complaints
+    }>;
+    deliveries?: Array<{
+      id: string;
+      plant: string;
+      siteCode: string;
+      date: string | Date;
+      kind: string;
+      quantity: number;
+      [key: string]: any;
+    }>;
     // Add other types as needed
   };
   
@@ -68,6 +98,9 @@ export interface UploadSummaryEntry {
       convertedValue?: number;
       error?: string;
       materialDescription?: string;
+      // Additional fields for reconstruction
+      siteCode?: string;
+      notificationType?: string;
     }>;
   };
   
@@ -232,47 +265,47 @@ const CHANGE_HISTORY_PREFIX = "qos-et-change-history-";
 export function saveUploadSummary(summary: UploadSummaryEntry): void {
   if (typeof window === "undefined") return;
   try {
-    // Optimize storage: Don't store full complaint objects, only essential data
-    // Store only IDs and conversion status, not full objects
+    // Aggressively optimize storage: Store only minimal complaint metadata
+    // The conversion status already contains most of what we need
+    // Store only essential fields needed for display and reconstruction
     const optimizedSummary: UploadSummaryEntry = {
       ...summary,
-      // Store only essential complaint data (IDs, key fields) instead of full objects
-      // Include all required fields to maintain type compatibility
+      // Store only minimal complaint metadata (essential fields only)
       rawData: {
         complaints: summary.rawData.complaints?.map(c => ({
           id: c.id,
           notificationNumber: c.notificationNumber,
           notificationType: c.notificationType,
-          category: c.category,
-          plant: c.plant,
           siteCode: c.siteCode,
-          siteName: c.siteName,
-          createdOn: c.createdOn,
-          defectiveParts: c.defectiveParts,
-          source: c.source,
-          unitOfMeasure: c.unitOfMeasure,
-          materialDescription: c.materialDescription,
-          conversion: c.conversion,
+          createdOn: c.createdOn instanceof Date ? c.createdOn.toISOString() : c.createdOn,
+          // Store minimal fields - rest can be reconstructed from conversionStatus
         })) || [],
-        deliveries: summary.rawData.deliveries || [],
+        deliveries: summary.rawData.deliveries?.map(d => ({
+          id: d.id,
+          plant: d.plant,
+          siteCode: d.siteCode,
+          date: d.date instanceof Date ? d.date.toISOString() : d.date,
+          kind: d.kind,
+          quantity: d.quantity,
+        })) || [],
       },
       processedData: {
         complaints: summary.processedData.complaints?.map(c => ({
           id: c.id,
           notificationNumber: c.notificationNumber,
           notificationType: c.notificationType,
-          category: c.category,
-          plant: c.plant,
           siteCode: c.siteCode,
-          siteName: c.siteName,
-          createdOn: c.createdOn,
-          defectiveParts: c.defectiveParts,
-          source: c.source,
-          unitOfMeasure: c.unitOfMeasure,
-          materialDescription: c.materialDescription,
-          conversion: c.conversion,
+          createdOn: c.createdOn instanceof Date ? c.createdOn.toISOString() : c.createdOn,
+          // Store minimal fields - rest can be reconstructed from conversionStatus
         })) || [],
-        deliveries: summary.processedData.deliveries || [],
+        deliveries: summary.processedData.deliveries?.map(d => ({
+          id: d.id,
+          plant: d.plant,
+          siteCode: d.siteCode,
+          date: d.date instanceof Date ? d.date.toISOString() : d.date,
+          kind: d.kind,
+          quantity: d.quantity,
+        })) || [],
       },
     };
 
