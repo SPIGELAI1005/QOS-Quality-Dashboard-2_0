@@ -278,6 +278,7 @@ export function saveUploadSummary(summary: UploadSummaryEntry): void {
           notificationType: c.notificationType,
           siteCode: c.siteCode,
           createdOn: c.createdOn instanceof Date ? c.createdOn.toISOString() : c.createdOn,
+          materialNumber: (c as any).materialNumber,
           // Store minimal fields - rest can be reconstructed from conversionStatus
         })) || [],
         deliveries: summary.rawData.deliveries?.map(d => ({
@@ -296,6 +297,7 @@ export function saveUploadSummary(summary: UploadSummaryEntry): void {
           notificationType: c.notificationType,
           siteCode: c.siteCode,
           createdOn: c.createdOn instanceof Date ? c.createdOn.toISOString() : c.createdOn,
+          materialNumber: (c as any).materialNumber,
           // Store minimal fields - rest can be reconstructed from conversionStatus
         })) || [],
         deliveries: summary.processedData.deliveries?.map(d => ({

@@ -78,6 +78,7 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
         source: 'Import' as any,
         unitOfMeasure: status?.originalUnit || c.unitOfMeasure || 'PC',
         materialDescription: status?.materialDescription || c.materialDescription || '',
+        materialNumber: (c as any).materialNumber,
         conversion: status?.convertedValue ? {
           originalValue: status.originalValue,
           originalUnit: status.originalUnit,
@@ -343,6 +344,7 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
               <TableHead className="text-right">Original Value</TableHead>
               <TableHead>Unit</TableHead>
               <TableHead className="text-right">Converted Value</TableHead>
+              <TableHead>Material Number</TableHead>
               <TableHead>Material Description</TableHead>
               {editorRole && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
@@ -356,7 +358,7 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
               if (isEditing) {
                 return (
                   <TableRow key={complaint.id}>
-                    <TableCell colSpan={editorRole ? 10 : 9}>
+                    <TableCell colSpan={editorRole ? 11 : 10}>
                       <ComplaintRowEditor
                         complaint={complaint}
                         status={status}
@@ -393,12 +395,21 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
                     {status?.originalValue.toLocaleString("de-DE") || complaint.defectiveParts.toLocaleString("de-DE")}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{complaint.unitOfMeasure || "PC"}</Badge>
+                    <Badge variant="secondary">
+                      {/* Show PC if conversion was made, otherwise show original unit */}
+                      {complaint.conversion?.wasConverted ? "PC" : (complaint.unitOfMeasure || "PC")}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-right font-mono">
-                    {status?.convertedValue !== undefined
+                    {/* Show converted value if conversion exists, otherwise show current defectiveParts (which may be converted) */}
+                    {complaint.conversion?.convertedValue !== undefined
+                      ? complaint.conversion.convertedValue.toLocaleString("de-DE", { maximumFractionDigits: 2 })
+                      : status?.convertedValue !== undefined
                       ? status.convertedValue.toLocaleString("de-DE", { maximumFractionDigits: 2 })
                       : complaint.defectiveParts.toLocaleString("de-DE")}
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {complaint.materialNumber || "-"}
                   </TableCell>
                   <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                     {complaint.materialDescription || "-"}

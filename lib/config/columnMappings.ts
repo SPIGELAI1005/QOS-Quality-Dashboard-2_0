@@ -15,6 +15,7 @@ export interface ComplaintColumnMapping {
   defectiveExternal?: string[]; // For "Defective (External)" column (Q2)
   unitOfMeasure?: string[]; // For "Unit of Measure" column
   materialDescription?: string[]; // For "Material Description" column
+  materialNumber?: string[]; // For "Material Number" column
 }
 
 export interface DeliveryColumnMapping {
@@ -154,6 +155,17 @@ export const DEFAULT_COMPLAINT_COLUMN_MAPPING: ComplaintColumnMapping = {
     'material text',
     'material name',
     'part description',
+  ],
+  materialNumber: [
+    'material number',
+    'material no',
+    'material nr',
+    'material',
+    'matnr',
+    'material code',
+    'part number',
+    'part no',
+    'material id',
   ],
 };
 

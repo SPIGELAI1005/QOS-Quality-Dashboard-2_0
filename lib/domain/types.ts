@@ -58,6 +58,7 @@ export interface Complaint {
   // Unit conversion fields (for supplier complaints - Q2)
   unitOfMeasure?: string; // "PC", "ML", etc.
   materialDescription?: string;
+  materialNumber?: string; // Material number from SAP
   conversion?: UnitConversion; // Conversion info if ML was converted to PC
 }
 

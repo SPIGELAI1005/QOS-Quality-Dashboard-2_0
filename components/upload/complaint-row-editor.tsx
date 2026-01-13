@@ -37,6 +37,7 @@ export function ComplaintRowEditor({
   const [unitOfMeasure, setUnitOfMeasure] = useState(complaint.unitOfMeasure || "PC");
   const [materialDescription, setMaterialDescription] = useState(complaint.materialDescription || "");
   const [reason, setReason] = useState("");
+  const [conversionMadeBy, setConversionMadeBy] = useState("");
   const [convertedValue, setConvertedValue] = useState<number | null>(
     status?.convertedValue || null
   );
@@ -79,15 +80,24 @@ export function ComplaintRowEditor({
       return;
     }
 
+    // Validate mandatory "Conversion made by" field
+    if (!conversionMadeBy || conversionMadeBy.trim() === "") {
+      alert("Please enter the name of the person who made the conversion");
+      return;
+    }
+
+    // If a conversion was made, use the converted value and set unit to PC
     const finalValue = convertedValue !== null ? convertedValue : newValue;
+    const finalUnit = convertedValue !== null ? "PC" : (unitOfMeasure || undefined);
+    
     const fieldChanged = complaint.defectiveParts !== finalValue ? "defectiveParts" : 
-                        complaint.unitOfMeasure !== unitOfMeasure ? "unitOfMeasure" : 
+                        complaint.unitOfMeasure !== finalUnit ? "unitOfMeasure" : 
                         complaint.materialDescription !== materialDescription ? "materialDescription" : "other";
 
     const updatedComplaint: Complaint = {
       ...complaint,
-      defectiveParts: finalValue,
-      unitOfMeasure: unitOfMeasure || undefined,
+      defectiveParts: finalValue, // Use converted value if available
+      unitOfMeasure: finalUnit, // Set to PC if conversion was made
       materialDescription: materialDescription || undefined,
       conversion: convertedValue !== null && status && status.originalValue !== finalValue ? {
         originalValue: status.originalValue,
@@ -103,7 +113,7 @@ export function ComplaintRowEditor({
     const change: ChangeHistoryEntry = {
       id: `change_${Date.now()}_${Math.random().toString(16).slice(2)}`,
       timestamp: new Date().toISOString(),
-      editor: "editor", // TODO: Get actual editor identifier
+      editor: conversionMadeBy.trim(), // Use the conversion made by name
       recordId: complaint.id,
       recordType: "complaint",
       field: fieldChanged,
@@ -209,6 +219,23 @@ export function ComplaintRowEditor({
             placeholder="Explain why this change was made..."
             rows={2}
           />
+        </div>
+
+        <div className="space-y-2 col-span-2">
+          <Label>
+            Conversion made by <span className="text-destructive">*</span>
+          </Label>
+          <Input
+            type="text"
+            value={conversionMadeBy}
+            onChange={(e) => setConversionMadeBy(e.target.value)}
+            placeholder="Enter your name"
+            required
+            className={!conversionMadeBy || conversionMadeBy.trim() === "" ? "border-destructive" : ""}
+          />
+          <div className="text-xs text-muted-foreground">
+            This field is required before saving the conversion.
+          </div>
         </div>
       </div>
 

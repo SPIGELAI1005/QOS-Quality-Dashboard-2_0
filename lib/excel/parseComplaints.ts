@@ -491,6 +491,11 @@ export function parseComplaints(
           ? String(extractValue(row, columnMap.materialDescription, '') || '').trim()
           : undefined;
 
+        // Material number
+        const materialNumber = columnMap.materialNumber !== undefined
+          ? String(extractValue(row, columnMap.materialNumber, '') || '').trim()
+          : undefined;
+
         // Validate critical fields
         if (!notificationNumber) {
           errors.push(`Row ${i + 1}: Missing notification number`);
@@ -559,6 +564,7 @@ export function parseComplaints(
           source,
           unitOfMeasure,
           materialDescription,
+          materialNumber,
           conversion: conversion || undefined,
         };
 
