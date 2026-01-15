@@ -324,15 +324,17 @@ Return your answer as structured JSON with these sections:
   "summary": "${hasNoDataForSelectedPlants || !hasMeaningfulData ? 'EXACTLY 2-3 short statements stating clearly that no data is available. Example: "No quality data is available for the selected plants and time period." "Please verify plant selection or upload data for these plants." "The dashboard metrics reflect zero values due to missing data." Each statement must be approximately 15 words maximum, start with a word (not a number or bullet point), and be a complete, clear sentence. Format as plain text, one statement per line, no bullets, no numbers, no prefixes.' : 'EXACTLY 2-3 short statements, each on a separate line. Each statement must be approximately 15 words maximum. Each statement must start with a word (not a number or bullet point). Each statement should be a complete, clear sentence that is immediately understandable. Focus on the most significant trends, critical changes, or key insights that directly relate to the metrics displayed on the dashboard. MUST reflect the filtered data context (e.g., if specific plants are selected, mention those plants; if a date range is filtered, reference that period). CRITICAL: ALWAYS include actual numerical values when mentioning metrics (e.g., "Customer PPM of 25.5" or "150 complaints"). ALWAYS specify \'Customer PPM\' or \'Supplier PPM\' when mentioning PPM values. CRITICAL: ALWAYS include the city/location when mentioning a plant number (e.g., \'Site 145 (Vienna)\' or \'Plant 235 in Kampen\'). NEVER mention the same city twice for the same plant. CRITICAL: ALWAYS include month and year when mentioning any metric, trend, or finding (e.g., "in March 2025", "from January 2025 to March 2025", "during February 2025"). Format months as full names followed by 4-digit year. Format as plain text, one statement per line, no bullets, no numbers, no prefixes. Example format:\nSite 145 (Vienna) experienced significant Customer PPM spikes reaching 125.5 in March 2025 requiring immediate attention.\nSupplier complaints increased to 150 at Site 235 (Kampen) during February 2025.\nOverall quality metrics show improvement trends from January 2025 to March 2025 across most monitored sites with Customer PPM averaging 45.2.'}",
   "trendsAndSiteComparison": "${hasNoDataForSelectedPlants || !hasMeaningfulData ? 'State clearly: "No data is available for the selected plants and time period to perform trend analysis or site comparisons. Please verify plant selection or upload data for these plants."' : 'MUST identify and describe: (1) Top 2-3 performing sites with their PPM values (lowest PPM = best performance), mention specific site numbers with their city/location and PPM values like \'Site 175 (Vienna) with Customer PPM of 20.05 in March 2025\' or \'Site 235 (Kampen) has Supplier PPM of 23.09 in February 2025\'. ALWAYS specify whether it\'s Customer PPM or Supplier PPM. ALWAYS include the city/location when mentioning a plant number. NEVER mention the same city twice for the same plant. CRITICAL: ALWAYS include month and year (e.g., "in March 2025", "during February 2025"). (2) Sites with improving trends - include actual values showing the improvement with months/years (e.g., "Customer PPM decreased from 45.2 in January 2025 to 32.1 in March 2025"). (3) Overall trends over time with specific numbers and time periods (e.g., "from January 2025 to March 2025"). Be specific with site numbers, cities, values, and months/years. NEVER use just \'PPM\' - always use \'Customer PPM\' or \'Supplier PPM\'. CRITICAL: Include actual numerical values and month/year for all metrics mentioned. Keep descriptions concise and clear (1-2 sentences per site).'}",
   "keyRisksAndAnomalies": "${hasNoDataForSelectedPlants || !hasMeaningfulData ? 'State clearly: "No data is available for the selected plants and time period to identify risks or anomalies. Please verify plant selection or upload data for these plants."' : 'MUST identify and describe: (1) Top 2-3 sites needing attention with their PPM values or complaint counts (highest PPM or most complaints = needs attention), mention specific site numbers with their city/location like \'Site 411 (Vienna) with Supplier PPM of 1102.87 in March 2025\' or \'Site 410 (Kampen) has 358 complaints in February 2025\'. ALWAYS specify whether it\'s Customer PPM or Supplier PPM when mentioning PPM. ALWAYS include the city/location when mentioning a plant number. NEVER mention the same city twice for the same plant. CRITICAL: ALWAYS include month and year (e.g., "in March 2025", "during February 2025"). (2) Anomalies and spikes with specific months, sites, and actual values showing the change (e.g., "Customer PPM increased from 25.5 in January 2025 to 78.3 in March 2025"). (3) Critical issues requiring immediate action with specific numbers and months/years. Be specific with site numbers, cities, values, and dates (month and year). NEVER use just \'PPM\' - always use \'Customer PPM\' or \'Supplier PPM\'. CRITICAL: Include actual numerical values and month/year for all metrics mentioned. Keep descriptions concise and clear (1-2 sentences per item).'}",
-  "recommendedActions": ${hasNoDataForSelectedPlants || !hasMeaningfulData ? '["Title: Verify Plant Selection and Data Availability. Description: Review the selected plants and confirm that quality data has been uploaded for these plants and the selected time period. Check the Upload Data page to ensure all required files (complaints, deliveries, etc.) have been successfully processed. Expected Impact: Ensures data availability for accurate quality analysis and reporting.", "Title: Upload Missing Data. Description: If data should exist for the selected plants and period, upload the required Excel files (complaints, deliveries, deviations, etc.) from the Upload Data page. Verify that plant codes match the official plant list. Expected Impact: Enables comprehensive quality analysis and dashboard metrics."]' : '["Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation of what needs to be done and why. Be specific with site numbers, months/years (e.g., "March 2025", "from January 2025 to March 2025"), and processes. Should be 2-3 clear, understandable sentences. Avoid jargon. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome expected - 1 sentence maximum]", "Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation - 2-3 clear sentences. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome - 1 sentence]", "Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation - 2-3 clear sentences. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome - 1 sentence]", "Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation - 2-3 clear sentences. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome - 1 sentence]", "Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation - 2-3 clear sentences. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome - 1 sentence]"]'},
+  "recommendedActions": ${hasNoDataForSelectedPlants || !hasMeaningfulData ? '["Title: Verify Plant Selection and Data Availability. Description: Review the selected plants and confirm that quality data has been uploaded for these plants and the selected time period. Check the Upload Data page to ensure all required files (complaints, deliveries, etc.) have been successfully processed. Expected Impact: Ensures data availability for accurate quality analysis and reporting.", "Title: Upload Missing Data. Description: If data should exist for the selected plants and period, upload the required Excel files (complaints, deliveries, deviations, etc.) from the Upload Data page. Verify that plant codes match the official plant list. Expected Impact: Enables comprehensive quality analysis and dashboard metrics.", "Title: Establish data availability monitoring. Description: Implement a monthly check to confirm complaints and deliveries are available for each selected plant and month in the selected period. Recalculate KPIs after each upload and verify the dashboard updates. Expected Impact: Prevents silent gaps and ensures timely, reliable KPI reporting each month."]' : '["Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation of what needs to be done and why. Be specific with site numbers, months/years (e.g., "March 2025", "from January 2025 to March 2025"), and processes. Should be 2-3 clear, understandable sentences. Avoid jargon. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome expected - 1 sentence maximum]", "Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation - 2-3 clear sentences. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome - 1 sentence]", "Title: [Clear, concise action title - maximum 15 words]. Description: [Concise explanation - 2-3 clear sentences. CRITICAL: Include month and year when referencing specific issues or metrics.]. Expected Impact: [Specific, concise outcome - 1 sentence]"]'},
   
 CRITICAL REQUIREMENTS FOR RECOMMENDED ACTIONS:
+- You MUST return AT LEAST 3 recommended actions. (3 to 5 is acceptable.)
 - Each recommended action MUST directly address a specific issue, anomaly, or finding identified in the "summary", "keyRisksAndAnomalies", or "trendsAndSiteComparison" sections above.
 - Actions MUST be based on the actual data provided for the selected period and filtered sites. Do NOT generate generic actions that could apply to any dataset.
 - Reference specific sites, months, PPM values, or complaint counts from the data when creating actions.
 - If specific sites or months are filtered/selected, focus actions on those sites and that time period.
 - Actions should prioritize addressing the most critical issues identified (highest PPM sites, most complaints, significant anomalies).
 - Each action should be unique and tailored to the specific findings - avoid generic recommendations.
+- If performance is stable and there are no critical issues requiring corrective action, you MUST still provide 3+ actions by including monitoring/governance actions (e.g., KPI cadence, threshold alerts, audit checks, data completeness checks) explicitly tied to the selected period and sites, without inventing problems.
   "opportunitiesAndHighlights": "${hasNoDataForSelectedPlants || !hasMeaningfulData ? 'State clearly: "No data is available for the selected plants and time period to identify opportunities or highlights. Please verify plant selection or upload data for these plants."' : 'MUST mention: (1) Top performing sites with specific site numbers and their city/location, and why they perform well. Include actual PPM values or complaint counts with month/year. When mentioning PPM, ALWAYS specify \'Customer PPM\' or \'Supplier PPM\'. ALWAYS include the city/location when mentioning a plant number (e.g., \'Site 175 (Vienna)\' or \'Plant 235 in Kampen\'). NEVER mention the same city twice for the same plant. CRITICAL: ALWAYS include month and year (e.g., "in March 2025", "during February 2025"). (2) Best practices that can be replicated. (3) Positive trends and improvements with actual values showing the improvement and time periods (e.g., "Customer PPM improved from 45.2 in January 2025 to 32.1 in March 2025"). Be specific with site numbers, cities, values, and months/years. NEVER use just \'PPM\' - always use \'Customer PPM\' or \'Supplier PPM\'. CRITICAL: Include actual numerical values and month/year for all metrics mentioned. Keep descriptions concise and clear (1-2 sentences per point).'}",
 }
 
@@ -913,6 +915,92 @@ function validateAndCorrectResponse(
   return corrected;
 }
 
+function ensureMinimumRecommendedActions(args: {
+  response: InterpretKpisResponse;
+  monthlySiteKpis: MonthlySiteKpi[];
+  selectedSites?: string[];
+  selectedMonths?: string[];
+}): InterpretKpisResponse {
+  const { response, monthlySiteKpis, selectedSites, selectedMonths } = args;
+  if (response.error) return response;
+
+  const formatMonthYear = (monthStr: string): string => {
+    try {
+      const [year, month] = monthStr.split("-").map(Number);
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+      ];
+      return `${monthNames[month - 1]} ${year}`;
+    } catch {
+      return monthStr;
+    }
+  };
+
+  const months = (selectedMonths && selectedMonths.length > 0
+    ? selectedMonths
+    : Array.from(new Set(monthlySiteKpis.map((k) => k.month)))).filter(Boolean).sort();
+  const sites = (selectedSites && selectedSites.length > 0
+    ? selectedSites
+    : Array.from(new Set(monthlySiteKpis.map((k) => k.siteCode)))).filter(Boolean).sort();
+
+  const periodLabel =
+    months.length === 0
+      ? "the selected period"
+      : months.length === 1
+        ? formatMonthYear(months[0])
+        : `${formatMonthYear(months[0])} to ${formatMonthYear(months[months.length - 1])}`;
+
+  const scopeLabel =
+    sites.length === 0
+      ? "the selected sites"
+      : selectedSites && selectedSites.length > 0
+        ? `the selected sites (${sites.join(", ")})`
+        : `all sites (${sites.length})`;
+
+  const makeAction = (title: string, description: string, expectedImpact: string): string =>
+    `Title: ${title}. Description: ${description} Expected Impact: ${expectedImpact}`;
+
+  const existing = Array.isArray(response.recommendedActions) ? response.recommendedActions.filter(Boolean) : [];
+  const ensured = [...existing];
+
+  // Top up to at least 3 actions with monitoring/governance actions (stable-performance friendly).
+  const candidates: string[] = [
+    makeAction(
+      "Establish KPI review cadence",
+      `For ${periodLabel} across ${scopeLabel}, run a weekly quality review of Customer PPM, Supplier PPM, and complaints. Confirm trends month-by-month and document decisions and owners.`,
+      "Early detection of drift and faster containment before issues escalate."
+    ),
+    makeAction(
+      "Set threshold-based alerts",
+      `Define alert thresholds using the baseline from ${periodLabel} for ${scopeLabel}. Trigger escalation when PPM or complaint counts exceed the baseline materially month-over-month.`,
+      "Consistent, objective escalation criteria and reduced reaction time."
+    ),
+    makeAction(
+      "Validate data completeness monthly",
+      `Each month in ${periodLabel}, confirm deliveries and complaints are uploaded for every site in scope before KPI close. Recalculate KPIs after uploads and verify dashboard consistency.`,
+      "Prevents missing denominators and ensures trustworthy KPI reporting."
+    ),
+  ];
+
+  for (const c of candidates) {
+    if (ensured.length >= 3) break;
+    if (!ensured.includes(c)) ensured.push(c);
+  }
+
+  return { ...response, recommendedActions: ensured.slice(0, Math.max(3, ensured.length)) };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as InterpretKpisRequest;
@@ -1150,7 +1238,14 @@ export async function POST(request: NextRequest) {
       body.metrics
     );
 
-    return NextResponse.json<InterpretKpisResponse>(validated);
+    const ensured = ensureMinimumRecommendedActions({
+      response: validated,
+      monthlySiteKpis: body.monthlySiteKpis,
+      selectedSites: body.selectedSites,
+      selectedMonths: body.selectedMonths,
+    });
+
+    return NextResponse.json<InterpretKpisResponse>(ensured);
   } catch (error) {
     console.error('Error in interpret-kpis endpoint:', error);
     return NextResponse.json<InterpretKpisResponse>(
