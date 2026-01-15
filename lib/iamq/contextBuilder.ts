@@ -11,6 +11,14 @@ import type { MonthlySiteKpi } from '@/lib/domain/types';
 
 export interface IAmQContext {
   page?: string;
+  chartContext?: {
+    title?: string;
+    description?: string;
+    chartType?: string; // "bar", "line", "pie", "table", etc.
+    dataType?: string; // "complaints", "deliveries", "ppm", "ppaps", "deviations", etc.
+    hasData?: boolean;
+    dataCount?: number;
+  };
   selectedPlants?: string[];
   dateRange?: {
     from: string | null;
@@ -45,6 +53,14 @@ export interface IAmQContext {
  */
 export function buildIAmQContext(options: {
   page?: string;
+  chartContext?: {
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  };
   filters?: FilterState;
   metrics?: {
     customerComplaints?: number;
@@ -71,6 +87,11 @@ export function buildIAmQContext(options: {
   // Page name
   if (options.page) {
     context.page = options.page;
+  }
+
+  // Chart/Table context
+  if (options.chartContext) {
+    context.chartContext = options.chartContext;
   }
 
   // Filter state

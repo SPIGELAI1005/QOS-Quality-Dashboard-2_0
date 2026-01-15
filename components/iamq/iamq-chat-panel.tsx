@@ -66,6 +66,14 @@ interface Message {
 interface IAmQChatPanelProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  chartContext?: {
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  };
   filters?: FilterState;
   metrics?: {
     customerComplaints?: number;
@@ -110,6 +118,7 @@ const STARTER_PROMPTS = [
 export function IAmQChatPanel({ 
   open, 
   onOpenChange, 
+  chartContext,
   filters, 
   metrics,
   monthlySiteKpis,
@@ -147,6 +156,23 @@ export function IAmQChatPanel({
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Build contextual question based on chart/table context
+  const buildContextualQuestion = (
+    context: NonNullable<IAmQChatPanelProps['chartContext']>,
+    currentFilters?: FilterState
+  ): string | null => {
+    if (!context.hasData && context.dataCount === 0) {
+      return `I'm looking at the ${context.title || 'chart/table'}. There's no data displayed. Can you help me understand how to add data for this element?`;
+    }
+    
+    const hasSelection = currentFilters?.selectedPlants && currentFilters.selectedPlants.length > 0;
+    const selectionText = hasSelection 
+      ? `Currently showing data for ${currentFilters.selectedPlants.length} selected plant(s): ${currentFilters.selectedPlants.join(', ')}.`
+      : 'Currently showing all available data (no specific plant filter applied).';
+    
+    return `I'm looking at the ${context.title || 'chart/table'}${context.description ? ` which shows ${context.description}` : ''}. ${selectionText} Can you explain what this ${context.chartType || 'visualization'} shows and help me understand the data?`;
+  };
 
   useEffect(() => {
     if (open && inputRef.current) {
@@ -196,6 +222,25 @@ export function IAmQChatPanel({
       }
     };
   }, [open]);
+  
+  // Auto-send contextual question when opened from a chart/table
+  const hasAutoSentRef = useRef(false);
+  useEffect(() => {
+    if (open && chartContext && messages.length === 0 && !hasAutoSentRef.current) {
+      const contextualQuestion = buildContextualQuestion(chartContext, filters);
+      if (contextualQuestion) {
+        hasAutoSentRef.current = true;
+        // Small delay to ensure panel is fully rendered and handleSend is available
+        const timer = setTimeout(() => {
+          handleSend(contextualQuestion);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
+    }
+    if (!open) {
+      hasAutoSentRef.current = false;
+    }
+  }, [open, chartContext, messages.length, filters]);
 
   const handleSend = async (questionOverride?: string) => {
     const questionToSend = questionOverride || input.trim();
@@ -238,6 +283,7 @@ export function IAmQChatPanel({
       // Build context snapshot from current dashboard state
       const context = buildIAmQContext({
         page: getPageName(),
+        chartContext,
         filters,
         metrics,
         monthlySiteKpis, // Full KPI data for deep analysis
@@ -734,7 +780,7 @@ export function IAmQChatPanel({
                   message.role === "user"
                     ? "bg-primary/80 text-primary-foreground border border-primary/20"
                     : message.isError
-                    ? "bg-destructive/20 text-destructive-foreground border border-destructive/40"
+                    ? "bg-red-500/20 dark:bg-red-500/30 text-red-700 dark:text-red-300 border-2 border-red-500 dark:border-red-400"
                     : "bg-muted/80 text-foreground border border-border/40"
                 )}
               >

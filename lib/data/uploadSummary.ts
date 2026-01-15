@@ -23,15 +23,17 @@ export interface AffectedMetrics {
 export interface ChangeHistoryEntry {
   id: string;
   timestamp: string; // ISO timestamp
-  editor: string; // Role or user identifier
-  recordId: string; // Complaint ID or delivery ID
-  recordType: "complaint" | "delivery" | "ppap" | "deviation";
-  field: string; // Field that was changed (e.g., "defectiveParts", "unitOfMeasure")
+  editor: string; // Name of person who made the change
+  recordId: string; // Complaint ID, delivery ID, or manual entry identifier
+  recordType: "complaint" | "delivery" | "ppap" | "deviation" | "manual_entry" | "file_upload";
+  field: string; // Field that was changed (e.g., "defectiveParts", "unitOfMeasure") or "all" for new entries
   oldValue: any;
   newValue: any;
   reason?: string; // Optional reason for change
-  changeType: "conversion" | "manual_edit" | "correction" | "bulk_action";
+  changeType: "conversion" | "manual_edit" | "correction" | "bulk_action" | "new_entry" | "file_upload";
   affectedMetrics: AffectedMetrics; // Which metrics/visualizations are affected
+  onePagerLink?: string; // Link to one-pager folder/document
+  dataDetails?: Record<string, any>; // Additional details about what data was changed (for manual entries and file uploads)
 }
 
 /**

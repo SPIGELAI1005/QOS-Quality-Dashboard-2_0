@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/select";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
   AlertTriangle,
@@ -59,6 +62,8 @@ interface PlantData {
   city?: string;
   location?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
 }
 
@@ -94,13 +99,17 @@ export function DeviationsClient() {
   >(null);
   const [aiSummaryErrorDetails, setAiSummaryErrorDetails] = useState<{ message?: string; code?: string; statusCode?: number } | null>(null);
 
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: [],
-    selectedNotificationTypes: [],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -136,7 +145,17 @@ export function DeviationsClient() {
 
   const formatPlantLabel = useCallback((siteCode: string): string => {
     const plant = plantsData.find((p) => p.code === siteCode);
-    const label = plant?.location || plant?.city || plant?.abbreviation || plant?.country || plant?.name;
+    // Prioritize combined abbreviation (city, country)
+    const abbrevParts: string[] = [];
+    if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+    if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+    const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
+    
+    if (combinedAbbrev) {
+      return `${siteCode} ${combinedAbbrev}`;
+    }
+    // Fallback to other labels
+    const label = plant?.location || plant?.city || plant?.country || plant?.name;
     return label ? `${siteCode} (${label})` : siteCode;
   }, [plantsData]);
 
@@ -429,7 +448,14 @@ export function DeviationsClient() {
       <div className="flex flex-wrap items-center gap-4 justify-center mt-4 pt-4 border-t border-border/50">
         {sites.map((site) => {
           const plant = plantsData.find((p) => p.code === site);
-          const city = plant?.city || plant?.location || plant?.abbreviation || "";
+          // Use combined abbreviation (city, country) or fallback to single abbreviation or city
+          const abbrevParts: string[] = [];
+          if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+          if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+          const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
+          const city = plant?.city || plant?.location || '';
+          // Only show abbreviation/city, not plant code (already shown in color indicator)
+          const displayText = combinedAbbrev || city || `Site ${site}`;
           const isSelected = selectedPlant === site;
           return (
             <div
@@ -440,7 +466,7 @@ export function DeviationsClient() {
                 isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg p-1"
               )}
               onClick={() => onPlantClick?.(isSelected ? null : site)}
-              title={isSelected ? "Click to show all plants" : `Click to filter by ${city || site}`}
+              title={isSelected ? "Click to show all plants" : `Click to filter by ${combinedAbbrev || city || site}`}
             >
               <div
                 className={cn("h-6 w-6 rounded flex items-center justify-center text-xs font-semibold text-white flex-shrink-0")}
@@ -449,7 +475,7 @@ export function DeviationsClient() {
                 {site}
               </div>
               <span className={cn("text-sm whitespace-nowrap", isSelected ? "text-primary font-semibold" : "text-foreground")}>
-                {city || `Site ${site}`}
+                {displayText}
               </span>
             </div>
           );
@@ -554,6 +580,19 @@ export function DeviationsClient() {
                       >
                         <RefreshCw className={`h-3.5 w-3.5 ${aiSummaryLoading ? "animate-spin" : ""}`} style={{ color: "#9E9E9E" }} />
                       </button>
+                      <IAmQButton
+                        onClick={() => {
+                          setChartContext({
+                            title: "AI Summary - Deviations",
+                            description: "AI-generated summary of Deviation (D1, D2, D3) notifications and trends",
+                            chartType: "metric",
+                            dataType: "deviations",
+                            hasData: deviationsMonthlySiteKpisForAi.length > 0,
+                            dataCount: deviationsMonthlySiteKpisForAi.length,
+                          });
+                          setIsChatOpen(true);
+                        }}
+                      />
                       <div className="p-3 rounded-lg" style={{ backgroundColor: "#9E9E9E20", borderColor: "#9E9E9E50", borderWidth: "1px" }}>
                         <Sparkles className="h-4 w-4" style={{ color: "#9E9E9E" }} />
                       </div>
@@ -680,8 +719,25 @@ export function DeviationsClient() {
         <div className="space-y-6">
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>{t.charts.deviations.notificationsByMonth}</CardTitle>
-              <CardDescription>{t.charts.deviations.notificationsDescription}</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t.charts.deviations.notificationsByMonth}</CardTitle>
+                  <CardDescription>{t.charts.deviations.notificationsDescription}</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: t.charts.deviations.notificationsByMonth,
+                      description: t.charts.deviations.notificationsDescription,
+                      chartType: "bar",
+                      dataType: "deviations",
+                      hasData: deviationsByMonthPlant.data.length > 0 && deviationsByMonthPlant.sites.length > 0,
+                      dataCount: deviationsByMonthPlant.sites.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {deviationsByMonthPlant.data.length > 0 && deviationsByMonthPlant.sites.length > 0 ? (
@@ -756,6 +812,21 @@ export function DeviationsClient() {
                     Reset Filter
                   </Button>
                 )}
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "YTD D Notifications Closed vs. In Progress by Month and Plant",
+                      description: selectedPlantForStatusChart
+                        ? `Closed vs. In Progress for ${formatPlantLabel(selectedPlantForStatusChart)}`
+                        : "Closed vs. In Progress across all selected plants",
+                      chartType: "bar",
+                      dataType: "deviations",
+                      hasData: deviationStatusByMonth.length > 0,
+                      dataCount: deviationStatusByMonth.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
               </div>
             </CardHeader>
             <CardContent>
@@ -870,6 +941,23 @@ export function DeviationsClient() {
           showNotificationTypes={false}
         />
       </div>
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
+        filters={filters}
+        monthlySiteKpis={deviationsMonthlySiteKpisForAi}
+        selectedSites={filters.selectedPlants.length > 0 ? filters.selectedPlants : Array.from(new Set(deviations.map(d => String(d.siteCode || d.plant || "").trim()))).sort()}
+        selectedMonths={Array.from(new Set(deviations.map(d => {
+          const created = d.createdOn instanceof Date ? d.createdOn : new Date(d.createdOn);
+          return toMonthKey(created);
+        }))).sort()}
+      />
     </div>
   );
 }

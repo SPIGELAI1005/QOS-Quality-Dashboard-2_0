@@ -24,18 +24,25 @@ import {
 import { AlertTriangle, FileText } from "lucide-react";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export function ComplaintsClient() {
   const { t } = useTranslation();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: [],
-    selectedNotificationTypes: [],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
 
   useEffect(() => {
     const loadKpiData = () => {
@@ -166,8 +173,25 @@ export function ComplaintsClient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t.charts.complaints.complaintsTrend}</CardTitle>
-              <CardDescription>{t.charts.complaints.monthlyBreakdown}</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t.charts.complaints.complaintsTrend}</CardTitle>
+                  <CardDescription>{t.charts.complaints.monthlyBreakdown}</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: t.charts.complaints.complaintsTrend,
+                      description: t.charts.complaints.monthlyBreakdown,
+                      chartType: "bar",
+                      dataType: "complaints",
+                      hasData: complaintsByMonth.length > 0,
+                      dataCount: complaintsByMonth.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -187,8 +211,25 @@ export function ComplaintsClient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Complaints by Site and Month</CardTitle>
-              <CardDescription>Detailed breakdown of complaints</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Complaints by Site and Month</CardTitle>
+                  <CardDescription>Detailed breakdown of complaints</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "Complaints by Site and Month",
+                      description: "Detailed breakdown of complaints",
+                      chartType: "table",
+                      dataType: "complaints",
+                      hasData: filteredKpis.length > 0,
+                      dataCount: filteredKpis.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -239,6 +280,20 @@ export function ComplaintsClient() {
           <FilterPanel filters={filters} onFiltersChange={setFilters} monthlySiteKpis={monthlySiteKpis} />
         </div>
       </div>
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
+        filters={filters}
+        monthlySiteKpis={filteredKpis}
+        selectedSites={filters.selectedPlants.length > 0 ? filters.selectedPlants : Array.from(new Set(filteredKpis.map((k) => k.siteCode))).sort()}
+        selectedMonths={Array.from(new Set(filteredKpis.map(k => k.month))).sort()}
+      />
     </div>
   );
 }

@@ -23,6 +23,9 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { getPlantColorHex, getNotificationTypeColor, getBarAnimation } from "@/lib/utils/chartColors";
 import { ExternalLink, FileSpreadsheet, Info, Package, RefreshCw } from "lucide-react";
@@ -33,6 +36,8 @@ interface PlantData {
   erp?: string;
   city?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
   location?: string;
 }
@@ -107,7 +112,12 @@ function PlantLegend({
     <div className="flex flex-wrap justify-center gap-2 pt-2">
       {sites.map((siteCode) => {
         const plant = plantsData.find((p) => p.code === siteCode);
-        const label = plant?.location || plant?.city || plant?.country || plant?.name || siteCode;
+        // Prioritize combined abbreviation (city, country), then fallback to other labels
+        const abbrevParts: string[] = [];
+        if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+        if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+        const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
+        const label = combinedAbbrev || plant?.location || plant?.city || plant?.country || plant?.name || siteCode;
         const isSelected = selectedPlant === siteCode;
         return (
           <button
@@ -139,13 +149,27 @@ export function CostPoorQualityClient() {
   const [plantsData, setPlantsData] = useState<PlantData[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: ["Internal"],
-    selectedNotificationTypes: ["Q3"],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
+  
+  // Set default complaint and notification types for this page if not already set
+  useEffect(() => {
+    if (filters.selectedComplaintTypes.length === 0) {
+      setFilters(prev => ({ ...prev, selectedComplaintTypes: ["Internal"] }));
+    }
+    if (filters.selectedNotificationTypes.length === 0) {
+      setFilters(prev => ({ ...prev, selectedNotificationTypes: ["Q3"] }));
+    }
+  }, [filters.selectedComplaintTypes.length, filters.selectedNotificationTypes.length, setFilters]);
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -486,15 +510,30 @@ export function CostPoorQualityClient() {
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Summary</p>
                       <p className="text-xs text-muted-foreground mt-1">Based on selected plants/date (Internal Q3)</p>
                     </div>
-                    <button
-                      onClick={generateAISummary}
-                      disabled={aiLoading}
-                      className="p-2 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50"
-                      title="Refresh AI Summary"
-                      aria-label="Refresh AI Summary"
-                    >
-                      <RefreshCw className={cn("h-3.5 w-3.5", aiLoading && "animate-spin")} style={{ color: "#9E9E9E" }} />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={generateAISummary}
+                        disabled={aiLoading}
+                        className="p-2 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50"
+                        title="Refresh AI Summary"
+                        aria-label="Refresh AI Summary"
+                      >
+                        <RefreshCw className={cn("h-3.5 w-3.5", aiLoading && "animate-spin")} style={{ color: "#9E9E9E" }} />
+                      </button>
+                      <IAmQButton
+                        onClick={() => {
+                          setChartContext({
+                            title: "AI Summary - Poor Quality Costs",
+                            description: "AI-generated summary of internal complaints (Q3) and poor quality costs",
+                            chartType: "metric",
+                            dataType: "costs",
+                            hasData: filteredKpis.length > 0,
+                            dataCount: filteredKpis.length,
+                          });
+                          setIsChatOpen(true);
+                        }}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex-1 min-h-0 overflow-hidden">
@@ -556,6 +595,19 @@ export function CostPoorQualityClient() {
                     Reset Filter
                   </Button>
                 )}
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "YTD Total Number of Internal Notifications by Month and Plant",
+                      description: "Internal complaints (Q3) by month and plant (fixed filter)",
+                      chartType: "bar",
+                      dataType: "notifications",
+                      hasData: internalByMonthPlantForChart.length > 0,
+                      dataCount: internalByMonthPlantForChart.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
               </div>
             </div>
           </CardHeader>
@@ -630,6 +682,19 @@ export function CostPoorQualityClient() {
                 <CardTitle>YTD Total Number of Internal Defects by Month and Plant</CardTitle>
                 <CardDescription>Defective parts from internal complaints (Q3) by month and plant</CardDescription>
               </div>
+              <IAmQButton
+                onClick={() => {
+                  setChartContext({
+                    title: "YTD Total Number of Internal Defects by Month and Plant",
+                    description: "Defective parts from internal complaints (Q3) by month and plant",
+                    chartType: "bar",
+                    dataType: "defects",
+                    hasData: internalDefectsByMonthPlant.length > 0,
+                    dataCount: internalDefectsByMonthPlant.length,
+                  });
+                  setIsChatOpen(true);
+                }}
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -700,6 +765,19 @@ export function CostPoorQualityClient() {
                 <CardTitle>YTD Number of Internal Notifications by Month and Notification Type</CardTitle>
                 <CardDescription>Fixed to Internal Complaints (Q3)</CardDescription>
               </div>
+              <IAmQButton
+                onClick={() => {
+                  setChartContext({
+                    title: "YTD Number of Internal Notifications by Month and Notification Type",
+                    description: "Fixed to Internal Complaints (Q3)",
+                    chartType: "bar",
+                    dataType: "notifications",
+                    hasData: internalByMonthPlant.length > 0,
+                    dataCount: internalByMonthPlant.length,
+                  });
+                  setIsChatOpen(true);
+                }}
+              />
             </div>
           </CardHeader>
           <CardContent>
@@ -752,8 +830,25 @@ export function CostPoorQualityClient() {
             ].map((title) => (
               <Card key={title} className="glass-card-glow chart-container">
                 <CardHeader>
-                  <CardTitle>{`YTD ${title} by Month and Plant`}</CardTitle>
-                  <CardDescription>No data connected yet</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>{`YTD ${title} by Month and Plant`}</CardTitle>
+                      <CardDescription>No data connected yet</CardDescription>
+                    </div>
+                    <IAmQButton
+                      onClick={() => {
+                        setChartContext({
+                          title: `YTD ${title} by Month and Plant`,
+                          description: "No data connected yet",
+                          chartType: "bar",
+                          dataType: "costs",
+                          hasData: false,
+                          dataCount: 0,
+                        });
+                        setIsChatOpen(true);
+                      }}
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[320px] flex items-center justify-center">
@@ -872,6 +967,20 @@ export function CostPoorQualityClient() {
           showNotificationTypes={false}
         />
       </div>
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
+        filters={filters}
+        monthlySiteKpis={filteredKpis}
+        selectedSites={filters.selectedPlants.length > 0 ? filters.selectedPlants : Array.from(new Set(filteredKpis.map((k) => k.siteCode))).sort()}
+        selectedMonths={Array.from(new Set(filteredKpis.map(k => k.month))).sort()}
+      />
     </div>
   );
 }

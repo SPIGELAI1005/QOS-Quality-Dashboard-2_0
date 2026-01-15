@@ -23,18 +23,25 @@ import {
 import { TrendingUp, FileText } from "lucide-react";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 export function PPMClient() {
   const { t } = useTranslation();
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: [],
-    selectedNotificationTypes: [],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
 
   useEffect(() => {
     const loadKpiData = () => {
@@ -153,8 +160,25 @@ export function PPMClient() {
         <div className="flex-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{t.charts.ppm.trendBySite}</CardTitle>
-              <CardDescription>{t.charts.ppm.customerAndSupplierTrends}</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t.charts.ppm.trendBySite}</CardTitle>
+                  <CardDescription>{t.charts.ppm.customerAndSupplierTrends}</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: t.charts.ppm.trendBySite,
+                      description: t.charts.ppm.customerAndSupplierTrends,
+                      chartType: "line",
+                      dataType: "ppm",
+                      hasData: chartData.length > 0,
+                      dataCount: chartData.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={400}>
@@ -192,8 +216,25 @@ export function PPMClient() {
 
           <Card>
             <CardHeader>
-              <CardTitle>{t.charts.ppm.bySiteAndMonth}</CardTitle>
-              <CardDescription>{t.charts.ppm.detailedBreakdown}</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t.charts.ppm.bySiteAndMonth}</CardTitle>
+                  <CardDescription>{t.charts.ppm.detailedBreakdown}</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: t.charts.ppm.bySiteAndMonth,
+                      description: t.charts.ppm.detailedBreakdown,
+                      chartType: "table",
+                      dataType: "ppm",
+                      hasData: ppmBySiteMonth.length > 0,
+                      dataCount: ppmBySiteMonth.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -240,6 +281,20 @@ export function PPMClient() {
           <FilterPanel filters={filters} onFiltersChange={setFilters} monthlySiteKpis={monthlySiteKpis} />
         </div>
       </div>
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
+        filters={filters}
+        monthlySiteKpis={filteredKpis}
+        selectedSites={filters.selectedPlants.length > 0 ? filters.selectedPlants : Array.from(new Set(filteredKpis.map((k) => k.siteCode))).sort()}
+        selectedMonths={Array.from(new Set(filteredKpis.map(k => k.month))).sort()}
+      />
     </div>
   );
 }

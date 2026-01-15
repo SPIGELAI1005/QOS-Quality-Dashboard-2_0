@@ -7,6 +7,182 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - 2026-01-15
+**Type**: Fixed
+
+**Description**: Critical Data Accumulation Fix - File Uploads Now Merge Instead of Replace
+
+**Details**:
+- **Data Accumulation**: Fixed critical issue where file uploads were replacing existing data instead of merging
+  - Modified `recalculateKpis()` function to merge new upload data with existing data
+  - Uses Map-based merging by month+site combination key (`${month}__${siteCode}`)
+  - Preserves all previously uploaded months when new data is uploaded
+  - Allows incremental monthly uploads from multiple locations (e.g., 23 plants uploading monthly)
+  - Data is sorted by month and site code for consistent display
+- **Impact**: Users can now upload data for February, then March, and both months will be preserved and displayed
+- **Storage**: Data accumulates in `localStorage` as `qos-et-kpis` with all months and sites
+
+**Files Modified**:
+- `app/(dashboard)/upload/page.tsx` - Updated `recalculateKpis()` to merge data instead of replacing
+
+**Breaking Changes**: None
+
+**Migration Notes**: 
+- Existing data in localStorage will be preserved
+- New uploads will merge with existing data automatically
+- No manual migration required
+
+---
+
+### Added - 2026-01-15
+**Type**: Added
+
+**Description**: Enhanced Change History with Professional Information Display and Excel Export
+
+**Details**:
+- **Change History Enhancement**: 
+  - Added "Recorded By" field prominently displayed (name of person who made the change)
+  - Enhanced timestamp display with date and hour (including seconds)
+  - Added "One-Pager Link" display as clickable link when available
+  - Improved formatting for different change types (new_entry, file_upload, manual_edit, etc.)
+  - Added filter options for "Manual Entry" and "File Upload" record types
+  - Better handling of "all" field changes (complete form entries or file uploads)
+- **Change History for File Uploads**: 
+  - Creates change history entries when files are uploaded
+  - Records editor name (based on role: Admin, Editor, or System)
+  - Includes timestamp with date and hour
+  - Tracks which files were uploaded and what data was changed
+  - Stores file information in `dataDetails`
+- **Change History for Manual Form Entries**: 
+  - Creates comprehensive change history entries when manual form data is submitted
+  - Records the name of the person who entered the data (`recordedBy`)
+  - Includes timestamp with date and hour
+  - Captures all entered data fields
+  - Stores the one-pager link if provided
+  - Links to one-pager documents
+- **Excel Export Enhancement**: 
+  - Added "Export Form Data to Excel" button on the manual form
+  - Exports three sheets: Upload History, Manual Form Entries, and Change History
+  - Includes formatted timestamps (date and hour) in all exports
+  - Includes one-pager links in the export
+  - Professional column headers with proper formatting
+
+**Files Modified**:
+- `lib/data/uploadSummary.ts` - Extended `ChangeHistoryEntry` interface with `onePagerLink`, `dataDetails`, and new record/change types
+- `app/(dashboard)/upload/page.tsx` - Added change history creation for file uploads and manual entries, enhanced Excel export
+- `components/upload/change-history-panel.tsx` - Enhanced display with better formatting, one-pager links, and improved export
+
+**Components Affected**:
+- Upload Page - Change history now shows comprehensive information
+- Change History Panel - Enhanced display and export functionality
+- Manual Form - Excel export button added
+
+**Features Added/Modified**:
+- Change history tracking for file uploads
+- Change history tracking for manual form entries
+- Professional change history display
+- Excel export for form data and change history
+
+**Breaking Changes**: None
+
+---
+
+### Added - 2026-01-15
+**Type**: Added
+
+**Description**: Manual Form Entry Fields - Recorded By and One-Pager Link
+
+**Details**:
+- **Recorded By Field**: 
+  - Added mandatory field for the name of the person who records data manually
+  - Validation ensures field is not empty before submission
+  - Stored in `ManualKpiEntry` interface and persisted to localStorage
+  - Included in Excel exports
+- **One-Pager Link Field**: 
+  - Added optional field for link to one-pager folder/document
+  - Empty by default, generates link when provided
+  - Includes external link button to open the link in new tab
+  - Stored in `ManualKpiEntry` interface and persisted to localStorage
+  - Included in Excel exports and change history
+
+**Files Modified**:
+- `app/(dashboard)/upload/page.tsx` - Added fields to manual form, updated validation and export
+- `lib/i18n/translations.ts` - Added translation keys for new fields
+
+**Components Affected**:
+- Upload Page - Manual Form Entry section
+
+**Features Added/Modified**:
+- Mandatory "Recorded By" field with validation
+- Optional "Link to OnePager" field with external link button
+
+**Breaking Changes**: None
+
+---
+
+### Fixed - 2026-01-15
+**Type**: Fixed
+
+**Description**: Numeric Input Validation - Prevent Negative Values
+
+**Details**:
+- **Input Validation**: 
+  - Added `min="0"` attribute to all numeric input fields in manual form
+  - Updated onChange handlers to use `Math.max(0, Number(value) || 0)` to prevent negative values
+  - Applied to all 18 numeric fields (complaints, defective parts, deliveries, PPAP, deviations, audits, costs)
+  - Ensures values cannot go below 0, even if user types negative numbers
+
+**Files Modified**:
+- `app/(dashboard)/upload/page.tsx` - Updated all numeric Input components
+
+**Components Affected**:
+- Upload Page - Manual Form Entry section
+
+**Features Added/Modified**:
+- Numeric input validation for all form fields
+
+**Breaking Changes**: None
+
+---
+
+### Added - 2026-01-15
+**Type**: Added
+
+**Description**: I AM Q Button on Data Lineage Page and WOWFLOW Tab Rename
+
+**Details**:
+- **I AM Q Integration**: 
+  - Added I AM Q button to Data Lineage page header
+  - Added I AM Q button to Data Catalog tab
+  - Added I AM Q button to WOWFLOW tab (formerly "End-to-End Flow")
+  - Added I AM Q button to Storage & Outputs tab
+  - Each button provides context-specific information about that section
+- **WOWFLOW Tab**: 
+  - Renamed "End-to-End Flow" tab to "WOWFLOW"
+  - Enhanced content with detailed explanations about data used and scope across the app
+  - Added introductory card explaining data flow and scope
+  - Enhanced each flow step (Sources, Parsing, KPIs, Consumption) with detailed explanations
+- **I AM Q Context**: 
+  - Provides information about Data Catalog linkage
+  - Explains WOWFLOW (end-to-end data flow)
+  - Describes Storage & Outputs mechanisms
+
+**Files Modified**:
+- `app/(dashboard)/data-lineage/data-lineage-client.tsx` - Added I AM Q buttons, renamed tab, enhanced content
+
+**Components Affected**:
+- Data Lineage Page - All tabs now have I AM Q integration
+- WOWFLOW Tab - Enhanced with detailed explanations
+
+**Features Added/Modified**:
+- I AM Q integration on Data Lineage page
+- WOWFLOW tab with enhanced content
+- Context-aware AI assistance for data lineage
+
+**Breaking Changes**: None
+
+---
+
 ### Added - 2026-01-12
 **Type**: Added
 

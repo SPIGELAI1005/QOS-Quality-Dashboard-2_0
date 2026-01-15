@@ -196,7 +196,7 @@ export function Sidebar() {
           <ShineOverlay />
           <div className={cn("relative z-10 flex items-center justify-center", isCollapsed ? "w-10" : "w-full")}>
             <Image
-              src="/Media/QOS Logo green.jpg"
+              src="/Media/QM ET Triangle.png"
               alt="QM ET Logo"
               width={isCollapsed ? 40 : 232}
               height={isCollapsed ? 40 : 120}

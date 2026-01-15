@@ -1,7 +1,7 @@
 # QOS ET Quality Report - Complete Project State Documentation
 
-**Last Updated**: 2026-01-12  
-**Version**: 1.0.4  
+**Last Updated**: 2026-01-15  
+**Version**: 1.0.5  
 **Status**: Active Development
 
 This document provides a complete snapshot of the application state, including all pages, components, features, charts, tables, and functionality. Use this document to rebuild the application if data is lost.
@@ -678,11 +678,17 @@ All UI components from Shadcn UI:
 - Contains change history
 
 #### ChangeHistoryEntry
-- Tracks all manual corrections and conversions
-- Records field changes (old value → new value)
+- Tracks all manual corrections, conversions, file uploads, and manual form entries
+- Records field changes (old value → new value) or "all" for complete entries
+- **Professional Information Display**:
+  - "Recorded By" field (name of person who made the change) - prominently displayed
+  - Timestamp with date and hour (including seconds)
+  - "One-Pager Link" field - clickable link when available
 - Includes affected metrics, visualizations, pages, and calculations
 - Optional reason field for changes
-- Timestamp and editor identifier
+- Change type classification (conversion, manual_edit, correction, bulk_action, new_entry, file_upload)
+- Record type classification (complaint, delivery, ppap, deviation, manual_entry, file_upload)
+- Data details field for additional context (files uploaded, entry type, etc.)
 
 #### AffectedMetrics
 - Lists metrics affected by changes (e.g., "Customer Complaints", "Supplier PPM")

@@ -72,9 +72,11 @@ import {
 } from "@/components/ui/select";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
 import { cn } from "@/lib/utils";
 import { TooltipProvider, Tooltip as UiTooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
+import { IAmQButton } from "@/components/iamq/iamq-button";
 import { useTheme } from "next-themes";
 import {
   getPlantColorHex,
@@ -100,6 +102,8 @@ interface PlantData {
   erp?: string;
   city?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
   location?: string;
 }
@@ -122,6 +126,14 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
   const isFullView = viewMode === "full";
   const [mounted, setMounted] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>(propsKpis);
   const [globalPpm, setGlobalPpm] = useState<{ customerPpm: number | null; supplierPpm: number | null } | undefined>(propsPpm);
@@ -256,12 +268,23 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     return PLANT_COLORS[code] || "bg-gray-500";
   }, []);
 
-  // Helper function to format site code with city/location for chart legends
-  // Format: "145 (Doncaster Carr)" or "Site 145 (Doncaster Carr)"
+  // Helper function to format site code with abbreviation for chart legends
+  // Format: "145 NBB, DE" or "Site 145 NBB, DE" (prioritizes combined abbreviation)
   const formatSiteNameForChart = useCallback((siteCode: string, includePrefix: boolean = false): string => {
     const plant = plantsData.find(p => p.code === siteCode);
-    const city = plant?.city || plant?.location || '';
     
+    // Prioritize combined abbreviation (city, country) if available
+    const abbrevParts: string[] = [];
+    if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+    if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+    const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
+    
+    if (combinedAbbrev) {
+      return includePrefix ? `${t.common.site || "Site"} ${siteCode} ${combinedAbbrev}` : `${siteCode} ${combinedAbbrev}`;
+    }
+    
+    // Fallback to city/location
+    const city = plant?.city || plant?.location || '';
     if (city) {
       return includePrefix ? `${t.common.site || "Site"} ${siteCode} (${city})` : `${siteCode} (${city})`;
     }
@@ -301,7 +324,14 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
       <div className="flex flex-wrap items-center gap-4 justify-center mt-4 pt-4 border-t border-border/50">
         {sites.map((site) => {
           const plant = plantsData.find(p => p.code === site);
+          // Use combined abbreviation (city, country) or fallback to single abbreviation or city
+          const abbrevParts: string[] = [];
+          if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+          if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+          const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
           const city = plant?.city || plant?.location || '';
+          // Only show abbreviation/city, not plant code (already shown in color indicator)
+          const displayText = combinedAbbrev || city || `${t.common.site} ${site}`;
           const colorClass = getPlantColorClass(site);
           const isSelected = selectedPlant === site;
           
@@ -314,7 +344,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg p-1"
               )}
               onClick={() => onPlantClick?.(isSelected ? null : site)}
-              title={isSelected ? t.common.clickToShowAll : `${t.common.clickToFilterBy} ${city || site}`}
+              title={isSelected ? t.common.clickToShowAll : `${t.common.clickToFilterBy} ${combinedAbbrev || city || site}`}
             >
               <div className={cn(
                 "h-6 w-6 rounded flex items-center justify-center text-xs font-semibold text-white flex-shrink-0",
@@ -327,7 +357,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 "text-sm whitespace-nowrap",
                 isSelected ? "text-primary font-semibold" : "text-foreground"
               )}>
-                {city || `${t.common.site} ${site}`}
+                {displayText}
               </span>
             </div>
           );
@@ -402,39 +432,8 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     );
   }, [t]);
   
-  // Filter state - load from localStorage or use default
-  const [filters, setFilters] = useState<FilterState>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('qos-et-filters');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          // Convert date strings back to Date objects
-          return {
-            ...parsed,
-            dateFrom: parsed.dateFrom ? new Date(parsed.dateFrom) : null,
-            dateTo: parsed.dateTo ? new Date(parsed.dateTo) : null,
-          };
-        } catch (e) {
-          console.error('Failed to parse stored filters:', e);
-        }
-      }
-    }
-    return {
-      selectedPlants: [],
-      selectedComplaintTypes: [],
-      selectedNotificationTypes: [],
-      dateFrom: null,
-      dateTo: null,
-    };
-  });
-
-  // Save filters to localStorage whenever they change
-  useEffect(() => {
-    if (typeof window !== 'undefined' && filters.selectedPlants.length > 0) {
-      localStorage.setItem('qos-et-filters', JSON.stringify(filters));
-    }
-  }, [filters]);
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
 
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -809,6 +808,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
         };
 
         console.log('[AI Summary] Sending request with', filteredKpis.length, 'KPIs');
+        // Pass the actual calculated metrics that are displayed on the tiles
         const response = await fetch("/api/ai/interpret-kpis", {
           method: "POST",
           headers: {
@@ -820,6 +820,29 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             selectedSites: selectedSitesForAI,
             selectedMonths: selectedMonthsForAI,
             filterContext: filterContext,
+            // Pass the actual metrics values displayed on the tiles
+            metrics: {
+              customer: {
+                complaints: customerMetrics.complaints.value,
+                complaintsTrend: customerMetrics.complaints.trend,
+                defective: customerMetrics.defective.value,
+                defectiveTrend: customerMetrics.defective.trend,
+                deliveries: customerMetrics.deliveries.value,
+                deliveriesTrend: customerMetrics.deliveries.trend,
+                ppm: customerMetrics.ppm.value,
+                ppmTrend: customerMetrics.ppm.trend,
+              },
+              supplier: {
+                complaints: supplierMetrics.complaints.value,
+                complaintsTrend: supplierMetrics.complaints.trend,
+                defective: supplierMetrics.defective.value,
+                defectiveTrend: supplierMetrics.defective.trend,
+                deliveries: supplierMetrics.deliveries.value,
+                deliveriesTrend: supplierMetrics.deliveries.trend,
+                ppm: supplierMetrics.ppm.value,
+                ppmTrend: supplierMetrics.ppm.trend,
+              },
+            },
           }),
         });
 
@@ -3171,17 +3194,17 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       <p className="text-sm text-muted-foreground">Generating summary...</p>
                     </div>
                   ) : aiSummaryError ? (
-                    <div className="space-y-1.5 overflow-hidden">
-                      <p className="text-xs text-muted-foreground italic">Unable to generate summary</p>
+                    <div className="space-y-1.5 overflow-hidden bg-red-50/50 dark:bg-red-950/30 border-l-2 border-red-500 dark:border-red-400 pl-2 py-1 rounded">
+                      <p className="text-xs font-semibold text-red-700 dark:text-red-300">Unable to generate summary</p>
                       <div className="space-y-1.5 text-[10px] overflow-hidden">
                         {aiSummaryErrorType === 'api_key' ? (
                     <div className="space-y-1">
-                            <p className="text-muted-foreground/90 font-medium text-[11px]">API Key Issue</p>
-                            <p className="text-muted-foreground/70 leading-tight">{aiSummaryError}</p>
+                            <p className="text-red-700 dark:text-red-300 font-bold text-[11px]">API Key Issue</p>
+                            <p className="text-red-800 dark:text-red-200 leading-tight font-medium">{aiSummaryError}</p>
                             <div className="flex flex-col gap-1 mt-1.5">
-                              <p className="text-muted-foreground/80 font-medium text-[10px]">How to fix:</p>
-                              <ol className="list-decimal list-inside space-y-0.5 text-muted-foreground/70 leading-tight ml-1">
-                                <li>Check <code className="bg-background px-0.5 rounded text-[9px]">AI_API_KEY</code> in env vars</li>
+                              <p className="text-red-700 dark:text-red-300 font-bold text-[10px]">How to fix:</p>
+                              <ol className="list-decimal list-inside space-y-0.5 text-red-800 dark:text-red-200 leading-tight ml-1">
+                                <li>Check <code className="bg-red-100 dark:bg-red-900/30 px-0.5 rounded text-[9px] text-red-900 dark:text-red-200">AI_API_KEY</code> in env vars</li>
                                 <li>Verify key is valid and not expired</li>
                                 <li>Get new key: 
                                   <span className="inline-flex items-center gap-0.5 ml-1">
@@ -3210,21 +3233,21 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                           </div>
                         ) : aiSummaryErrorType === 'rate_limit' ? (
                           <div className="space-y-0.5">
-                            <p className="text-muted-foreground/90 font-medium text-[11px]">Rate Limit Exceeded</p>
-                            <p className="text-muted-foreground/70 leading-tight text-[10px]">{aiSummaryError}</p>
-                            <p className="text-muted-foreground/70 text-[10px] leading-tight">Wait a moment and try again.</p>
+                            <p className="text-red-700 dark:text-red-300 font-bold text-[11px]">Rate Limit Exceeded</p>
+                            <p className="text-red-800 dark:text-red-200 leading-tight text-[10px] font-medium">{aiSummaryError}</p>
+                            <p className="text-red-700 dark:text-red-300 text-[10px] leading-tight">Wait a moment and try again.</p>
                           </div>
                         ) : aiSummaryErrorType === 'network' ? (
                           <div className="space-y-0.5">
-                            <p className="text-muted-foreground/90 font-medium text-[11px]">Network Error</p>
-                            <p className="text-muted-foreground/70 leading-tight text-[10px]">{aiSummaryError}</p>
-                            <p className="text-muted-foreground/70 text-[10px] leading-tight">Check your internet connection.</p>
+                            <p className="text-red-700 dark:text-red-300 font-bold text-[11px]">Network Error</p>
+                            <p className="text-red-800 dark:text-red-200 leading-tight text-[10px] font-medium">{aiSummaryError}</p>
+                            <p className="text-red-700 dark:text-red-300 text-[10px] leading-tight">Check your internet connection.</p>
                           </div>
                         ) : (
                           <div className="space-y-0.5">
-                            <p className="text-muted-foreground/70 leading-tight text-[10px]">{aiSummaryError}</p>
+                            <p className="text-red-800 dark:text-red-200 leading-tight text-[10px] font-medium">{aiSummaryError}</p>
                             {aiSummaryErrorDetails?.message && (
-                              <p className="text-muted-foreground/60 text-[9px] leading-tight">
+                              <p className="text-red-700 dark:text-red-300 text-[9px] leading-tight">
                                 {aiSummaryErrorDetails.message}
                               </p>
                             )}
@@ -3564,6 +3587,27 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   </PopoverContent>
                 </Popover>
               )}
+              <IAmQButton
+                onClick={() => {
+                  setChartContext({
+                    title: isCustomerView
+                      ? t.charts.notificationsByMonth.titleCustomer
+                      : isSupplierView
+                        ? t.charts.notificationsByMonth.titleSupplier
+                        : t.charts.notificationsByMonth.title,
+                    description: isCustomerView
+                      ? t.charts.notificationsByMonth.descriptionCustomer
+                      : isSupplierView
+                        ? t.charts.notificationsByMonth.descriptionSupplier
+                        : t.charts.notificationsByMonth.description,
+                    chartType: "bar",
+                    dataType: "notifications",
+                    hasData: chartSites.length > 0,
+                    dataCount: chartSites.length,
+                  });
+                  setIsChatOpen(true);
+                }}
+              />
             </div>
           </div>
         </CardHeader>
@@ -3755,6 +3799,27 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   </PopoverContent>
                 </Popover>
               )}
+              <IAmQButton
+                onClick={() => {
+                  setChartContext({
+                    title: isCustomerView
+                      ? t.charts.defectsByMonth.titleCustomer
+                      : isSupplierView
+                        ? t.charts.defectsByMonth.titleSupplier
+                        : t.charts.defectsByMonth.title,
+                    description: isCustomerView
+                      ? t.charts.defectsByMonth.descriptionCustomer
+                      : isSupplierView
+                        ? t.charts.defectsByMonth.descriptionSupplier
+                        : t.charts.defectsByMonth.description,
+                    chartType: "bar",
+                    dataType: "defects",
+                    hasData: defectsByMonthPlant.length > 0,
+                    dataCount: defectsByMonthPlant.length,
+                  });
+                  setIsChatOpen(true);
+                }}
+              />
             </div>
           </div>
         </CardHeader>
@@ -3928,6 +3993,27 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 </PopoverContent>
               </Popover>
               )}
+              <IAmQButton
+                onClick={() => {
+                  setChartContext({
+                    title: isCustomerView
+                      ? "YTD Number of Customer Notifications by Month and Notification Type"
+                      : isSupplierView
+                        ? "YTD Number of Supplier Notifications by Month and Notification Type"
+                        : "YTD Number of Notifications by Month and Notification Type",
+                    description: isCustomerView
+                      ? "Number of customer complaints (Q1) by month"
+                      : isSupplierView
+                        ? "Number of supplier complaints (Q2) by month"
+                        : "Number of complaints by month and notification type (Q1, Q2, Q3)",
+                    chartType: "bar",
+                    dataType: "notifications",
+                    hasData: filteredKpis.length > 0 && notificationsByType.length > 0,
+                    dataCount: notificationsByType.length,
+                  });
+                  setIsChatOpen(true);
+                }}
+              />
             </div>
           </div>
         </CardHeader>
@@ -4095,7 +4181,8 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 Combined Customer PPM performance (PPM = Defective Parts / Total Deliveries × 1,000,000)
               </CardDescription>
             </div>
-            <Select value={customerPpmAveragePeriod} onValueChange={(value: "3" | "6" | "12") => setCustomerPpmAveragePeriod(value)}>
+            <div className="flex items-center gap-2">
+              <Select value={customerPpmAveragePeriod} onValueChange={(value: "3" | "6" | "12") => setCustomerPpmAveragePeriod(value)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
@@ -4105,6 +4192,20 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 <SelectItem value="12">12-Months Average Trend</SelectItem>
               </SelectContent>
             </Select>
+              <IAmQButton
+                onClick={() => {
+                  setChartContext({
+                    title: "YTD Cumulative Customer PPM Trend - All Sites",
+                    description: "Combined Customer PPM performance (PPM = Defective Parts / Total Deliveries × 1,000,000)",
+                    chartType: "line",
+                    dataType: "ppm",
+                    hasData: customerPpmTrendData.length > 0,
+                    dataCount: customerPpmTrendData.length,
+                  });
+                  setIsChatOpen(true);
+                }}
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -4207,7 +4308,22 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
           {!isSupplierView && (
           <Card className="glass-card-glow chart-container">
         <CardHeader>
-          <CardTitle>YTD Customer PPM Monthly Trend Analysis - All Sites</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>YTD Customer PPM Monthly Trend Analysis - All Sites</CardTitle>
+            <IAmQButton
+              onClick={() => {
+                setChartContext({
+                  title: "YTD Customer PPM Monthly Trend Analysis - All Sites",
+                  description: "Monthly Customer PPM values across all sites",
+                  chartType: "table",
+                  dataType: "ppm",
+                  hasData: monthlyTrendTable.length > 0,
+                  dataCount: monthlyTrendTable.length,
+                });
+                setIsChatOpen(true);
+              }}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -4324,12 +4440,13 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       Formula: PPM = (Total Defective Parts / Total Deliveries) × 1,000,000
                     </CardDescription>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      // Prepare data for export
-                      const { sites, months, siteNames, siteLocations, bySiteMonth, totalsByMonth } = customerPpmSiteContribution;
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        // Prepare data for export
+                        const { sites, months, siteNames, siteLocations, bySiteMonth, totalsByMonth } = customerPpmSiteContribution;
                       
                       // Create worksheet data
                       const wsData: any[][] = [];
@@ -4400,8 +4517,22 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     {t.dashboard.exportToExcel}
                   </Button>
+                    <IAmQButton
+                      onClick={() => {
+                        setChartContext({
+                          title: t.dashboard.customerPpmSiteContribution,
+                          description: "Customer PPM site contribution showing defective parts and deliveries by site and month",
+                          chartType: "table",
+                          dataType: "ppm",
+                          hasData: customerPpmSiteContribution.sites.length > 0,
+                          dataCount: customerPpmSiteContribution.sites.length,
+                        });
+                        setIsChatOpen(true);
+                      }}
+                    />
                 </div>
-              </CardHeader>
+              </div>
+            </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <Table>
@@ -4836,16 +4967,31 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                     Combined Supplier PPM performance (PPM = Defective Parts / Total Deliveries × 1,000,000)
                   </CardDescription>
                 </div>
-                <Select value={supplierPpmAveragePeriod} onValueChange={(value: "3" | "6" | "12") => setSupplierPpmAveragePeriod(value)}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select period" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="3">3-Months Average Trend</SelectItem>
-                    <SelectItem value="6">6-Months Average Trend</SelectItem>
-                    <SelectItem value="12">12-Months Average Trend</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select value={supplierPpmAveragePeriod} onValueChange={(value: "3" | "6" | "12") => setSupplierPpmAveragePeriod(value)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Select period" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="3">3-Months Average Trend</SelectItem>
+                      <SelectItem value="6">6-Months Average Trend</SelectItem>
+                      <SelectItem value="12">12-Months Average Trend</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <IAmQButton
+                    onClick={() => {
+                      setChartContext({
+                        title: "YTD Cumulative Supplier PPM Trend - All Sites",
+                        description: "Combined Supplier PPM performance (PPM = Defective Parts / Total Deliveries × 1,000,000)",
+                        chartType: "line",
+                        dataType: "ppm",
+                        hasData: supplierPpmTrendData.length > 0,
+                        dataCount: supplierPpmTrendData.length,
+                      });
+                      setIsChatOpen(true);
+                    }}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -4924,7 +5070,22 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
           {/* YTD Supplier PPM Monthly Trend Analysis - All Sites Table */}
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>YTD Supplier PPM Monthly Trend Analysis - All Sites</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>YTD Supplier PPM Monthly Trend Analysis - All Sites</CardTitle>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "YTD Supplier PPM Monthly Trend Analysis - All Sites",
+                      description: "Monthly Supplier PPM values across all sites",
+                      chartType: "table",
+                      dataType: "ppm",
+                      hasData: supplierMonthlyTrendTable.length > 0,
+                      dataCount: supplierMonthlyTrendTable.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
@@ -5040,12 +5201,13 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       Formula: PPM = (Total Defective Parts / Total Deliveries) × 1,000,000
                     </CardDescription>
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      // Prepare data for export
-                      const { sites, months, siteNames, siteLocations, bySiteMonth, totalsByMonth } = supplierPpmSiteContribution;
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        // Prepare data for export
+                        const { sites, months, siteNames, siteLocations, bySiteMonth, totalsByMonth } = supplierPpmSiteContribution;
                       
                       // Create worksheet data
                       const wsData: any[][] = [];
@@ -5116,15 +5278,29 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     {t.dashboard.exportToExcel}
                   </Button>
+                    <IAmQButton
+                      onClick={() => {
+                        setChartContext({
+                          title: t.dashboard.supplierPpmSiteContribution,
+                          description: "Supplier PPM site contribution showing defective parts and deliveries by site and month",
+                          chartType: "table",
+                          dataType: "ppm",
+                          hasData: supplierPpmSiteContribution.sites.length > 0,
+                          dataCount: supplierPpmSiteContribution.sites.length,
+                        });
+                        setIsChatOpen(true);
+                      }}
+                    />
                 </div>
-              </CardHeader>
+              </div>
+            </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="text-center">{t.common.site}</TableHead>
-                        {supplierPpmSiteContribution.months.map((month) => {
+                    {supplierPpmSiteContribution.months.map((month) => {
                           const date = new Date(month + "-01");
                           return (
                             <TableHead key={month} className="text-center">
@@ -5619,7 +5795,13 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
       </div>
       <IAmQChatPanel 
         open={isChatOpen} 
-        onOpenChange={setIsChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
         filters={filters}
         metrics={{
           customerComplaints: customerMetrics.complaints.value,

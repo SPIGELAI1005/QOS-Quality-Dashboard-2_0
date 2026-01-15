@@ -5,6 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FileSpreadsheet, Info, Package } from "lucide-react";
 import {
@@ -19,13 +22,17 @@ export function WarrantiesCostsClient() {
   const [kpis, setKpis] = useState<MonthlySiteKpi[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: [],
-    selectedNotificationTypes: [],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -176,6 +183,19 @@ export function WarrantiesCostsClient() {
                       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Summary</p>
                       <p className="text-xs text-muted-foreground mt-1">Warranty metrics overview (coming soon)</p>
                     </div>
+                    <IAmQButton
+                      onClick={() => {
+                        setChartContext({
+                          title: "AI Summary - Warranty Costs",
+                          description: "AI-generated summary of warranty costs and metrics",
+                          chartType: "metric",
+                          dataType: "warranties",
+                          hasData: false,
+                          dataCount: 0,
+                        });
+                        setIsChatOpen(true);
+                      }}
+                    />
                   </div>
 
                   <div className="flex-1 min-h-0 overflow-hidden">
@@ -206,8 +226,25 @@ export function WarrantiesCostsClient() {
             {metrics.map((title) => (
               <Card key={title} className="glass-card-glow chart-container">
                 <CardHeader>
-                  <CardTitle>{`YTD ${title} by Month and Plant`}</CardTitle>
-                  <CardDescription>No data connected yet</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>{`YTD ${title} by Month and Plant`}</CardTitle>
+                      <CardDescription>No data connected yet</CardDescription>
+                    </div>
+                    <IAmQButton
+                      onClick={() => {
+                        setChartContext({
+                          title: `YTD ${title} by Month and Plant`,
+                          description: "No data connected yet",
+                          chartType: "bar",
+                          dataType: "warranties",
+                          hasData: false,
+                          dataCount: 0,
+                        });
+                        setIsChatOpen(true);
+                      }}
+                    />
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="h-[320px] flex items-center justify-center">
@@ -281,6 +318,20 @@ export function WarrantiesCostsClient() {
           showNotificationTypes={false}
         />
       </div>
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
+        filters={filters}
+        monthlySiteKpis={kpis}
+        selectedSites={filters.selectedPlants.length > 0 ? filters.selectedPlants : Array.from(new Set(kpis.map((k) => k.siteCode))).sort()}
+        selectedMonths={Array.from(new Set(kpis.map(k => k.month))).sort()}
+      />
     </div>
   );
 }

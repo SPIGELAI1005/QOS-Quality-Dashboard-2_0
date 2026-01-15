@@ -24,6 +24,8 @@ function formatDate(date: Date): string {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
   }).format(date);
 }
 
@@ -47,22 +49,40 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
     });
   }, [changes, filterType, filterChangeType, filterRecordId, filterEditor]);
 
+  const formatTimestamp = (iso: string): string => {
+    try {
+      const date = new Date(iso);
+      return new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      }).format(date);
+    } catch {
+      return iso;
+    }
+  };
+
   const handleExport = () => {
     const wb = XLSX.utils.book_new();
     const rows = filteredChanges.map(change => ({
-      timestamp: change.timestamp,
-      editor: change.editor,
-      recordId: change.recordId,
-      recordType: change.recordType,
-      field: change.field,
-      oldValue: typeof change.oldValue === "object" ? JSON.stringify(change.oldValue) : change.oldValue,
-      newValue: typeof change.newValue === "object" ? JSON.stringify(change.newValue) : change.newValue,
-      reason: change.reason || "",
-      changeType: change.changeType,
-      affectedMetrics: change.affectedMetrics.metrics.join("; "),
-      affectedVisualizations: change.affectedMetrics.visualizations.join("; "),
-      affectedPages: change.affectedMetrics.pages.join("; "),
-      affectedCalculations: change.affectedMetrics.calculations.join("; "),
+      "Date & Time": formatTimestamp(change.timestamp),
+      "Recorded By": change.editor,
+      "Record ID": change.recordId,
+      "Record Type": change.recordType.replace("_", " "),
+      Field: change.field,
+      "Old Value": typeof change.oldValue === "object" ? JSON.stringify(change.oldValue) : String(change.oldValue || ""),
+      "New Value": typeof change.newValue === "object" ? JSON.stringify(change.newValue) : String(change.newValue || ""),
+      Reason: change.reason || "",
+      "Change Type": change.changeType.replace("_", " "),
+      "One-Pager Link": change.onePagerLink || "",
+      "Affected Metrics": change.affectedMetrics.metrics.join("; "),
+      "Affected Visualizations": change.affectedMetrics.visualizations.join("; "),
+      "Affected Pages": change.affectedMetrics.pages.join("; "),
+      "Affected Calculations": change.affectedMetrics.calculations.join("; "),
     }));
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Change History");
     XLSX.writeFile(wb, `change-history_${new Date().toISOString().slice(0, 10)}.xlsx`);
@@ -136,6 +156,8 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
                 <SelectItem value="manual_edit">Manual Edit</SelectItem>
                 <SelectItem value="correction">Correction</SelectItem>
                 <SelectItem value="bulk_action">Bulk Action</SelectItem>
+                <SelectItem value="new_entry">New Entry</SelectItem>
+                <SelectItem value="file_upload">File Upload</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -175,11 +197,11 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline">{change.recordType}</Badge>
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <Badge variant="outline">{change.recordType.replace("_", " ")}</Badge>
                     <Badge
                       variant={
-                        change.changeType === "conversion"
+                        change.changeType === "conversion" || change.changeType === "new_entry" || change.changeType === "file_upload"
                           ? "default"
                           : change.changeType === "manual_edit"
                           ? "secondary"
@@ -188,40 +210,73 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
                     >
                       {change.changeType.replace("_", " ")}
                     </Badge>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground font-medium">
                       {formatDate(new Date(change.timestamp))}
                     </span>
                   </div>
                   <div className="text-sm space-y-1">
                     <div>
-                      <span className="font-medium">Record:</span>{" "}
+                      <span className="font-medium">Recorded By:</span>{" "}
+                      <span className="font-semibold text-foreground">{change.editor}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Record ID:</span>{" "}
                       <span className="font-mono text-xs">{change.recordId}</span>
                     </div>
-                    <div>
-                      <span className="font-medium">Field:</span> {change.field}
-                    </div>
-                    <div>
-                      <span className="font-medium">Change:</span>{" "}
-                      <span className="text-muted-foreground">
-                        {typeof change.oldValue === "number"
-                          ? change.oldValue.toLocaleString("de-DE")
-                          : String(change.oldValue)}
-                      </span>{" "}
-                      →{" "}
-                      <span className="font-medium">
-                        {typeof change.newValue === "number"
-                          ? change.newValue.toLocaleString("de-DE")
-                          : String(change.newValue)}
-                      </span>
-                    </div>
+                    {change.field !== "all" && (
+                      <div>
+                        <span className="font-medium">Field:</span> {change.field}
+                      </div>
+                    )}
+                    {change.field === "all" ? (
+                      <div>
+                        <span className="font-medium">Data Added/Changed:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {change.recordType === "manual_entry" 
+                            ? "Complete manual form entry with all KPI fields"
+                            : change.recordType === "file_upload"
+                            ? `File upload: ${change.dataDetails?.files?.map((f: any) => f.name).join(", ") || "Multiple files"}`
+                            : "Multiple fields"}
+                        </span>
+                      </div>
+                    ) : (
+                      <div>
+                        <span className="font-medium">Change:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {typeof change.oldValue === "number"
+                            ? change.oldValue.toLocaleString("de-DE")
+                            : change.oldValue !== null && change.oldValue !== undefined
+                            ? String(change.oldValue)
+                            : "N/A"}
+                        </span>{" "}
+                        →{" "}
+                        <span className="font-medium">
+                          {typeof change.newValue === "number"
+                            ? change.newValue.toLocaleString("de-DE")
+                            : typeof change.newValue === "object"
+                            ? JSON.stringify(change.newValue)
+                            : String(change.newValue)}
+                        </span>
+                      </div>
+                    )}
                     {change.reason && (
                       <div>
                         <span className="font-medium">Reason:</span> {change.reason}
                       </div>
                     )}
-                    <div>
-                      <span className="font-medium">Editor:</span> {change.editor}
-                    </div>
+                    {change.onePagerLink && (
+                      <div>
+                        <span className="font-medium">One-Pager Link:</span>{" "}
+                        <a
+                          href={change.onePagerLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline break-all"
+                        >
+                          {change.onePagerLink}
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

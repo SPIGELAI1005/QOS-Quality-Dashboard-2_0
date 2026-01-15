@@ -24,6 +24,8 @@ interface PlantData {
   erp?: string;
   city?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
   location?: string;
 }
@@ -230,10 +232,16 @@ export function FilterPanel({
   }, [availablePlants.length, filters.selectedPlants.length, plantsData.length, filters, onFiltersChange]); // Trigger when plantsData loads
 
   const togglePlant = (plantCode: string) => {
-    const newPlants = filters.selectedPlants.includes(plantCode)
-      ? filters.selectedPlants.filter((p) => p !== plantCode)
-      : [...filters.selectedPlants, plantCode];
-    onFiltersChange({ ...filters, selectedPlants: newPlants });
+    // When clicking individual plants, override Quick Access selections
+    // If the plant is already selected and it's the only one, deselect it
+    // Otherwise, select only this plant (override previous selections)
+    if (filters.selectedPlants.includes(plantCode) && filters.selectedPlants.length === 1) {
+      // Deselect if it's the only selected plant
+      onFiltersChange({ ...filters, selectedPlants: [] });
+    } else {
+      // Override previous selections and select only this plant
+      onFiltersChange({ ...filters, selectedPlants: [plantCode] });
+    }
   };
 
   const selectAllPlants = () => {
@@ -245,6 +253,7 @@ export function FilterPanel({
   };
 
   // Quick Access filter functions
+  // These override any previous individual plant selections
   const filterBySapP01 = () => {
     const sapP01Plants = availablePlants
       .filter((plant) => {
@@ -255,6 +264,7 @@ export function FilterPanel({
         return erp.includes('P01') && !erp.includes('PS4') && !erp.includes('S4');
       })
       .map((p) => p.code);
+    // Override previous selections with Quick Access selection
     onFiltersChange({ ...filters, selectedPlants: sapP01Plants });
   };
 
@@ -272,6 +282,7 @@ export function FilterPanel({
             return erp.includes('PS4') || erp.includes('S4') || erp.includes('SAP S4');
           })
           .map((p) => p.code);
+    // Override previous selections with Quick Access selection
     onFiltersChange({ ...filters, selectedPlants: sapPS4Plants });
   };
 
@@ -285,6 +296,7 @@ export function FilterPanel({
         return (erp === 'AX' || erp.includes('AX')) && !erp.includes('P01') && !erp.includes('PS4') && !erp.includes('S4');
       })
       .map((p) => p.code);
+    // Override previous selections with Quick Access selection
     onFiltersChange({ ...filters, selectedPlants: axPlants });
   };
 
@@ -293,6 +305,7 @@ export function FilterPanel({
     const automotivePlants = availablePlants
       .filter((plant) => plant.code === '101')
       .map((p) => p.code);
+    // Override previous selections with Quick Access selection
     onFiltersChange({ ...filters, selectedPlants: automotivePlants });
   };
 
@@ -301,6 +314,7 @@ export function FilterPanel({
     const aftermarketPlants = availablePlants
       .filter((plant) => plant.code !== '101')
       .map((p) => p.code);
+    // Override previous selections with Quick Access selection
     onFiltersChange({ ...filters, selectedPlants: aftermarketPlants });
   };
 
@@ -494,9 +508,16 @@ export function FilterPanel({
                       isSelected ? "text-black dark:text-black" : "text-black dark:text-foreground"
                     )}>
                       <span className="font-medium">{plant.code}</span>
-                      {plantData.abbreviation && (
-                        <span className="opacity-70 font-normal">{plantData.abbreviation}</span>
-                      )}
+                      {(() => {
+                        // Combine city and country abbreviations with comma (e.g., "NBB, DE")
+                        const abbrevParts: string[] = [];
+                        if (plantData.abbreviationCity) abbrevParts.push(plantData.abbreviationCity);
+                        if (plantData.abbreviationCountry) abbrevParts.push(plantData.abbreviationCountry);
+                        const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : plantData.abbreviation;
+                        return combinedAbbrev ? (
+                          <span className="opacity-70 font-normal">{combinedAbbrev}</span>
+                        ) : null;
+                      })()}
                     </span>
                   </Button>
                 );

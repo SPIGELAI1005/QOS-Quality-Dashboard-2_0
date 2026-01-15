@@ -24,7 +24,7 @@ import { dispatchKpiDataUpdated } from "@/lib/data/events";
 import { UploadSummaryTable } from "@/components/upload/upload-summary-table";
 import { ChangeHistoryPanel } from "@/components/upload/change-history-panel";
 import type { UploadSummaryEntry, ChangeHistoryEntry } from "@/lib/data/uploadSummary";
-import { saveUploadSummary, loadUploadSummary, saveChangeHistory, loadChangeHistory } from "@/lib/data/uploadSummary";
+import { saveUploadSummary, loadUploadSummary, saveChangeHistory, loadChangeHistory, getAllUploadSummaries } from "@/lib/data/uploadSummary";
 import { applyComplaintCorrections, applyDeliveryCorrections } from "@/lib/data/correctedData";
 import type { Complaint } from "@/lib/domain/types";
 
@@ -68,6 +68,8 @@ interface ManualKpiEntry extends MonthlySiteKpi {
   deviationsCompleted?: number;
   poorQualityCosts?: number;
   warrantyCosts?: number;
+  recordedBy?: string;
+  onePagerLink?: string;
 }
 
 interface PlantData {
@@ -76,6 +78,8 @@ interface PlantData {
   city?: string;
   location?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
 }
 
@@ -233,6 +237,8 @@ export default function UploadPage() {
     month: string;
     siteCode: string;
     siteLocation: string;
+    recordedBy: string;
+    onePagerLink: string;
     customerComplaintsQ1: number;
     supplierComplaintsQ2: number;
     internalComplaintsQ3: number;
@@ -255,6 +261,8 @@ export default function UploadPage() {
     month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
     siteCode: "",
     siteLocation: "",
+    recordedBy: "",
+    onePagerLink: "",
     customerComplaintsQ1: 0,
     supplierComplaintsQ2: 0,
     internalComplaintsQ3: 0,
@@ -562,6 +570,31 @@ export default function UploadPage() {
 
       persistHistory([entry, ...history]);
 
+      // Create change history entry for file upload
+      const uploadChangeHistory: ChangeHistoryEntry = {
+        id: makeId("upload_change"),
+        timestamp: entry.uploadedAtIso,
+        editor: role === "admin" ? "Admin" : role === "editor" ? "Editor" : "System",
+        recordId: entry.id,
+        recordType: section === "complaints" ? "complaint" : section === "deliveries" ? "delivery" : section === "ppap" ? "ppap" : section === "deviations" ? "deviation" : "file_upload",
+        field: "all",
+        oldValue: null,
+        newValue: summary,
+        reason: `File upload: ${files.map(f => f.name).join(", ")}`,
+        changeType: "file_upload",
+        affectedMetrics: {
+          metrics: sectionMeta[section].usedIn,
+          visualizations: sectionMeta[section].usedIn,
+          pages: sectionMeta[section].usedIn,
+          calculations: [],
+        },
+        dataDetails: {
+          files: files.map(f => ({ name: f.name, size: f.size })),
+          section,
+          summary,
+        },
+      };
+
       // Create and save upload summary for complaints
       if (section === "complaints" && conversionStatus.length > 0) {
         const complaints = Array.isArray(data?.complaints) ? (data.complaints as Complaint[]) : [];
@@ -573,7 +606,7 @@ export default function UploadPage() {
           rawData: { complaints },
           processedData: { complaints },
           conversionStatus: { complaints: conversionStatus },
-          changeHistory: [],
+          changeHistory: [uploadChangeHistory],
           summary: {
             totalRecords: complaints.length,
             recordsWithIssues: conversionStatus.filter(s => s.status === "failed" || s.status === "needs_attention").length,
@@ -583,7 +616,11 @@ export default function UploadPage() {
         };
 
         saveUploadSummary(uploadSummary);
+        saveChangeHistory(entry.id, [uploadChangeHistory]);
         setUploadSummaries(prev => new Map(prev).set(entry.id, uploadSummary));
+      } else {
+        // For other sections, save change history separately
+        saveChangeHistory(entry.id, [uploadChangeHistory]);
       }
     } catch (e) {
       setProgressBySection((p) => ({ ...p, [section]: { percent: p[section].percent, status: "error" } }));
@@ -665,7 +702,21 @@ export default function UploadPage() {
 
       setKpisResult(result);
       if (typeof window !== "undefined") {
-        localStorage.setItem("qos-et-kpis", JSON.stringify(result.monthlySiteKpis));
+        // CRITICAL: Merge new data with existing data instead of replacing it
+        // This allows users to upload data for multiple months incrementally
+        const existing = safeJsonParse<MonthlySiteKpi[]>(localStorage.getItem("qos-et-kpis")) || [];
+        const byKey = new Map(existing.map((k) => [`${k.month}__${k.siteCode}`, k] as const));
+        
+        // Merge new data: if same month+site exists, update it; otherwise add new
+        result.monthlySiteKpis.forEach((kpi) => {
+          byKey.set(`${kpi.month}__${kpi.siteCode}`, kpi);
+        });
+        
+        const merged = Array.from(byKey.values()).sort(
+          (a, b) => a.month.localeCompare(b.month) || a.siteCode.localeCompare(b.siteCode)
+        );
+        
+        localStorage.setItem("qos-et-kpis", JSON.stringify(merged));
         localStorage.setItem("qos-et-global-ppm", JSON.stringify(result.globalPpm));
         localStorage.setItem("qos-et-upload-kpis-result", JSON.stringify(result));
         // Notify other components that KPI data has been updated
@@ -724,6 +775,10 @@ export default function UploadPage() {
   function addManualEntry() {
     const site = manualDraft.siteCode.trim();
     if (!/^\d{3}$/.test(site)) return;
+    if (!manualDraft.recordedBy.trim()) {
+      // Show validation error - could use a toast or inline error
+      return;
+    }
     const deviationsTotal = (manualDraft.deviationsInProgress || 0) + (manualDraft.deviationsCompleted || 0);
     const entry: ManualKpiEntry = {
       month: manualDraft.month,
@@ -749,6 +804,8 @@ export default function UploadPage() {
       deviationsCompleted: manualDraft.deviationsCompleted,
       poorQualityCosts: manualDraft.poorQualityCosts,
       warrantyCosts: manualDraft.warrantyCosts,
+      recordedBy: manualDraft.recordedBy.trim(),
+      onePagerLink: manualDraft.onePagerLink.trim() || undefined,
     };
     const next = [entry, ...manualEntries];
     persistManual(next);
@@ -764,46 +821,200 @@ export default function UploadPage() {
       notes: "Manual KPI entry merged into qos-et-kpis",
     };
     persistHistory([historyEntry, ...history]);
+
+    // Create comprehensive change history entry for manual form entry
+    const timestamp = historyEntry.uploadedAtIso;
+    const manualChangeHistory: ChangeHistoryEntry = {
+      id: makeId("manual_change"),
+      timestamp,
+      editor: entry.recordedBy || "Unknown",
+      recordId: `manual_${entry.month}_${entry.siteCode}`,
+      recordType: "manual_entry",
+      field: "all",
+      oldValue: null,
+      newValue: {
+        month: entry.month,
+        siteCode: entry.siteCode,
+        siteName: entry.siteName,
+        customerComplaintsQ1: entry.customerComplaintsQ1,
+        supplierComplaintsQ2: entry.supplierComplaintsQ2,
+        internalComplaintsQ3: entry.internalComplaintsQ3,
+        customerDefectiveParts: entry.customerDefectiveParts,
+        supplierDefectiveParts: entry.supplierDefectiveParts,
+        internalDefectiveParts: entry.internalDefectiveParts,
+        customerDeliveries: entry.customerDeliveries,
+        supplierDeliveries: entry.supplierDeliveries,
+        ppapInProgress: entry.ppapP?.inProgress || 0,
+        ppapCompleted: entry.ppapP?.completed || 0,
+        deviationsInProgress: entry.deviationsInProgress || 0,
+        deviationsCompleted: entry.deviationsCompleted || 0,
+        auditInternalSystem: entry.auditInternalSystem || 0,
+        auditCertification: entry.auditCertification || 0,
+        auditProcess: entry.auditProcess || 0,
+        auditProduct: entry.auditProduct || 0,
+        poorQualityCosts: entry.poorQualityCosts || 0,
+        warrantyCosts: entry.warrantyCosts || 0,
+      },
+      reason: "Manual data entry via form",
+      changeType: "new_entry",
+      affectedMetrics: {
+        metrics: [
+          "Customer Complaints (Q1)",
+          "Supplier Complaints (Q2)",
+          "Internal Complaints (Q3)",
+          "Customer Defective Parts",
+          "Supplier Defective Parts",
+          "Internal Defective Parts",
+          "Customer Deliveries",
+          "Supplier Deliveries",
+          "PPAP In Progress",
+          "PPAP Completed",
+          "Deviations",
+          "Audit Metrics",
+          "Poor Quality Costs",
+          "Warranty Costs",
+        ],
+        visualizations: [
+          "Dashboard - All Metric Tiles",
+          "Customer Performance Charts",
+          "Supplier Performance Charts",
+          "PPAP Charts",
+          "Deviation Charts",
+          "Audit Management Charts",
+          "Cost Poor Quality Charts",
+          "Warranty Costs Charts",
+        ],
+        pages: [
+          "/dashboard",
+          "/customer-performance",
+          "/supplier-performance",
+          "/ppaps",
+          "/deviations",
+          "/audit-management",
+          "/cost-poor-quality",
+          "/warranties-costs",
+          "/ai-summary",
+        ],
+        calculations: [
+          "Customer PPM = (Customer Defective Parts / Customer Deliveries) * 1,000,000",
+          "Supplier PPM = (Supplier Defective Parts / Supplier Deliveries) * 1,000,000",
+        ],
+      },
+      onePagerLink: entry.onePagerLink,
+      dataDetails: {
+        recordedBy: entry.recordedBy,
+        onePagerLink: entry.onePagerLink,
+        entryType: "manual_form",
+      },
+    };
+
+    // Save change history for manual entry
+    saveChangeHistory(historyEntry.id, [manualChangeHistory]);
+    
+    // Also add to any existing upload summary's change history if applicable
+    const allSummaries = getAllUploadSummaries();
+    if (allSummaries.length > 0) {
+      // Add to the most recent summary or create a new one for manual entries
+      const latestSummary = allSummaries[0];
+      if (latestSummary) {
+        latestSummary.changeHistory.push(manualChangeHistory);
+        saveUploadSummary(latestSummary);
+        setUploadSummaries(prev => new Map(prev).set(latestSummary.id, latestSummary));
+      }
+    }
   }
 
   function exportManualAndHistoryToExcel() {
     const wb = XLSX.utils.book_new();
+    
+    // Format timestamp helper
+    const formatTimestamp = (iso: string) => {
+      try {
+        const date = new Date(iso);
+        return new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        }).format(date);
+      } catch {
+        return iso;
+      }
+    };
+
     const historyRows = history.map((h) => ({
-      uploadedAt: h.uploadedAtIso,
-      section: h.section,
-      success: h.success ? "yes" : "no",
-      files: h.files.map((f) => f.name).join("; "),
-      summary: JSON.stringify(h.summary),
-      usedIn: h.usedIn.join("; "),
-      notes: h.notes || "",
+      "Upload Date & Time": formatTimestamp(h.uploadedAtIso),
+      Section: h.section,
+      Success: h.success ? "Yes" : "No",
+      Files: h.files.map((f) => f.name).join("; "),
+      Summary: JSON.stringify(h.summary),
+      "Used In": h.usedIn.join("; "),
+      Notes: h.notes || "",
     }));
+    
     const manualRows = manualEntries.map((m) => ({
-      month: m.month,
-      plant: m.siteCode,
-      cityLocation: m.siteName || "",
-      customerComplaintsQ1: m.customerComplaintsQ1,
-      supplierComplaintsQ2: m.supplierComplaintsQ2,
-      internalComplaintsQ3: m.internalComplaintsQ3,
-      customerDefectiveParts: m.customerDefectiveParts,
-      supplierDefectiveParts: m.supplierDefectiveParts,
-      internalDefectiveParts: m.internalDefectiveParts,
-      customerDeliveries: m.customerDeliveries,
-      supplierDeliveries: m.supplierDeliveries,
-      ppapInProgress: m.ppapP?.inProgress ?? 0,
-      ppapCompleted: m.ppapP?.completed ?? 0,
-      deviationsD: m.deviationsD,
-      deviationsInProgress: m.deviationsInProgress ?? 0,
-      deviationsCompleted: m.deviationsCompleted ?? 0,
-      auditInternalSystem: m.auditInternalSystem ?? 0,
-      auditCertification: m.auditCertification ?? 0,
-      auditProcess: m.auditProcess ?? 0,
-      auditProduct: m.auditProduct ?? 0,
-      poorQualityCosts: m.poorQualityCosts ?? 0,
-      warrantyCosts: m.warrantyCosts ?? 0,
+      "Entry Date & Time": m.recordedBy ? formatTimestamp(new Date().toISOString()) : "", // We don't store timestamp in manual entries, so use current time
+      Month: m.month,
+      Plant: m.siteCode,
+      "City/Location": m.siteName || "",
+      "Recorded By": m.recordedBy || "",
+      "Link to OnePager": m.onePagerLink || "",
+      "Customer Complaints (Q1)": m.customerComplaintsQ1,
+      "Supplier Complaints (Q2)": m.supplierComplaintsQ2,
+      "Internal Complaints (Q3)": m.internalComplaintsQ3,
+      "Customer Defective Parts": m.customerDefectiveParts,
+      "Supplier Defective Parts": m.supplierDefectiveParts,
+      "Internal Defective Parts": m.internalDefectiveParts,
+      "Customer Deliveries": m.customerDeliveries,
+      "Supplier Deliveries": m.supplierDeliveries,
+      "PPAP In Progress": m.ppapP?.inProgress ?? 0,
+      "PPAP Completed": m.ppapP?.completed ?? 0,
+      "Deviations Total": m.deviationsD,
+      "Deviations In Progress": m.deviationsInProgress ?? 0,
+      "Deviations Completed": m.deviationsCompleted ?? 0,
+      "Audit Internal System": m.auditInternalSystem ?? 0,
+      "Audit Certification": m.auditCertification ?? 0,
+      "Audit Process": m.auditProcess ?? 0,
+      "Audit Product": m.auditProduct ?? 0,
+      "Poor Quality Costs": m.poorQualityCosts ?? 0,
+      "Warranty Costs": m.warrantyCosts ?? 0,
     }));
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(historyRows), "UploadHistory");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(manualRows), "ManualKpis");
-    XLSX.writeFile(wb, `qos-et-manual-and-history_${new Date().toISOString().slice(0, 10)}.xlsx`);
+
+    // Get all change history entries
+    const allChangeHistory: ChangeHistoryEntry[] = [];
+    Array.from(uploadSummaries.values()).forEach(summary => {
+      allChangeHistory.push(...summary.changeHistory);
+    });
+    // Also get change history from manual entries
+    history.forEach(h => {
+      const changes = loadChangeHistory(h.id);
+      allChangeHistory.push(...changes);
+    });
+
+    const changeHistoryRows = allChangeHistory.map((change) => ({
+      "Date & Time": formatTimestamp(change.timestamp),
+      "Recorded By": change.editor,
+      "Record ID": change.recordId,
+      "Record Type": change.recordType,
+      Field: change.field,
+      "Old Value": typeof change.oldValue === "object" ? JSON.stringify(change.oldValue) : String(change.oldValue || ""),
+      "New Value": typeof change.newValue === "object" ? JSON.stringify(change.newValue) : String(change.newValue || ""),
+      Reason: change.reason || "",
+      "Change Type": change.changeType,
+      "One-Pager Link": change.onePagerLink || "",
+      "Affected Metrics": change.affectedMetrics.metrics.join("; "),
+      "Affected Visualizations": change.affectedMetrics.visualizations.join("; "),
+      "Affected Pages": change.affectedMetrics.pages.join("; "),
+      "Affected Calculations": change.affectedMetrics.calculations.join("; "),
+    }));
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(historyRows), "Upload History");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(manualRows), "Manual Form Entries");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(changeHistoryRows), "Change History");
+    XLSX.writeFile(wb, `qos-et-data-export_${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   useEffect(() => {
@@ -1216,40 +1427,80 @@ export default function UploadPage() {
 
               <Separator />
 
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="recordedBy">
+                    Name of Person Recording Data <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id="recordedBy"
+                    value={manualDraft.recordedBy}
+                    onChange={(e) => setManualDraft((p) => ({ ...p, recordedBy: e.target.value }))}
+                    placeholder="Enter your name"
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="onePagerLink">Link to OnePager</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="onePagerLink"
+                      type="url"
+                      value={manualDraft.onePagerLink}
+                      onChange={(e) => setManualDraft((p) => ({ ...p, onePagerLink: e.target.value }))}
+                      placeholder="https://..."
+                    />
+                    {manualDraft.onePagerLink && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => window.open(manualDraft.onePagerLink, '_blank')}
+                        title="Open link"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Link to folder where one-pager will be stored</p>
+                </div>
+              </div>
+
+              <Separator />
+
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label>{t.upload.customerComplaintsQ1}</Label>
-                  <Input type="number" value={manualDraft.customerComplaintsQ1} onChange={(e) => setManualDraft((p) => ({ ...p, customerComplaintsQ1: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.customerComplaintsQ1} onChange={(e) => setManualDraft((p) => ({ ...p, customerComplaintsQ1: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.supplierComplaintsQ2}</Label>
-                  <Input type="number" value={manualDraft.supplierComplaintsQ2} onChange={(e) => setManualDraft((p) => ({ ...p, supplierComplaintsQ2: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.supplierComplaintsQ2} onChange={(e) => setManualDraft((p) => ({ ...p, supplierComplaintsQ2: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.internalComplaintsQ3}</Label>
-                  <Input type="number" value={manualDraft.internalComplaintsQ3} onChange={(e) => setManualDraft((p) => ({ ...p, internalComplaintsQ3: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.internalComplaintsQ3} onChange={(e) => setManualDraft((p) => ({ ...p, internalComplaintsQ3: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label>{t.upload.customerDefectiveParts}</Label>
-                  <Input type="number" value={manualDraft.customerDefectiveParts} onChange={(e) => setManualDraft((p) => ({ ...p, customerDefectiveParts: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.customerDefectiveParts} onChange={(e) => setManualDraft((p) => ({ ...p, customerDefectiveParts: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.supplierDefectiveParts}</Label>
-                  <Input type="number" value={manualDraft.supplierDefectiveParts} onChange={(e) => setManualDraft((p) => ({ ...p, supplierDefectiveParts: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.supplierDefectiveParts} onChange={(e) => setManualDraft((p) => ({ ...p, supplierDefectiveParts: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.internalDefectiveParts}</Label>
-                  <Input type="number" value={manualDraft.internalDefectiveParts} onChange={(e) => setManualDraft((p) => ({ ...p, internalDefectiveParts: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.internalDefectiveParts} onChange={(e) => setManualDraft((p) => ({ ...p, internalDefectiveParts: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
 
                 <div className="space-y-1.5">
                   <Label>{t.upload.outboundDeliveries}</Label>
-                  <Input type="number" value={manualDraft.customerDeliveries} onChange={(e) => setManualDraft((p) => ({ ...p, customerDeliveries: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.customerDeliveries} onChange={(e) => setManualDraft((p) => ({ ...p, customerDeliveries: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.inboundDeliveries}</Label>
-                  <Input type="number" value={manualDraft.supplierDeliveries} onChange={(e) => setManualDraft((p) => ({ ...p, supplierDeliveries: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.supplierDeliveries} onChange={(e) => setManualDraft((p) => ({ ...p, supplierDeliveries: Math.max(0, Number(e.target.value) || 0) }))} />
             </div>
               </div>
 
@@ -1258,32 +1509,36 @@ export default function UploadPage() {
                   <Label>{t.upload.ppapsInProgress}</Label>
                   <Input
                     type="number"
+                    min="0"
                     value={manualDraft.ppapInProgress}
-                    onChange={(e) => setManualDraft((p) => ({ ...p, ppapInProgress: Number(e.target.value) }))}
+                    onChange={(e) => setManualDraft((p) => ({ ...p, ppapInProgress: Math.max(0, Number(e.target.value) || 0) }))}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.ppapsCompleted}</Label>
                   <Input
                     type="number"
+                    min="0"
                     value={manualDraft.ppapCompleted}
-                    onChange={(e) => setManualDraft((p) => ({ ...p, ppapCompleted: Number(e.target.value) }))}
+                    onChange={(e) => setManualDraft((p) => ({ ...p, ppapCompleted: Math.max(0, Number(e.target.value) || 0) }))}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.deviationsInProgress}</Label>
                   <Input
                     type="number"
+                    min="0"
                     value={manualDraft.deviationsInProgress}
-                    onChange={(e) => setManualDraft((p) => ({ ...p, deviationsInProgress: Number(e.target.value) }))}
+                    onChange={(e) => setManualDraft((p) => ({ ...p, deviationsInProgress: Math.max(0, Number(e.target.value) || 0) }))}
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.deviationsCompleted}</Label>
                   <Input
                     type="number"
+                    min="0"
                     value={manualDraft.deviationsCompleted}
-                    onChange={(e) => setManualDraft((p) => ({ ...p, deviationsCompleted: Number(e.target.value) }))}
+                    onChange={(e) => setManualDraft((p) => ({ ...p, deviationsCompleted: Math.max(0, Number(e.target.value) || 0) }))}
                   />
                 </div>
                 <div className="md:col-span-2 text-xs text-muted-foreground">
@@ -1296,19 +1551,19 @@ export default function UploadPage() {
               <div className="grid gap-3 md:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label>{t.upload.auditsInternalSystem}</Label>
-                  <Input type="number" value={manualDraft.auditInternalSystem} onChange={(e) => setManualDraft((p) => ({ ...p, auditInternalSystem: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.auditInternalSystem} onChange={(e) => setManualDraft((p) => ({ ...p, auditInternalSystem: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.auditsCertification}</Label>
-                  <Input type="number" value={manualDraft.auditCertification} onChange={(e) => setManualDraft((p) => ({ ...p, auditCertification: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.auditCertification} onChange={(e) => setManualDraft((p) => ({ ...p, auditCertification: Math.max(0, Number(e.target.value) || 0) }))} />
                       </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.auditsProcess}</Label>
-                  <Input type="number" value={manualDraft.auditProcess} onChange={(e) => setManualDraft((p) => ({ ...p, auditProcess: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.auditProcess} onChange={(e) => setManualDraft((p) => ({ ...p, auditProcess: Math.max(0, Number(e.target.value) || 0) }))} />
                     </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.auditsProduct}</Label>
-                  <Input type="number" value={manualDraft.auditProduct} onChange={(e) => setManualDraft((p) => ({ ...p, auditProduct: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.auditProduct} onChange={(e) => setManualDraft((p) => ({ ...p, auditProduct: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
             </div>
 
@@ -1317,21 +1572,37 @@ export default function UploadPage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label>{t.upload.poorQualityCosts}</Label>
-                  <Input type="number" value={manualDraft.poorQualityCosts} onChange={(e) => setManualDraft((p) => ({ ...p, poorQualityCosts: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.poorQualityCosts} onChange={(e) => setManualDraft((p) => ({ ...p, poorQualityCosts: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>{t.upload.warrantyCosts}</Label>
-                  <Input type="number" value={manualDraft.warrantyCosts} onChange={(e) => setManualDraft((p) => ({ ...p, warrantyCosts: Number(e.target.value) }))} />
+                  <Input type="number" min="0" value={manualDraft.warrantyCosts} onChange={(e) => setManualDraft((p) => ({ ...p, warrantyCosts: Math.max(0, Number(e.target.value) || 0) }))} />
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Button onClick={addManualEntry}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button 
+                  onClick={addManualEntry}
+                  disabled={!manualDraft.recordedBy.trim()}
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   {t.upload.addEntry}
                 </Button>
-                <p className="text-xs text-muted-foreground">{t.upload.plantMustBe3Digits}</p>
-                  </div>
+                <Button
+                  variant="outline"
+                  onClick={exportManualAndHistoryToExcel}
+                  disabled={manualEntries.length === 0 && history.length === 0}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Form Data to Excel
+                </Button>
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs text-muted-foreground">{t.upload.plantMustBe3Digits}</p>
+                  {!manualDraft.recordedBy.trim() && (
+                    <p className="text-xs text-destructive">Name of person recording data is required</p>
+                  )}
+                </div>
+              </div>
 
               {manualEntries.length > 0 && (
                 <div className="rounded-md border p-3 text-sm">
@@ -1450,11 +1721,27 @@ export default function UploadPage() {
       </Card>
 
           {/* Change History Panel */}
-          {Array.from(uploadSummaries.values()).some(s => s.changeHistory.length > 0) && (
-            <ChangeHistoryPanel
-              changes={Array.from(uploadSummaries.values()).flatMap(s => s.changeHistory)}
-            />
-          )}
+          {(() => {
+            // Collect all change history entries from upload summaries
+            const allChanges: ChangeHistoryEntry[] = [];
+            Array.from(uploadSummaries.values()).forEach(summary => {
+              allChanges.push(...summary.changeHistory);
+            });
+            // Also get change history from manual entries and file uploads
+            history.forEach(h => {
+              const changes = loadChangeHistory(h.id);
+              allChanges.push(...changes);
+            });
+            
+            // Sort by timestamp (newest first)
+            const sortedChanges = allChanges.sort((a, b) => 
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+
+            return sortedChanges.length > 0 ? (
+              <ChangeHistoryPanel changes={sortedChanges} />
+            ) : null;
+          })()}
         </TabsContent>
       </Tabs>
 

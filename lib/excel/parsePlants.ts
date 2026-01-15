@@ -5,12 +5,33 @@
 import * as XLSX from 'xlsx';
 import type { Plant } from '@/lib/domain/types';
 
+/**
+ * Format combined abbreviation from city and country abbreviations
+ * Returns format like "NBB, DE" or falls back to single abbreviation
+ */
+export function formatPlantAbbreviation(plant: PlantData | undefined): string {
+  if (!plant) return '';
+  
+  const abbrevParts: string[] = [];
+  if (plant.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+  if (plant.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+  
+  if (abbrevParts.length > 0) {
+    return abbrevParts.join(', ');
+  }
+  
+  // Fallback to single abbreviation if available
+  return plant.abbreviation || '';
+}
+
 export interface PlantData {
   code: string;
   name: string;
   erp?: string;
   city?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
   location?: string;
 }
@@ -52,11 +73,26 @@ export function parsePlants(buffer: Buffer): PlantData[] {
     );
     const abbreviationIndex = headers.findIndex((h) => {
       const lowerH = h.toLowerCase();
-      return ['abbreviation', 'abbr', 'short'].some((term) => lowerH.includes(term)) && 
-             !lowerH.includes('plant') && !lowerH.includes('site'); // Exclude "plant code" etc.
+      return ['abbreviation', 'abbreviations', 'abbr', 'abbrs', 'short'].some((term) => lowerH.includes(term)) && 
+             !lowerH.includes('plant') && !lowerH.includes('site') && 
+             !lowerH.includes('city') && !lowerH.includes('country'); // Exclude city/country specific abbreviations
+    });
+    const abbreviationCityIndex = headers.findIndex((h) => {
+      const lowerH = h.toLowerCase().trim();
+      // Match "Abbreviations City" or "Abbreviation City" (case insensitive)
+      return (lowerH.includes('abbreviation') || lowerH.includes('abbr')) && 
+             lowerH.includes('city') &&
+             !lowerH.includes('country');
+    });
+    const abbreviationCountryIndex = headers.findIndex((h) => {
+      const lowerH = h.toLowerCase().trim();
+      // Match "Abbreviations Country" or "Abbreviation Country" (case insensitive)
+      return (lowerH.includes('abbreviation') || lowerH.includes('abbr')) && 
+             lowerH.includes('country') &&
+             !lowerH.includes('city');
     });
     const countryIndex = headers.findIndex((h) =>
-      ['country', 'nation'].some((term) => h.includes(term))
+      ['country', 'nation'].some((term) => h.includes(term)) && !h.toLowerCase().includes('abbreviation') && !h.toLowerCase().includes('abbr')
     );
 
     if (codeIndex === -1) {
@@ -110,6 +146,8 @@ export function parsePlants(buffer: Buffer): PlantData[] {
             : code;
       const city = cityIndex !== -1 ? String(row[cityIndex] || '').trim() : undefined;
       const abbreviation = abbreviationIndex !== -1 ? String(row[abbreviationIndex] || '').trim() : undefined;
+      const abbreviationCity = abbreviationCityIndex !== -1 ? String(row[abbreviationCityIndex] || '').trim() : undefined;
+      const abbreviationCountry = abbreviationCountryIndex !== -1 ? String(row[abbreviationCountryIndex] || '').trim() : undefined;
       const country = countryIndex !== -1 ? String(row[countryIndex] || '').trim() : undefined;
 
       const plant: PlantData = {
@@ -118,6 +156,8 @@ export function parsePlants(buffer: Buffer): PlantData[] {
         erp: erp || undefined,
         city: city || undefined,
         abbreviation: abbreviation || undefined,
+        abbreviationCity: abbreviationCity || undefined,
+        abbreviationCountry: abbreviationCountry || undefined,
         country: country || undefined,
         location: country ? `${city || name}, ${country}` : city || name || code,
       };

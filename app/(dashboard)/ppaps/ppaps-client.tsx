@@ -14,6 +14,9 @@ import {
 } from "@/components/ui/select";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { ExternalLink, FileSpreadsheet, Info, Loader2, RefreshCw, Sparkles, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,6 +51,8 @@ interface PlantData {
   city?: string;
   location?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
 }
 
@@ -83,13 +88,17 @@ export function PPAPsClient() {
   >(null);
   const [aiSummaryErrorDetails, setAiSummaryErrorDetails] = useState<{ message?: string; code?: string; statusCode?: number } | null>(null);
 
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: [],
-    selectedNotificationTypes: [],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -125,7 +134,17 @@ export function PPAPsClient() {
 
   const formatPlantLabel = useCallback((siteCode: string): string => {
     const plant = plantsData.find((p) => p.code === siteCode);
-    const label = plant?.location || plant?.city || plant?.abbreviation || plant?.country || plant?.name;
+    // Prioritize combined abbreviation (city, country)
+    const abbrevParts: string[] = [];
+    if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+    if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+    const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
+    
+    if (combinedAbbrev) {
+      return `${siteCode} ${combinedAbbrev}`;
+    }
+    // Fallback to other labels
+    const label = plant?.location || plant?.city || plant?.country || plant?.name;
     return label ? `${siteCode} (${label})` : siteCode;
   }, [plantsData]);
 
@@ -422,7 +441,14 @@ export function PPAPsClient() {
       <div className="flex flex-wrap items-center gap-4 justify-center mt-4 pt-4 border-t border-border/50">
         {sites.map((site) => {
           const plant = plantsData.find((p) => p.code === site);
-          const city = plant?.city || plant?.location || plant?.abbreviation || "";
+          // Use combined abbreviation (city, country) or fallback to single abbreviation or city
+          const abbrevParts: string[] = [];
+          if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+          if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+          const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
+          const city = plant?.city || plant?.location || '';
+          // Only show abbreviation/city, not plant code (already shown in color indicator)
+          const displayText = combinedAbbrev || city || `Site ${site}`;
           const isSelected = selectedPlant === site;
           return (
             <div
@@ -433,7 +459,7 @@ export function PPAPsClient() {
                 isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background rounded-lg p-1"
               )}
               onClick={() => onPlantClick?.(isSelected ? null : site)}
-              title={isSelected ? t.charts.resetToShowAll : `${t.charts.clickToFilterBy} ${city || site}`}
+              title={isSelected ? t.charts.resetToShowAll : `${t.charts.clickToFilterBy} ${combinedAbbrev || city || site}`}
             >
               <div
                 className={cn("h-6 w-6 rounded flex items-center justify-center text-xs font-semibold text-white flex-shrink-0")}
@@ -442,7 +468,7 @@ export function PPAPsClient() {
                 {site}
               </div>
               <span className={cn("text-sm whitespace-nowrap", isSelected ? "text-primary font-semibold" : "text-foreground")}>
-                {city || `Site ${site}`}
+                {displayText}
               </span>
             </div>
           );
@@ -547,6 +573,19 @@ export function PPAPsClient() {
                       >
                         <RefreshCw className={`h-3.5 w-3.5 ${aiSummaryLoading ? "animate-spin" : ""}`} style={{ color: "#9E9E9E" }} />
                       </button>
+                      <IAmQButton
+                        onClick={() => {
+                          setChartContext({
+                            title: "AI Summary - PPAPs",
+                            description: "AI-generated summary of PPAP (P1, P2, P3) notifications and trends",
+                            chartType: "metric",
+                            dataType: "ppaps",
+                            hasData: ppapMonthlySiteKpisForAi.length > 0,
+                            dataCount: ppapMonthlySiteKpisForAi.length,
+                          });
+                          setIsChatOpen(true);
+                        }}
+                      />
                       <div className="p-3 rounded-lg" style={{ backgroundColor: "#9E9E9E20", borderColor: "#9E9E9E50", borderWidth: "1px" }}>
                         <Sparkles className="h-4 w-4" style={{ color: "#9E9E9E" }} />
                       </div>
@@ -674,8 +713,25 @@ export function PPAPsClient() {
         <div className="space-y-6">
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>YTD P Notifications by Month and Plant</CardTitle>
-              <CardDescription>Number of PPAP notifications by month and plant (stacked)</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>YTD P Notifications by Month and Plant</CardTitle>
+                  <CardDescription>Number of PPAP notifications by month and plant (stacked)</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "YTD P Notifications by Month and Plant",
+                      description: "Number of PPAP notifications by month and plant (stacked)",
+                      chartType: "bar",
+                      dataType: "ppaps",
+                      hasData: ppapNotificationsByMonthPlant.data.length > 0 && ppapNotificationsByMonthPlant.sites.length > 0,
+                      dataCount: ppapNotificationsByMonthPlant.sites.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               {ppapNotificationsByMonthPlant.data.length > 0 && ppapNotificationsByMonthPlant.sites.length > 0 ? (
@@ -752,6 +808,21 @@ export function PPAPsClient() {
                     Reset Filter
                   </Button>
                 )}
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "YTD P Notifications Closed vs. In Progress by Month and Plant",
+                      description: selectedPlantForStatusChart
+                        ? `Closed vs. In Progress for ${formatPlantLabel(selectedPlantForStatusChart)}`
+                        : "Closed vs. In Progress across all selected plants",
+                      chartType: "bar",
+                      dataType: "ppaps",
+                      hasData: ppapStatusByMonth.data.length > 0,
+                      dataCount: ppapStatusByMonth.data.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
               </div>
             </CardHeader>
             <CardContent>
@@ -869,6 +940,23 @@ export function PPAPsClient() {
           showNotificationTypes={false}
         />
       </div>
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
+        filters={filters}
+        monthlySiteKpis={ppapMonthlySiteKpisForAi}
+        selectedSites={filters.selectedPlants.length > 0 ? filters.selectedPlants : Array.from(new Set(ppaps.map(p => String(p.siteCode || p.plant || "").trim()))).sort()}
+        selectedMonths={Array.from(new Set(ppaps.map(p => {
+          const created = p.createdOn instanceof Date ? p.createdOn : new Date(p.createdOn);
+          return toMonthKey(created);
+        }))).sort()}
+      />
     </div>
   );
 }

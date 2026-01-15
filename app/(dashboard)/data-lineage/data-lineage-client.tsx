@@ -23,6 +23,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { getDatasetHealth, getDatasetHealthSummary, type UploadSectionKey } from "@/lib/data/datasetHealth";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
+import type { ChangeHistoryEntry } from "@/lib/data/uploadSummary";
 
 import type { UploadHistoryEntry } from "@/lib/data/datasetHealth";
 
@@ -45,6 +48,15 @@ function safeJsonParse<T>(raw: string | null): T | null {
 
 export function DataLineageClient() {
   const [history, setHistory] = useState<UploadHistoryEntry[]>([]);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title: string;
+    description: string;
+    chartType: "bar" | "line" | "pie" | "table" | "metric";
+    dataType: "ppm" | "notifications" | "defects" | "ppaps" | "deviations" | "audits" | "warranties" | "costs" | "general";
+    hasData: boolean;
+    dataCount?: number;
+  } | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -213,6 +225,19 @@ export function DataLineageClient() {
             </div>
 
             <div className="flex items-center gap-2">
+              <IAmQButton
+                onClick={() => {
+                  setChartContext({
+                    title: "Data Lineage - Overview",
+                    description: "Data lineage documentation showing data sources, processing flow, storage, and outputs across the QOS ET Report application.",
+                    chartType: "metric",
+                    dataType: "general",
+                    hasData: datasets.length > 0,
+                    dataCount: datasets.length,
+                  });
+                  setIsChatOpen(true);
+                }}
+              />
               <Button
                 variant="outline"
                 onClick={() => (typeof window !== "undefined" ? window.location.assign("/upload") : undefined)}
@@ -237,7 +262,7 @@ export function DataLineageClient() {
             value="flow"
             className="text-base font-semibold px-4 data-[state=active]:bg-[#00FF88] data-[state=active]:text-black data-[state=active]:shadow-sm"
           >
-            End-to-End Flow
+            WOWFLOW
           </TabsTrigger>
           <TabsTrigger
             value="storage"
@@ -248,6 +273,34 @@ export function DataLineageClient() {
         </TabsList>
 
         <TabsContent value="catalog" className="space-y-6">
+          <Card className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Database className="h-5 w-5 text-muted-foreground" />
+                    Data Catalog
+                  </CardTitle>
+                  <CardDescription>
+                    Overview of all data sources, their processing, and where they are used throughout the application.
+                  </CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "Data Catalog",
+                      description: "Comprehensive catalog of all data sources, their source patterns, parsing logic, outputs, and usage across pages and charts in the QOS ET Report application.",
+                      chartType: "table",
+                      dataType: "general",
+                      hasData: datasets.length > 0,
+                      dataCount: datasets.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
+            </CardHeader>
+          </Card>
           <div className="grid gap-4 lg:grid-cols-3">
             {datasets.map((d) => {
               const healthStatus = d.status.healthStatus || (d.status.lastSuccessIso ? "ok" : "missing");
@@ -461,6 +514,52 @@ export function DataLineageClient() {
         </TabsContent>
 
         <TabsContent value="flow" className="space-y-6">
+          <Card className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Info className="h-5 w-5 text-muted-foreground" />
+                    WOWFLOW - Data Flow and Scope
+                  </CardTitle>
+                  <CardDescription>
+                    Complete overview of how data flows through the QOS ET Report application, from source files to final visualizations and outputs.
+                  </CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "WOWFLOW - End-to-End Data Flow",
+                      description: "Complete data flow explanation showing how data moves from source files through parsing, KPI calculation, and consumption across the application.",
+                      chartType: "metric",
+                      dataType: "general",
+                      hasData: true,
+                      dataCount: datasets.length,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="prose prose-sm max-w-none text-muted-foreground">
+                <p className="text-base font-medium text-foreground mb-3">
+                  <strong>Data Used and Scope Across the App</strong>
+                </p>
+                <p>
+                  The QOS ET Report application processes quality data from multiple Excel sources and manual entries to generate comprehensive KPIs, 
+                  visualizations, and AI-powered insights. The data flows through four main stages: <strong>Sources</strong>, <strong>Parsing</strong>, 
+                  <strong>KPIs</strong>, and <strong>Consumption</strong>.
+                </p>
+                <p>
+                  <strong>Scope:</strong> This data is used across all dashboard pages, charts, tables, AI summaries, and export functionalities. 
+                  Each dataset has specific source patterns, parsing logic, and output formats that feed into various visualizations and calculations 
+                  throughout the application.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid gap-4 lg:grid-cols-4">
             {[
               {
@@ -468,24 +567,28 @@ export function DataLineageClient() {
                 icon: FileSpreadsheet,
                 text: "Excel extracts + manual form entries",
                 items: ["Complaints", "Deliveries", "Plants", "PPAP", "Deviations", "Audits (TBD)"],
+                explanation: "Data originates from Excel files uploaded via the Upload page or manually entered through the form. Source files include complaint notifications, delivery records, plant master data, PPAP notifications, deviation records, and audit data.",
               },
               {
                 title: "2) Parsing",
                 icon: Database,
                 text: "Header detection, date parsing, plant normalization",
                 items: ["parseComplaints", "parseDeliveries", "parsePlants", "parsePPAP", "parseDeviations"],
+                explanation: "Each parser detects file headers, normalizes dates, maps plant codes to locations, and handles unit conversions (e.g., ML/M/M2 to PC). Parsed data is validated and stored in structured formats.",
               },
               {
                 title: "3) KPIs",
                 icon: TrendingUp,
                 text: "Monthly aggregation + PPM computation",
                 items: ["monthlySiteKpis", "globalPpm", "PPM formulas", "Defects totals"],
+                explanation: "KPIs are calculated by aggregating data by month and plant. Customer and Supplier PPM are computed using defective parts divided by deliveries, multiplied by 1,000,000. All metrics are aggregated into monthly site KPIs.",
               },
               {
                 title: "4) Consumption",
                 icon: Sparkles,
                 text: "Charts, tables, legends, and AI summaries",
                 items: ["Dashboard pages", "AI Summary", "Export/History", "Plant labels (code + city)"],
+                explanation: "Processed KPIs are consumed by dashboard pages, charts, tables, AI summary generation, export functions, and change history tracking. Plant labels include both code and city/location for clarity.",
               },
             ].map((step, idx) => (
               <Card key={idx} className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
@@ -496,13 +599,16 @@ export function DataLineageClient() {
                   </CardTitle>
                   <CardDescription>{step.text}</CardDescription>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground space-y-1">
-                  {step.items.map((i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <ArrowRight className="h-4 w-4 mt-0.5" />
-                      <span className="break-words">{i}</span>
-                    </div>
-                  ))}
+                <CardContent className="text-sm text-muted-foreground space-y-2">
+                  <p className="text-xs leading-relaxed">{step.explanation}</p>
+                  <div className="space-y-1 pt-2 border-t border-border/50">
+                    {step.items.map((i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <ArrowRight className="h-4 w-4 mt-0.5" />
+                        <span className="break-words">{i}</span>
+                      </div>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -539,11 +645,28 @@ export function DataLineageClient() {
         <TabsContent value="storage" className="space-y-6">
           <Card className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Layers className="h-5 w-5 text-muted-foreground" />
-                Storage Layers & Outputs
-              </CardTitle>
-              <CardDescription>What is stored and consumed at runtime.</CardDescription>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-muted-foreground" />
+                    Storage Layers & Outputs
+                  </CardTitle>
+                  <CardDescription>What is stored and consumed at runtime.</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: "Storage & Outputs",
+                      description: "Detailed information about data storage mechanisms (localStorage, server-side files), data structures, and how data is consumed and output throughout the application.",
+                      chartType: "table",
+                      dataType: "general",
+                      hasData: true,
+                      dataCount: 1,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-2">
@@ -624,6 +747,12 @@ export function DataLineageClient() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={setIsChatOpen}
+        chartContext={chartContext || undefined}
+      />
     </div>
   );
 }

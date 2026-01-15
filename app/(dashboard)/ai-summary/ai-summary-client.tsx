@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, FileText } from "lucide-react";
 import { AIInsightsPanel } from "@/components/dashboard/ai-insights-panel";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -15,6 +16,8 @@ interface PlantData {
   erp?: string;
   city?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
   location?: string;
 }
@@ -31,14 +34,8 @@ export function AISummaryClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
   const [loading, setLoading] = useState(propsKpis.length === 0);
   const [plantsData, setPlantsData] = useState<PlantData[]>([]);
   
-  // Filter state - same as dashboard
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: [],
-    selectedNotificationTypes: [],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
 
   // Load plants data from API (official "Webasto ET Plants.xlsx" file)
   useEffect(() => {
@@ -197,6 +194,124 @@ export function AISummaryClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     return Array.from(new Set(monthlySiteKpis.map(k => k.siteCode))).sort();
   }, [filters.selectedPlants, monthlySiteKpis]);
 
+  // Calculate metrics (same logic as dashboard) to pass to AI
+  const customerMetrics = useMemo(() => {
+    // Get last month and previous month for trend calculation
+    const sorted = [...filteredKpis].sort((a, b) => a.month.localeCompare(b.month));
+    if (sorted.length === 0) {
+      return {
+        complaints: { value: 0, trend: 0 },
+        defective: { value: 0, trend: 0 },
+        deliveries: { value: 0, trend: 0 },
+        ppm: { value: 0, trend: 0 },
+      };
+    }
+
+    const lastMonthStr = sorted[sorted.length - 1].month;
+    const lastMonthDate = new Date(lastMonthStr + "-01");
+    const previousMonthDate = new Date(lastMonthDate);
+    previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
+    const previousMonthStr = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const current = {
+      complaints: filteredKpis.reduce((sum, k) => sum + k.customerComplaintsQ1, 0),
+      defective: filteredKpis.reduce((sum, k) => sum + (k.customerDefectiveParts || 0), 0),
+      deliveries: filteredKpis.reduce((sum, k) => sum + (k.customerDeliveries || 0), 0),
+      ppm: (() => {
+        const totalDefective = filteredKpis.reduce((sum, k) => sum + (k.customerDefectiveParts || 0), 0);
+        const totalDeliveries = filteredKpis.reduce((sum, k) => sum + (k.customerDeliveries || 0), 0);
+        return totalDeliveries > 0 ? (totalDefective / totalDeliveries) * 1_000_000 : 0;
+      })(),
+    };
+
+    const previousYtdKpis = filteredKpis.filter((k) => {
+      const kpiDate = new Date(k.month + "-01");
+      const previousMonthDateObj = new Date(previousMonthStr + "-01");
+      return kpiDate <= previousMonthDateObj;
+    });
+
+    const previous = {
+      complaints: previousYtdKpis.reduce((sum, k) => sum + k.customerComplaintsQ1, 0),
+      defective: previousYtdKpis.reduce((sum, k) => sum + (k.customerDefectiveParts || 0), 0),
+      deliveries: previousYtdKpis.reduce((sum, k) => sum + (k.customerDeliveries || 0), 0),
+      ppm: (() => {
+        const totalDefective = previousYtdKpis.reduce((sum, k) => sum + (k.customerDefectiveParts || 0), 0);
+        const totalDeliveries = previousYtdKpis.reduce((sum, k) => sum + (k.customerDeliveries || 0), 0);
+        return totalDeliveries > 0 ? (totalDefective / totalDeliveries) * 1_000_000 : 0;
+      })(),
+    };
+
+    const calculateTrend = (current: number, previous: number): number => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    return {
+      complaints: { value: current.complaints, trend: calculateTrend(current.complaints, previous.complaints) },
+      defective: { value: current.defective, trend: calculateTrend(current.defective, previous.defective) },
+      deliveries: { value: current.deliveries, trend: calculateTrend(current.deliveries, previous.deliveries) },
+      ppm: { value: current.ppm, trend: calculateTrend(current.ppm, previous.ppm) },
+    };
+  }, [filteredKpis]);
+
+  const supplierMetrics = useMemo(() => {
+    const sorted = [...filteredKpis].sort((a, b) => a.month.localeCompare(b.month));
+    if (sorted.length === 0) {
+      return {
+        complaints: { value: 0, trend: 0 },
+        defective: { value: 0, trend: 0 },
+        deliveries: { value: 0, trend: 0 },
+        ppm: { value: 0, trend: 0 },
+      };
+    }
+
+    const lastMonthStr = sorted[sorted.length - 1].month;
+    const lastMonthDate = new Date(lastMonthStr + "-01");
+    const previousMonthDate = new Date(lastMonthDate);
+    previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
+    const previousMonthStr = `${previousMonthDate.getFullYear()}-${String(previousMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    const current = {
+      complaints: filteredKpis.reduce((sum, k) => sum + k.supplierComplaintsQ2, 0),
+      defective: filteredKpis.reduce((sum, k) => sum + (k.supplierDefectiveParts || 0), 0),
+      deliveries: filteredKpis.reduce((sum, k) => sum + (k.supplierDeliveries || 0), 0),
+      ppm: (() => {
+        const totalDefective = filteredKpis.reduce((sum, k) => sum + (k.supplierDefectiveParts || 0), 0);
+        const totalDeliveries = filteredKpis.reduce((sum, k) => sum + (k.supplierDeliveries || 0), 0);
+        return totalDeliveries > 0 ? (totalDefective / totalDeliveries) * 1_000_000 : 0;
+      })(),
+    };
+
+    const previousYtdKpis = filteredKpis.filter((k) => {
+      const kpiDate = new Date(k.month + "-01");
+      const previousMonthDateObj = new Date(previousMonthStr + "-01");
+      return kpiDate <= previousMonthDateObj;
+    });
+
+    const previous = {
+      complaints: previousYtdKpis.reduce((sum, k) => sum + k.supplierComplaintsQ2, 0),
+      defective: previousYtdKpis.reduce((sum, k) => sum + (k.supplierDefectiveParts || 0), 0),
+      deliveries: previousYtdKpis.reduce((sum, k) => sum + (k.supplierDeliveries || 0), 0),
+      ppm: (() => {
+        const totalDefective = previousYtdKpis.reduce((sum, k) => sum + (k.supplierDefectiveParts || 0), 0);
+        const totalDeliveries = previousYtdKpis.reduce((sum, k) => sum + (k.supplierDeliveries || 0), 0);
+        return totalDeliveries > 0 ? (totalDefective / totalDeliveries) * 1_000_000 : 0;
+      })(),
+    };
+
+    const calculateTrend = (current: number, previous: number): number => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
+
+    return {
+      complaints: { value: current.complaints, trend: calculateTrend(current.complaints, previous.complaints) },
+      defective: { value: current.defective, trend: calculateTrend(current.defective, previous.defective) },
+      deliveries: { value: current.deliveries, trend: calculateTrend(current.deliveries, previous.deliveries) },
+      ppm: { value: current.ppm, trend: calculateTrend(current.ppm, previous.ppm) },
+    };
+  }, [filteredKpis]);
+
 
 
   if (loading) {
@@ -256,6 +371,28 @@ export function AISummaryClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             selectedSites={selectedSites}
             selectedMonths={[]}
             plantsData={plantsData}
+            metrics={{
+              customer: {
+                complaints: customerMetrics.complaints.value,
+                complaintsTrend: customerMetrics.complaints.trend,
+                defective: customerMetrics.defective.value,
+                defectiveTrend: customerMetrics.defective.trend,
+                deliveries: customerMetrics.deliveries.value,
+                deliveriesTrend: customerMetrics.deliveries.trend,
+                ppm: customerMetrics.ppm.value,
+                ppmTrend: customerMetrics.ppm.trend,
+              },
+              supplier: {
+                complaints: supplierMetrics.complaints.value,
+                complaintsTrend: supplierMetrics.complaints.trend,
+                defective: supplierMetrics.defective.value,
+                defectiveTrend: supplierMetrics.defective.trend,
+                deliveries: supplierMetrics.deliveries.value,
+                deliveriesTrend: supplierMetrics.deliveries.trend,
+                ppm: supplierMetrics.ppm.value,
+                ppmTrend: supplierMetrics.ppm.trend,
+              },
+            }}
           />
         </div>
 

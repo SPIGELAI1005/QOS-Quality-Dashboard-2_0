@@ -17,6 +17,8 @@ import {
   RefreshCw
 } from "lucide-react";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
+import { EmailButton } from "@/components/dashboard/email-button";
+import { buildMailtoLink, type EmailContext } from "@/lib/utils/email-composer";
 
 interface PlantData {
   code: string;
@@ -24,6 +26,8 @@ interface PlantData {
   erp?: string;
   city?: string;
   abbreviation?: string;
+  abbreviationCity?: string;
+  abbreviationCountry?: string;
   country?: string;
   location?: string;
 }
@@ -37,6 +41,28 @@ interface AIInsightsPanelProps {
   selectedSites?: string[];
   selectedMonths?: string[];
   plantsData?: PlantData[];
+  metrics?: {
+    customer?: {
+      complaints: number;
+      complaintsTrend: number;
+      defective: number;
+      defectiveTrend: number;
+      deliveries: number;
+      deliveriesTrend: number;
+      ppm: number;
+      ppmTrend: number;
+    };
+    supplier?: {
+      complaints: number;
+      complaintsTrend: number;
+      defective: number;
+      defectiveTrend: number;
+      deliveries: number;
+      deliveriesTrend: number;
+      ppm: number;
+      ppmTrend: number;
+    };
+  };
 }
 
 interface AIInsights {
@@ -1091,12 +1117,24 @@ export function AIInsightsPanel({
   selectedSites,
   selectedMonths,
   plantsData = [],
+  metrics,
 }: AIInsightsPanelProps) {
-  // Helper function to format site code with city/location
+  // Helper function to format site code with abbreviation (prioritized)
   const formatSiteName = useCallback((siteCode: string): string => {
     const plant = plantsData.find(p => p.code === siteCode);
-    const city = plant?.city || plant?.location || '';
     
+    // Prioritize combined abbreviation (city, country) if available
+    const abbrevParts: string[] = [];
+    if (plant?.abbreviationCity) abbrevParts.push(plant.abbreviationCity);
+    if (plant?.abbreviationCountry) abbrevParts.push(plant.abbreviationCountry);
+    const combinedAbbrev = abbrevParts.length > 0 ? abbrevParts.join(', ') : (plant?.abbreviation || '');
+    
+    if (combinedAbbrev) {
+      return `${siteCode} ${combinedAbbrev}`;
+    }
+    
+    // Fallback to city/location
+    const city = plant?.city || plant?.location || '';
     if (city) {
       return `${siteCode} (${city})`;
     }
@@ -1171,12 +1209,15 @@ export function AIInsightsPanel({
           globalPpm,
           selectedSites,
           selectedMonths,
+          metrics,
         }),
         signal: abortController.signal,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
+        // Clear any previous insights when there's an error
+        setInsights(null);
         throw new Error(errorData.error || "Failed to generate insights");
       }
 
@@ -1185,6 +1226,15 @@ export function AIInsightsPanel({
       // Check if request was aborted
       if (abortController.signal.aborted) {
         return;
+      }
+
+      // If the response contains an error field, treat it as an error
+      // This happens when API is not configured (e.g., AI_API_KEY missing)
+      if (data.error) {
+        setInsights(null);
+        setLoading(false);
+        setError(data.error);
+        return; // Don't set insights, just show error
       }
 
       // Set progress to 100% first
@@ -1237,23 +1287,16 @@ export function AIInsightsPanel({
     };
   }, [monthlySiteKpis, selectedSites, globalPpm, selectedMonths, generateInsights]);
 
-  // Parse insights with fallbacks to ensure sections always show
-  const keyFindings = insights ? parseKeyFindings(insights.summary, selectedSites) : [];
-  let topPerformers = insights ? parseTopPerformers(insights.trendsAndSiteComparison + ' ' + insights.opportunitiesAndHighlights) : [];
-  let needsAttention = insights ? parseNeedsAttention(insights.keyRisksAndAnomalies) : [];
-  const anomalies = insights ? parseAnomalies(insights.keyRisksAndAnomalies, monthlySiteKpis) : [];
-  const recommendedActions = insights ? parseRecommendedActions(insights.recommendedActions) : [];
+  // Parse insights - DO NOT generate fallback content when API is not active
+  // Only parse what comes from the AI API response
+  const keyFindings = insights && !insights.error ? parseKeyFindings(insights.summary, selectedSites) : [];
+  const topPerformers = insights && !insights.error ? parseTopPerformers(insights.trendsAndSiteComparison + ' ' + insights.opportunitiesAndHighlights) : [];
+  const needsAttention = insights && !insights.error ? parseNeedsAttention(insights.keyRisksAndAnomalies) : [];
+  const anomalies = insights && !insights.error ? parseAnomalies(insights.keyRisksAndAnomalies, monthlySiteKpis) : [];
+  const recommendedActions = insights && !insights.error ? parseRecommendedActions(insights.recommendedActions) : [];
   
-  // Fallback: Generate from data if parsing didn't find enough
-  if (topPerformers.length < 2 && monthlySiteKpis.length > 0) {
-    const fallbackPerformers = generateTopPerformersFromData(monthlySiteKpis);
-    topPerformers = [...topPerformers, ...fallbackPerformers].slice(0, 3);
-  }
-  
-  if (needsAttention.length < 2 && monthlySiteKpis.length > 0) {
-    const fallbackAttention = generateNeedsAttentionFromData(monthlySiteKpis);
-    needsAttention = [...needsAttention, ...fallbackAttention].slice(0, 3);
-  }
+  // DO NOT generate fallback content - only show what comes from the AI API
+  // If API is not configured or fails, show error message instead of placeholder content
 
   // Debug: Log what we're getting
   if (insights) {
@@ -1309,14 +1352,14 @@ export function AIInsightsPanel({
 
       {/* Error State */}
       {error && (
-        <Card className="border-destructive">
+        <Card className="border-2 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-950/40 shadow-lg">
           <CardContent className="py-6">
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-destructive">Error</p>
-                <p className="text-sm text-destructive/80 mt-1">{error}</p>
-                <Button variant="outline" size="sm" onClick={generateInsights} className="mt-3">
+                <p className="text-base font-bold text-red-700 dark:text-red-300">Error</p>
+                <p className="text-sm font-medium text-red-800 dark:text-red-200 mt-2 leading-relaxed">{error}</p>
+                <Button variant="outline" size="sm" onClick={generateInsights} className="mt-4 border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/50">
                   Try Again
                 </Button>
               </div>
@@ -1325,8 +1368,8 @@ export function AIInsightsPanel({
         </Card>
       )}
 
-      {/* Insights Content */}
-      {insights && !loading && (
+      {/* Insights Content - Only show if we have valid insights (no error) */}
+      {insights && !insights.error && !loading && (
         <div className="space-y-8">
           {/* Key Findings - Always show if we have insights */}
           {(keyFindings.length > 0 || insights.summary) && (
@@ -1351,12 +1394,21 @@ export function AIInsightsPanel({
                     }
                   }
                   
+                  const emailContext: EmailContext = { type: 'keyFinding', content: finding.trim() };
+                  const emailLink = buildMailtoLink(emailContext, [], typeof window !== 'undefined' ? window.location.href : undefined);
+                  
                   return (
                   <Card key={idx} className="glass-card-glow border-border/50 bg-card/60 hover:bg-card/70 transition-all shadow-sm hover:shadow-md">
                     <CardContent className="p-4">
-                      <p className="text-lg leading-relaxed text-foreground font-medium">
-                          {formattedFinding}
-                      </p>
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="text-lg leading-relaxed text-foreground font-medium flex-1">
+                            {formattedFinding}
+                        </p>
+                        <EmailButton
+                          onClick={() => window.open(emailLink, '_blank')}
+                          title="Send email about this finding"
+                        />
+                      </div>
                     </CardContent>
                   </Card>
                   );
@@ -1376,20 +1428,37 @@ export function AIInsightsPanel({
                   <h3 className="text-xl font-semibold">Top Performers</h3>
                 </div>
                 <div className="space-y-3">
-                  {(topPerformers.length > 0 ? topPerformers : parseTopPerformers((insights.trendsAndSiteComparison || '') + ' ' + (insights.opportunitiesAndHighlights || ''))).slice(0, 3).map((performer, idx) => (
+                  {(topPerformers.length > 0 ? topPerformers : parseTopPerformers((insights.trendsAndSiteComparison || '') + ' ' + (insights.opportunitiesAndHighlights || ''))).slice(0, 3).map((performer, idx) => {
+                    const emailContext: EmailContext = {
+                      type: 'topPerformer',
+                      site: formatSiteName(performer.site),
+                      value: performer.value,
+                      description: performer.description,
+                      metric: performer.metric
+                    };
+                    const emailLink = buildMailtoLink(emailContext, [], typeof window !== 'undefined' ? window.location.href : undefined);
+                    
+                    return (
                     <Card key={idx} className="glass-card-glow border-border/50 transition-all shadow-sm hover:shadow-md" style={{ backgroundColor: 'rgba(156, 163, 175, 0.15)' }}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="text-3xl font-bold text-white">{formatSiteName(performer.site)}</div>
-                          <Badge variant="outline" className="bg-white text-black border-white text-xs px-2 py-0.5 rounded-full">
-                            {performer.metric}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <EmailButton
+                              onClick={() => window.open(emailLink, '_blank')}
+                              title="Send email about this top performer"
+                            />
+                            <Badge variant="outline" className="bg-white text-black border-white text-xs px-2 py-0.5 rounded-full">
+                              {performer.metric}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="text-base font-medium text-muted-foreground mb-3">Value: {performer.value}</div>
                         <p className="text-lg text-foreground leading-relaxed">{performer.description.replace(new RegExp(`Site\\s+${performer.site}|site\\s+${performer.site}|\\b${performer.site}\\b`, 'gi'), formatSiteName(performer.site))}</p>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1402,20 +1471,37 @@ export function AIInsightsPanel({
                   <h3 className="text-xl font-semibold">Needs Attention</h3>
                 </div>
                 <div className="space-y-3">
-                  {(needsAttention.length > 0 ? needsAttention : parseNeedsAttention(insights.keyRisksAndAnomalies || '')).slice(0, 3).map((item, idx) => (
+                  {(needsAttention.length > 0 ? needsAttention : parseNeedsAttention(insights.keyRisksAndAnomalies || '')).slice(0, 3).map((item, idx) => {
+                    const emailContext: EmailContext = {
+                      type: 'needsAttention',
+                      site: formatSiteName(item.site),
+                      value: item.value,
+                      description: item.description,
+                      metric: item.metric
+                    };
+                    const emailLink = buildMailtoLink(emailContext, [], typeof window !== 'undefined' ? window.location.href : undefined);
+                    
+                    return (
                     <Card key={idx} className="glass-card-glow border-red-500/30 transition-all shadow-sm hover:shadow-md" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)' }}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-3">
                           <div className="text-3xl font-bold text-white">{formatSiteName(item.site)}</div>
-                          <Badge variant="outline" className="bg-white text-black border-white text-xs px-2 py-0.5 rounded-full">
-                            {item.metric}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <EmailButton
+                              onClick={() => window.open(emailLink, '_blank')}
+                              title="Send email about this issue"
+                            />
+                            <Badge variant="outline" className="bg-white text-black border-white text-xs px-2 py-0.5 rounded-full">
+                              {item.metric}
+                            </Badge>
+                          </div>
                         </div>
                         <div className="text-base font-medium text-muted-foreground mb-3">Value: {item.value}</div>
                         <p className="text-lg text-foreground leading-relaxed">{item.description.replace(new RegExp(`Site\\s+${item.site}|site\\s+${item.site}|\\b${item.site}\\b`, 'gi'), formatSiteName(item.site))}</p>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1456,6 +1542,16 @@ export function AIInsightsPanel({
                     });
                   }
                   
+                  const emailContext: EmailContext = {
+                    type: 'anomaly',
+                    title: formattedTitle,
+                    date: anomaly.date,
+                    percentage: anomaly.percentage,
+                    description: formattedDescription,
+                    trend: anomaly.trend
+                  };
+                  const emailLink = buildMailtoLink(emailContext, [], typeof window !== 'undefined' ? window.location.href : undefined);
+                  
                   return (
                   <Card key={idx} className="border-amber-500/20 bg-amber-500/5">
                     <CardContent className="p-5">
@@ -1471,7 +1567,13 @@ export function AIInsightsPanel({
                             {anomaly.date}
                           </Badge>
                         </div>
-                        <div className="text-lg font-bold text-amber-500 flex-shrink-0 ml-2">{anomaly.percentage}</div>
+                        <div className="flex items-center gap-2">
+                          <EmailButton
+                            onClick={() => window.open(emailLink, '_blank')}
+                            title="Send email about this anomaly"
+                          />
+                          <div className="text-lg font-bold text-amber-500 flex-shrink-0 ml-2">{anomaly.percentage}</div>
+                        </div>
                       </div>
                         <p className="text-lg text-foreground leading-relaxed font-medium">{formattedDescription}</p>
                     </CardContent>
@@ -1482,8 +1584,8 @@ export function AIInsightsPanel({
             </div>
           )}
 
-          {/* Recommended Actions - Always show if we have insights */}
-          {insights && (
+          {/* Recommended Actions - Only show if we have valid insights (no error) */}
+          {insights && !insights.error && (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -1491,23 +1593,19 @@ export function AIInsightsPanel({
               </div>
               <div className="space-y-3">
                 {(() => {
-                  // Try to get actions from state, then from parsed insights, then generate from data
-                  let actions = recommendedActions.length > 0 
+                  // Only get actions from AI response - DO NOT generate fallback actions
+                  // If there's no API or API fails, we should not show placeholder actions
+                  const actions = recommendedActions.length > 0 
                     ? recommendedActions 
                     : parseRecommendedActions(insights?.recommendedActions || []);
                   
-                  // If still no actions, generate from KPI data as fallback
-                  if (actions.length === 0 && monthlySiteKpis.length > 0) {
-                    actions = generateRecommendedActionsFromData(monthlySiteKpis, globalPpm, insights);
-                  }
-                  
-                  // If still no actions, show a message
+                  // If no actions from AI, show a message (do NOT generate fallback)
                   if (actions.length === 0) {
                     return (
                       <Card className="border-border bg-card/50">
                         <CardContent className="p-5">
                           <p className="text-sm text-muted-foreground text-center">
-                            No recommended actions available. Please refresh to generate new insights.
+                            No recommended actions available from AI analysis.
                           </p>
                         </CardContent>
                       </Card>
@@ -1539,23 +1637,38 @@ export function AIInsightsPanel({
                     formattedDescription = formatSiteReferences(formattedDescription);
                     formattedExpectedImpact = formatSiteReferences(formattedExpectedImpact);
                     
+                    const emailContext: EmailContext = {
+                      type: 'recommendedAction',
+                      title: formattedTitle,
+                      description: formattedDescription,
+                      expectedImpact: formattedExpectedImpact,
+                      priority: action.priority
+                    };
+                    const emailLink = buildMailtoLink(emailContext, [], typeof window !== 'undefined' ? window.location.href : undefined);
+                    
                     return (
                     <Card key={idx} className="border-border bg-card/50">
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-4">
                           <h4 className="text-lg font-semibold text-white flex-1 pr-4">{formattedTitle}</h4>
-                          <Badge 
-                            variant="outline"
-                            className={
-                              action.priority === 'high' 
-                                ? 'bg-red-500 text-white border-red-500 flex-shrink-0'
-                                : action.priority === 'medium'
-                                ? 'bg-amber-500 text-white border-amber-500 flex-shrink-0'
-                                : 'bg-blue-500 text-white border-blue-500 flex-shrink-0'
-                            }
-                          >
-                            {action.priority.charAt(0).toUpperCase() + action.priority.slice(1)}
-                          </Badge>
+                          <div className="flex items-center gap-2">
+                            <EmailButton
+                              onClick={() => window.open(emailLink, '_blank')}
+                              title="Send email about this action"
+                            />
+                            <Badge 
+                              variant="outline"
+                              className={
+                                action.priority === 'high' 
+                                  ? 'bg-red-500 text-white border-red-500 flex-shrink-0'
+                                  : action.priority === 'medium'
+                                  ? 'bg-amber-500 text-white border-amber-500 flex-shrink-0'
+                                  : 'bg-blue-500 text-white border-blue-500 flex-shrink-0'
+                              }
+                            >
+                              {action.priority.charAt(0).toUpperCase() + action.priority.slice(1)}
+                            </Badge>
+                          </div>
                         </div>
                         <p className="text-lg text-muted-foreground leading-relaxed mb-4 font-medium">{formattedDescription}</p>
                         <div className="pt-3 border-t border-border">

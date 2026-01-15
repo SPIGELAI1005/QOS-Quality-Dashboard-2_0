@@ -11,6 +11,9 @@ import {
 } from "@/components/ui/select";
 import type { MonthlySiteKpi } from "@/lib/domain/types";
 import { FilterPanel, type FilterState } from "@/components/dashboard/filter-panel";
+import { useGlobalFilters } from "@/lib/hooks/useGlobalFilters";
+import { IAmQButton } from "@/components/iamq/iamq-button";
+import { IAmQChatPanel } from "@/components/iamq/iamq-chat-panel";
 import { Badge } from "@/components/ui/badge";
 import { FileSpreadsheet, Info } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -20,13 +23,17 @@ export function AuditManagementClient() {
   const [monthlySiteKpis, setMonthlySiteKpis] = useState<MonthlySiteKpi[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
-  const [filters, setFilters] = useState<FilterState>({
-    selectedPlants: [],
-    selectedComplaintTypes: [],
-    selectedNotificationTypes: [],
-    dateFrom: null,
-    dateTo: null,
-  });
+  // Use global filter hook for persistent filters across pages
+  const [filters, setFilters] = useGlobalFilters();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chartContext, setChartContext] = useState<{
+    title?: string;
+    description?: string;
+    chartType?: string;
+    dataType?: string;
+    hasData?: boolean;
+    dataCount?: number;
+  } | undefined>(undefined);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -156,13 +163,30 @@ export function AuditManagementClient() {
                 style={{ borderColor: "#9E9E9E", borderWidth: "2px", height: "100%" }}
               >
                 <CardContent className="p-6 flex-1 flex flex-col min-h-0 overflow-hidden">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Summary</p>
+                  <div className="flex items-start justify-between mb-3 flex-shrink-0">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">AI Summary</p>
+                      <p className="text-xs text-muted-foreground mt-1">Will interpret audit KPIs once connected</p>
+                    </div>
+                    <IAmQButton
+                      onClick={() => {
+                        setChartContext({
+                          title: "AI Summary - Audit Management",
+                          description: "AI-generated summary of audit metrics and trends",
+                          chartType: "metric",
+                          dataType: "audits",
+                          hasData: false,
+                          dataCount: 0,
+                        });
+                        setIsChatOpen(true);
+                      }}
+                    />
+                  </div>
                   <div className="flex-1 flex items-center justify-center text-center min-h-0">
                     <p className="text-sm font-semibold" style={{ color: "#FF8A00" }}>
                       Data Source Missing (Under Construction)
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground text-center mt-auto">Will interpret audit KPIs once connected</p>
                 </CardContent>
               </Card>
             </div>
@@ -172,8 +196,25 @@ export function AuditManagementClient() {
         <div className="space-y-6">
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>{t.auditManagement.auditsByMonth}</CardTitle>
-              <CardDescription>{t.auditManagement.underConstruction}</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t.auditManagement.auditsByMonth}</CardTitle>
+                  <CardDescription>{t.auditManagement.underConstruction}</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: t.auditManagement.auditsByMonth,
+                      description: t.auditManagement.underConstruction,
+                      chartType: "bar",
+                      dataType: "audits",
+                      hasData: false,
+                      dataCount: 0,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] flex items-center justify-center text-center">
@@ -186,8 +227,25 @@ export function AuditManagementClient() {
 
           <Card className="glass-card-glow chart-container">
             <CardHeader>
-              <CardTitle>{t.auditManagement.auditsClosedVsOpen}</CardTitle>
-              <CardDescription>{t.auditManagement.underConstruction}</CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>{t.auditManagement.auditsClosedVsOpen}</CardTitle>
+                  <CardDescription>{t.auditManagement.underConstruction}</CardDescription>
+                </div>
+                <IAmQButton
+                  onClick={() => {
+                    setChartContext({
+                      title: t.auditManagement.auditsClosedVsOpen,
+                      description: t.auditManagement.underConstruction,
+                      chartType: "bar",
+                      dataType: "audits",
+                      hasData: false,
+                      dataCount: 0,
+                    });
+                    setIsChatOpen(true);
+                  }}
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] flex items-center justify-center text-center">
@@ -238,6 +296,20 @@ export function AuditManagementClient() {
           showNotificationTypes={false}
         />
       </div>
+      <IAmQChatPanel
+        open={isChatOpen}
+        onOpenChange={(open) => {
+          setIsChatOpen(open);
+          if (!open) {
+            setChartContext(undefined);
+          }
+        }}
+        chartContext={chartContext}
+        filters={filters}
+        monthlySiteKpis={monthlySiteKpis}
+        selectedSites={filters.selectedPlants.length > 0 ? filters.selectedPlants : Array.from(new Set(monthlySiteKpis.map((k) => k.siteCode))).sort()}
+        selectedMonths={Array.from(new Set(monthlySiteKpis.map(k => k.month))).sort()}
+      />
     </div>
   );
 }
