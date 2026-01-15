@@ -817,8 +817,8 @@ export function PPAPsClient() {
                         : "Closed vs. In Progress across all selected plants",
                       chartType: "bar",
                       dataType: "ppaps",
-                      hasData: ppapStatusByMonth.data.length > 0,
-                      dataCount: ppapStatusByMonth.data.length,
+                      hasData: ppapStatusByMonth.length > 0,
+                      dataCount: ppapStatusByMonth.length,
                     });
                     setIsChatOpen(true);
                   }}
