@@ -537,9 +537,10 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     };
   }, []);
 
-  // Use props if provided, otherwise use state
-  const kpis = propsKpis.length > 0 ? propsKpis : monthlySiteKpis;
-  const ppm = propsPpm || globalPpm;
+  // Source of truth: component state, which is initialized from props (SSR) and then refreshed from localStorage.
+  // This ensures uploads always override any initial server-provided data.
+  const kpis = monthlySiteKpis;
+  const ppm = globalPpm;
 
   // Calculate available months and years from data
   const availableMonthsYears = useMemo(() => {

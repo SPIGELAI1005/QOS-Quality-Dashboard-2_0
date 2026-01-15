@@ -1,8 +1,7 @@
-import { DashboardClient } from "../dashboard/dashboard-client";
-import { loadDashboardKpisFromAttachments } from "@/lib/data/kpis-dashboard";
+import { SupplierPPMGlobalClient } from "./supplier-ppm-global-client";
 
 export default function SupplierPPMGlobalPage() {
-  const { monthlySiteKpis, globalPpm } = loadDashboardKpisFromAttachments();
-  return <DashboardClient monthlySiteKpis={monthlySiteKpis} globalPpm={globalPpm} viewMode="supplier" />;
+  // Use client-side dataset (localStorage) so uploads immediately reflect here.
+  return <SupplierPPMGlobalClient />;
 }
 

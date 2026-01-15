@@ -1,8 +1,8 @@
 import { AISummaryClient } from "./ai-summary-client";
-import { loadDashboardKpisFromAttachments } from "@/lib/data/kpis-dashboard";
 
 export default function AISummaryPage() {
-  const { monthlySiteKpis, globalPpm } = loadDashboardKpisFromAttachments();
-  return <AISummaryClient monthlySiteKpis={monthlySiteKpis} globalPpm={globalPpm} />;
+  // Source of truth is the browser dataset (localStorage) populated via /upload.
+  // Do not server-seed from /attachments to avoid showing data before upload.
+  return <AISummaryClient />;
 }
 

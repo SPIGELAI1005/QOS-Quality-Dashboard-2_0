@@ -1,7 +1,7 @@
 import { DashboardClient } from "./dashboard-client";
-import { loadDashboardKpisFromAttachments } from "@/lib/data/kpis-dashboard";
 
 export default function DashboardPage() {
-  const { monthlySiteKpis, globalPpm } = loadDashboardKpisFromAttachments();
-  return <DashboardClient monthlySiteKpis={monthlySiteKpis} globalPpm={globalPpm} />;
+  // Source of truth in production is the browser dataset (localStorage) populated via /upload.
+  // We intentionally do NOT server-seed from the repo's /attachments folder to avoid showing data before upload.
+  return <DashboardClient />;
 }
