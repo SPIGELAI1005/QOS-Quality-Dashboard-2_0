@@ -435,6 +435,24 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
   // Use global filter hook for persistent filters across pages
   const [filters, setFilters] = useGlobalFilters();
 
+  const isCustomerHiddenByFilters = useMemo(() => {
+    const complaintTypeHidesCustomer =
+      filters.selectedComplaintTypes.length > 0 && !filters.selectedComplaintTypes.includes("Customer");
+    const notificationTypeHidesCustomer =
+      filters.selectedNotificationTypes.length > 0 && !filters.selectedNotificationTypes.includes("Q1");
+    return complaintTypeHidesCustomer || notificationTypeHidesCustomer;
+  }, [filters.selectedComplaintTypes, filters.selectedNotificationTypes]);
+
+  const isSupplierHiddenByFilters = useMemo(() => {
+    const complaintTypeHidesSupplier =
+      filters.selectedComplaintTypes.length > 0 && !filters.selectedComplaintTypes.includes("Supplier");
+    const notificationTypeHidesSupplier =
+      filters.selectedNotificationTypes.length > 0 && !filters.selectedNotificationTypes.includes("Q2");
+    return complaintTypeHidesSupplier || notificationTypeHidesSupplier;
+  }, [filters.selectedComplaintTypes, filters.selectedNotificationTypes]);
+
+  const shouldShowFilterWarning = isFullView && (isCustomerHiddenByFilters || isSupplierHiddenByFilters);
+
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
@@ -2737,6 +2755,43 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 ? t.dashboard.supplierPerformance
                 : t.dashboard.customerSupplierPerformance}
           </p>
+
+          {shouldShowFilterWarning && (
+            <div className="mt-4 rounded-lg border-2 border-red-500/80 dark:border-red-400/80 bg-red-50/60 dark:bg-red-950/30 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-bold text-red-700 dark:text-red-300">
+                    Dashboard data is being hidden by filters
+                  </p>
+                  <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
+                    Your current filter selection excludes{" "}
+                    {isCustomerHiddenByFilters && isSupplierHiddenByFilters
+                      ? "Customer (Q1) and Supplier (Q2)"
+                      : isCustomerHiddenByFilters
+                        ? "Customer (Q1)"
+                        : "Supplier (Q2)"}{" "}
+                    notifications. This makes complaints/defects/PPM appear as 0 or N/A even when uploads succeeded.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40"
+                  onClick={() =>
+                    setFilters({
+                      selectedPlants: [],
+                      selectedComplaintTypes: [],
+                      selectedNotificationTypes: [],
+                      dateFrom: null,
+                      dateTo: null,
+                    })
+                  }
+                >
+                  Reset filters
+                </Button>
+              </div>
+            </div>
+          )}
           {selectedMonth !== null && selectedYear !== null && (
             <p className="text-xs text-muted-foreground mt-1">
               {t.dashboard.showing12MonthLookback} {selectedMonthName} {selectedYear}
