@@ -232,16 +232,19 @@ export function FilterPanel({
   }, [availablePlants.length, filters.selectedPlants.length, plantsData.length, filters, onFiltersChange]); // Trigger when plantsData loads
 
   const togglePlant = (plantCode: string) => {
-    // When clicking individual plants, override Quick Access selections
-    // If the plant is already selected and it's the only one, deselect it
-    // Otherwise, select only this plant (override previous selections)
-    if (filters.selectedPlants.includes(plantCode) && filters.selectedPlants.length === 1) {
-      // Deselect if it's the only selected plant
-      onFiltersChange({ ...filters, selectedPlants: [] });
-    } else {
-      // Override previous selections and select only this plant
+    // Multi-select behavior:
+    // - If no explicit selection is applied (empty list => "all plants"), start a manual selection with this plant.
+    // - Otherwise toggle the plant in/out of the selection.
+    if (filters.selectedPlants.length === 0) {
       onFiltersChange({ ...filters, selectedPlants: [plantCode] });
+      return;
     }
+
+    const nextSelected = filters.selectedPlants.includes(plantCode)
+      ? filters.selectedPlants.filter((p) => p !== plantCode)
+      : [...filters.selectedPlants, plantCode];
+
+    onFiltersChange({ ...filters, selectedPlants: nextSelected });
   };
 
   const selectAllPlants = () => {
