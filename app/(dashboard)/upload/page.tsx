@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -227,6 +227,8 @@ export default function UploadPage() {
     complaints: 0,
     deliveries: 0,
   });
+
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const [progressBySection, setProgressBySection] = useState<
     Record<UploadSectionKey, { percent: number; status: "idle" | "uploading" | "success" | "error" }>
@@ -1154,17 +1156,47 @@ export default function UploadPage() {
         </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-3 flex-wrap">
-                <Input
-                  type="file"
+                      {/* Hidden native input (OS/browser decides dialog language). We render our own translated button. */}
+                      <input
+                        ref={(el) => {
+                          fileInputRefs.current[section] = el;
+                        }}
+                        type="file"
                         accept=".xlsx,.xls,.XLSX,.XLS"
                         multiple
+                        className="hidden"
                         onChange={(e) => onSelectFiles(section, Array.from(e.target.files || []))}
                         disabled={uploading[section]}
                       />
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={[
+                          "justify-start",
+                          "border-[#00FF88]/60",
+                          "bg-[#00FF88]/10 hover:bg-[#00FF88]/15",
+                          "text-foreground",
+                          files.length === 0 ? "ring-1 ring-[#00FF88]/25" : "",
+                        ].join(" ")}
+                        onClick={() => fileInputRefs.current[section]?.click()}
+                        disabled={uploading[section]}
+                        title={t.upload.step1SelectData}
+                      >
+                        <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#00FF88] text-black text-xs font-bold">
+                          1
+                        </span>
+                        {t.upload.step1SelectData}
+                      </Button>
+
                       <Button
                         onClick={() => uploadSection(section, files)}
                         disabled={uploading[section] || files.length === 0}
+                        title={t.upload.step2Upload}
                       >
+                        <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/10 text-xs font-bold">
+                          2
+                        </span>
                         {uploading[section] ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -1173,13 +1205,16 @@ export default function UploadPage() {
                         ) : (
                           <>
                             <Upload className="h-4 w-4 mr-2" />
-                            {t.upload.uploadButton}
+                            {t.upload.step2Upload}
                           </>
                         )}
                       </Button>
+
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <FileSpreadsheet className="h-4 w-4" />
-                        <span>{files.length} {t.upload.filesSelected}</span>
+                        <FileSpreadsheet className="h-4 w-4" />
+                        <span>
+                          {files.length} {t.upload.filesSelected}
+                        </span>
                       </div>
                     </div>
 
@@ -1346,13 +1381,13 @@ export default function UploadPage() {
                   </div>
                   <div className="space-y-1 text-muted-foreground">
                     <div>
-                      <span className="font-medium text-foreground">{t.upload.complaints}:</span> {formatGermanInt(kpisResult.summary.totalComplaints)}
+                      <span className="font-medium text-foreground">{t.upload.complaints}</span> {formatGermanInt(kpisResult.summary.totalComplaints)}
                     </div>
                     <div>
-                      <span className="font-medium text-foreground">{t.upload.deliveries}:</span> {formatGermanInt(kpisResult.summary.totalDeliveries)}
+                      <span className="font-medium text-foreground">{t.upload.deliveries}</span> {formatGermanInt(kpisResult.summary.totalDeliveries)}
                     </div>
                     <div>
-                      <span className="font-medium text-foreground">{t.upload.siteMonthKpis}:</span> {formatGermanInt(kpisResult.summary.siteMonthCombinations)}
+                      <span className="font-medium text-foreground">{t.upload.siteMonthKpis}</span> {formatGermanInt(kpisResult.summary.siteMonthCombinations)}
                     </div>
                     {kpisResult.globalPpm && (
                       <>

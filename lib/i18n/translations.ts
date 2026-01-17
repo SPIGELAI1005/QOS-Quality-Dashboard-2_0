@@ -289,6 +289,8 @@ export interface Translations {
     uploadButton: string;
     uploading: string;
     filesSelected: string;
+    step1SelectData: string;
+    step2Upload: string;
     uploadCompleted: string;
     uploadFailed: string;
     usedIn: string;
@@ -1089,6 +1091,8 @@ const translations: Record<LanguageKey, Translations> = {
       uploadButton: "Upload",
       uploading: "Uploading…",
       filesSelected: "file(s)",
+      step1SelectData: "Select data",
+      step2Upload: "Upload",
       uploadCompleted: "Upload completed",
       uploadFailed: "Upload failed",
       usedIn: "Used in:",
@@ -1689,6 +1693,8 @@ const translations: Record<LanguageKey, Translations> = {
       uploadButton: "Hochladen",
       uploading: "Wird hochgeladen…",
       filesSelected: "Datei(en)",
+      step1SelectData: "Daten auswählen",
+      step2Upload: "Hochladen",
       uploadCompleted: "Upload abgeschlossen",
       uploadFailed: "Upload fehlgeschlagen",
       usedIn: "Verwendet in:",
@@ -2290,6 +2296,8 @@ const translations: Record<LanguageKey, Translations> = {
       uploadButton: "Carica",
       uploading: "Caricamento in corso…",
       filesSelected: "file",
+      step1SelectData: "Seleziona dati",
+      step2Upload: "Carica",
       uploadCompleted: "Caricamento completato",
       uploadFailed: "Caricamento fallito",
       usedIn: "Utilizzato in:",
