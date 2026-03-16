@@ -15,11 +15,11 @@ export interface Deviation extends Complaint {
 /**
  * Parse deviations from Excel file buffer
  */
-export function parseDeviations(buffer: Buffer): Deviation[] {
+export function parseDeviations(buffer: Uint8Array | ArrayBuffer): Deviation[] {
   const deviations: Deviation[] = [];
   
   try {
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
     
     if (workbook.SheetNames.length === 0) {
       console.warn('Deviations file has no worksheets');

@@ -32,6 +32,11 @@ import type { UploadSummaryEntry, ChangeHistoryEntry } from "@/lib/data/uploadSu
 import { getAffectedMetricsForComplaint, getAffectedMetricsForDelivery, saveUploadSummary, loadUploadSummary, saveChangeHistory, loadChangeHistory, getAllUploadSummaries } from "@/lib/data/uploadSummary";
 import { applyComplaintCorrections, applyDeliveryCorrections } from "@/lib/data/correctedData";
 import type { Complaint } from "@/lib/domain/types";
+import { parseComplaints } from "@/lib/excel/parseComplaints";
+import { parseDeliveries } from "@/lib/excel/parseDeliveries";
+import { parsePlants } from "@/lib/excel/parsePlants";
+import { parsePPAP } from "@/lib/excel/parsePPAP";
+import { parseDeviations } from "@/lib/excel/parseDeviations";
 
 type UploadSectionKey =
   | "complaints"
@@ -88,6 +93,135 @@ interface PlantData {
   country?: string;
 }
 
+interface ManualDraft {
+  month: string;
+  siteCode: string;
+  siteLocation: string;
+  recordedBy: string;
+  onePagerLink: string;
+  customerComplaintsQ1: number;
+  supplierComplaintsQ2: number;
+  internalComplaintsQ3: number;
+  customerDefectiveParts: number;
+  supplierDefectiveParts: number;
+  internalDefectiveParts: number;
+  customerDeliveries: number;
+  supplierDeliveries: number;
+  ppapInProgress: number;
+  ppapCompleted: number;
+  deviationsInProgress: number;
+  deviationsCompleted: number;
+  auditInternalSystem: number;
+  auditCertification: number;
+  auditProcess: number;
+  auditProduct: number;
+  poorQualityCosts: number;
+  warrantyCosts: number;
+}
+
+const MANUAL_DRAFT_LABEL_ALIASES: Record<keyof ManualDraft, string[]> = {
+  month: ["month", "reportmonth"],
+  siteCode: ["plant", "plantcode", "site", "sitecode", "plant3digit"],
+  siteLocation: ["citylocation", "location", "city", "sitelocation", "sitename"],
+  recordedBy: ["nameofpersonrecordingdata", "recordedby", "personrecordingdata", "name"],
+  onePagerLink: ["linktoonepager", "onepagerlink", "onepager", "linktoonepagertop13topicspermonth"],
+  customerComplaintsQ1: ["customercomplaintsq1", "q1", "customercomplaints", "nrofcustomercomplaintsq1"],
+  supplierComplaintsQ2: ["suppliercomplaintsq2", "q2", "suppliercomplaints", "nrofsuppliercomplaintsq2"],
+  internalComplaintsQ3: ["internalcomplaintsq3", "q3", "internalcomplaints", "nrofinternalcomplaintsq3"],
+  customerDefectiveParts: ["customerdefectiveparts"],
+  supplierDefectiveParts: ["supplierdefectiveparts"],
+  internalDefectiveParts: ["internaldefectiveparts"],
+  customerDeliveries: ["outbounddeliveries", "customerdeliveries", "totalquantityoutbounddeliveriescustomer"],
+  supplierDeliveries: ["inbounddeliveries", "supplierdeliveries", "totalquantityinbounddeliveriessupplier"],
+  ppapInProgress: ["ppapsinprogress", "ppapinprogress", "nrofppapsinprogress"],
+  ppapCompleted: ["ppapscompleted", "ppapcompleted", "nrofppapscompleted"],
+  deviationsInProgress: ["deviationsinprogress", "nrofdeviationsinprogress"],
+  deviationsCompleted: ["deviationscompleted", "nrofdeviationscompleted"],
+  auditInternalSystem: ["auditsinternalsystem", "auditinternalsystem", "auditsinternalsystemexcutedduringthemonth"],
+  auditCertification: ["auditscertification", "auditcertification", "auditscertificationexcutedduringthemonth"],
+  auditProcess: ["auditsprocess", "auditprocess", "auditsprocessexcutedduringthemonth"],
+  auditProduct: ["auditsproduct", "auditproduct", "auditsproductexcutedduringthemonth"],
+  poorQualityCosts: ["poorqualitycosts", "poorqualitycoststemplatecostestimationformonth"],
+  warrantyCosts: ["warrantycosts", "warrantycoststemplatecostestimationformonth"],
+};
+
+const MANUAL_DRAFT_NUMERIC_FIELDS = new Set<keyof ManualDraft>([
+  "customerComplaintsQ1",
+  "supplierComplaintsQ2",
+  "internalComplaintsQ3",
+  "customerDefectiveParts",
+  "supplierDefectiveParts",
+  "internalDefectiveParts",
+  "customerDeliveries",
+  "supplierDeliveries",
+  "ppapInProgress",
+  "ppapCompleted",
+  "deviationsInProgress",
+  "deviationsCompleted",
+  "auditInternalSystem",
+  "auditCertification",
+  "auditProcess",
+  "auditProduct",
+  "poorQualityCosts",
+  "warrantyCosts",
+]);
+
+const MANUAL_UPLOAD_REQUIRED_FIELDS: Array<keyof ManualDraft> = [
+  "month",
+  "siteCode",
+  "recordedBy",
+  "customerComplaintsQ1",
+  "supplierComplaintsQ2",
+  "internalComplaintsQ3",
+  "customerDefectiveParts",
+  "supplierDefectiveParts",
+  "internalDefectiveParts",
+  "customerDeliveries",
+  "supplierDeliveries",
+  "ppapInProgress",
+  "ppapCompleted",
+  "deviationsInProgress",
+  "deviationsCompleted",
+  "auditInternalSystem",
+  "auditCertification",
+  "auditProcess",
+  "auditProduct",
+  "poorQualityCosts",
+  "warrantyCosts",
+];
+
+const MANUAL_DRAFT_FIELD_LABELS: Record<keyof ManualDraft, string> = {
+  month: "Month",
+  siteCode: "Plant (3-digit)",
+  siteLocation: "City/Location",
+  recordedBy: "Name of Person Recording Data",
+  onePagerLink: "Link to OnePager",
+  customerComplaintsQ1: "Customer Complaints (Q1)",
+  supplierComplaintsQ2: "Supplier Complaints (Q2)",
+  internalComplaintsQ3: "Internal Complaints (Q3)",
+  customerDefectiveParts: "Customer Defective Parts",
+  supplierDefectiveParts: "Supplier Defective Parts",
+  internalDefectiveParts: "Internal Defective Parts",
+  customerDeliveries: "Outbound Deliveries (Customer)",
+  supplierDeliveries: "Inbound Deliveries (Supplier)",
+  ppapInProgress: "PPAPs In Progress",
+  ppapCompleted: "PPAPs Completed",
+  deviationsInProgress: "Deviations In Progress",
+  deviationsCompleted: "Deviations Completed",
+  auditInternalSystem: "Audit Internal System",
+  auditCertification: "Audit Certification",
+  auditProcess: "Audit Process",
+  auditProduct: "Audit Product",
+  poorQualityCosts: "Poor Quality Costs",
+  warrantyCosts: "Warranty Costs",
+};
+
+const MANUAL_DRAFT_FIELD_BY_LABEL = new Map<string, keyof ManualDraft>(
+  Object.entries(MANUAL_DRAFT_LABEL_ALIASES).flatMap(([field, aliases]) =>
+    aliases.map((alias) => [alias, field as keyof ManualDraft] as const)
+  )
+);
+
 function makeId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
@@ -105,6 +239,68 @@ function safeJsonParse<T>(raw: string | null): T | null {
   }
 }
 
+function normalizeManualUploadLabel(value: unknown): string {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function parseManualUploadMonth(value: unknown): string | null {
+  if (typeof value === "number") {
+    const dateInfo = XLSX.SSF.parse_date_code(value);
+    if (!dateInfo) return null;
+    return `${dateInfo.y}-${String(dateInfo.m).padStart(2, "0")}`;
+  }
+  const raw = String(value || "").trim();
+  if (!raw) return null;
+  const normalized = raw.replace(/[/.]/g, "-");
+  const directMatch = normalized.match(/^(\d{4})-(\d{1,2})$/);
+  if (directMatch) {
+    return `${directMatch[1]}-${String(Number(directMatch[2])).padStart(2, "0")}`;
+  }
+  const parsedDate = new Date(raw);
+  if (Number.isNaN(parsedDate.getTime())) return null;
+  return `${parsedDate.getFullYear()}-${String(parsedDate.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function parseManualUploadFieldValue(field: keyof ManualDraft, value: unknown): ManualDraft[keyof ManualDraft] | null {
+  if (value === undefined || value === null || value === "") return null;
+  if (field === "month") return parseManualUploadMonth(value);
+  if (field === "siteCode") return String(value).trim().replace(/\.0$/, "");
+  if (MANUAL_DRAFT_NUMERIC_FIELDS.has(field)) {
+    const numericValue =
+      typeof value === "number" ? value : Number(String(value).trim().replace(",", "."));
+    if (!Number.isFinite(numericValue)) return null;
+    return Math.max(0, numericValue);
+  }
+  return String(value).trim();
+}
+
+function extractManualDraftFromWorkbook(workbook: XLSX.WorkBook): Partial<ManualDraft> {
+  const extracted: Partial<ManualDraft> = {};
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet?.["!ref"]) continue;
+    const range = XLSX.utils.decode_range(sheet["!ref"]);
+    for (let row = range.s.r; row <= range.e.r; row += 1) {
+      for (let col = range.s.c; col < range.e.c; col += 1) {
+        const labelCell = sheet[XLSX.utils.encode_cell({ r: row, c: col })];
+        if (!labelCell?.v) continue;
+        const normalizedLabel = normalizeManualUploadLabel(labelCell.v);
+        const field = MANUAL_DRAFT_FIELD_BY_LABEL.get(normalizedLabel);
+        if (!field) continue;
+        const valueCell = sheet[XLSX.utils.encode_cell({ r: row, c: col + 1 })];
+        if (!valueCell) continue;
+        const parsedValue = parseManualUploadFieldValue(field, valueCell.v);
+        if (parsedValue === null) continue;
+        extracted[field] = parsedValue as never;
+      }
+    }
+  }
+  return extracted;
+}
+
 function reviveComplaint(raw: any): Complaint {
   return {
     ...raw,
@@ -117,6 +313,15 @@ function reviveDelivery(raw: any): Delivery {
     ...raw,
     date: raw?.date ? new Date(raw.date) : new Date(""),
   } as Delivery;
+}
+
+function getDeliveryLogicalKey(delivery: Delivery): string {
+  const site = String(delivery.siteCode || delivery.plant || "").trim();
+  const kind = String(delivery.kind || "").trim();
+  const d = delivery.date instanceof Date ? delivery.date : new Date(delivery.date);
+  if (Number.isNaN(d.getTime())) return `${site}||${kind}||invalid-date`;
+  const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return `${site}||${kind}||${monthKey}`;
 }
 
 function Separator({ className }: { className?: string }) {
@@ -177,6 +382,37 @@ async function postFormDataWithProgress<T>(
     xhr.onerror = () => reject(new Error("Upload failed: network error"));
     xhr.send(formData);
   });
+}
+
+const LARGE_FILE_THRESHOLD_BYTES = 2 * 1024 * 1024;
+const JSON_CHUNK_RECORD_COUNT = 500;
+
+function chunkArray<T>(items: T[], chunkSize: number): T[][] {
+  if (chunkSize <= 0 || items.length === 0) return items.length ? [items] : [];
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
+async function postJsonChunk<T>(section: UploadSectionKey, chunk: T[], chunkIndex: number, totalChunks: number): Promise<T[]> {
+  const response = await fetch("/api/upload-json-chunk", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      fileType: section,
+      chunkIndex,
+      totalChunks,
+      records: chunk,
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload?.error || `Chunk upload failed (HTTP ${response.status})`);
+  }
+  const records = Array.isArray(payload?.records) ? (payload.records as T[]) : [];
+  return records;
 }
 
 export default function UploadPage() {
@@ -253,31 +489,7 @@ export default function UploadPage() {
 
   const [manualEntries, setManualEntries] = useState<ManualKpiEntry[]>([]);
   const [uploadSummaries, setUploadSummaries] = useState<Map<string, UploadSummaryEntry>>(new Map());
-  const [manualDraft, setManualDraft] = useState<{
-    month: string;
-    siteCode: string;
-    siteLocation: string;
-    recordedBy: string;
-    onePagerLink: string;
-    customerComplaintsQ1: number;
-    supplierComplaintsQ2: number;
-    internalComplaintsQ3: number;
-    customerDefectiveParts: number;
-    supplierDefectiveParts: number;
-    internalDefectiveParts: number;
-    customerDeliveries: number;
-    supplierDeliveries: number;
-    ppapInProgress: number;
-    ppapCompleted: number;
-    deviationsInProgress: number;
-    deviationsCompleted: number;
-    auditInternalSystem: number;
-    auditCertification: number;
-    auditProcess: number;
-    auditProduct: number;
-    poorQualityCosts: number;
-    warrantyCosts: number;
-  }>({
+  const [manualDraft, setManualDraft] = useState<ManualDraft>({
     month: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
     siteCode: "",
     siteLocation: "",
@@ -302,6 +514,13 @@ export default function UploadPage() {
     poorQualityCosts: 0,
     warrantyCosts: 0,
   });
+  const manualUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const [manualUploadFileName, setManualUploadFileName] = useState("");
+  const [manualUploadMessage, setManualUploadMessage] = useState<string | null>(null);
+  const [manualUploadError, setManualUploadError] = useState<string | null>(null);
+  const [manualUploadImportedRequiredFields, setManualUploadImportedRequiredFields] = useState<Array<keyof ManualDraft>>([]);
+  const [manualUploadMissingRequiredFields, setManualUploadMissingRequiredFields] = useState<Array<keyof ManualDraft>>([]);
+  const [activeUploadTab, setActiveUploadTab] = useState("files");
 
   const sectionMeta = useMemo(() => {
     return {
@@ -447,13 +666,12 @@ export default function UploadPage() {
     setUploading((prev) => ({ ...prev, [section]: true }));
     setProgressBySection((p) => ({ ...p, [section]: { percent: 0, status: "uploading" } }));
     try {
-      // Check total file size and implement chunked uploads for large payloads
-      const MAX_FILES_PER_BATCH = 3; // Upload max 3 files at a time to avoid 413 errors
-      const MAX_TOTAL_SIZE = 4 * 1024 * 1024; // 4MB limit per batch (conservative for Vercel Hobby)
-      
-      let totalSize = files.reduce((sum, f) => sum + f.size, 0);
-      let needsChunking = files.length > MAX_FILES_PER_BATCH || totalSize > MAX_TOTAL_SIZE;
-      
+      const MAX_FILES_PER_BATCH = 3;
+      const MAX_TOTAL_SIZE = 4 * 1024 * 1024;
+      const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+      const needsMultipartChunking = files.length > MAX_FILES_PER_BATCH || totalSize > MAX_TOTAL_SIZE;
+      const hasLargeFile = files.some((file) => file.size > LARGE_FILE_THRESHOLD_BYTES);
+
       let allResults: any = {
         complaints: [],
         deliveries: [],
@@ -462,55 +680,94 @@ export default function UploadPage() {
         deviations: [],
         errors: [],
       };
-      
-      if (needsChunking && files.length > MAX_FILES_PER_BATCH) {
-        // Upload files in batches
-        const batches: File[][] = [];
-        for (let i = 0; i < files.length; i += MAX_FILES_PER_BATCH) {
-          batches.push(files.slice(i, i + MAX_FILES_PER_BATCH));
+
+      if (hasLargeFile) {
+        const parsedBySection: Record<UploadSectionKey, unknown[]> = {
+          complaints: [],
+          deliveries: [],
+          plants: [],
+          ppap: [],
+          deviations: [],
+          audit: [],
+        };
+
+        for (let fileIndex = 0; fileIndex < files.length; fileIndex += 1) {
+          const file = files[fileIndex];
+          const arrayBuffer = await file.arrayBuffer();
+          const binary = new Uint8Array(arrayBuffer);
+
+          let parsed: unknown[] = [];
+          if (section === "complaints") parsed = parseComplaints(binary);
+          if (section === "deliveries") parsed = parseDeliveries(binary, undefined, file.name);
+          if (section === "plants") parsed = parsePlants(binary);
+          if (section === "ppap") parsed = parsePPAP(binary);
+          if (section === "deviations") parsed = parseDeviations(binary);
+
+          parsedBySection[section].push(...parsed);
+          const parseProgress = Math.round(((fileIndex + 1) / files.length) * 40);
+          setProgressBySection((p) => ({ ...p, [section]: { percent: parseProgress, status: "uploading" } }));
         }
-        
-        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-          const batch = batches[batchIndex];
+
+        const sectionRecords = parsedBySection[section];
+        const chunks = chunkArray(sectionRecords, JSON_CHUNK_RECORD_COUNT);
+        const uploadedRecords: unknown[] = [];
+
+        for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex += 1) {
+          const uploadedChunk = await postJsonChunk(section, chunks[chunkIndex], chunkIndex + 1, chunks.length);
+          uploadedRecords.push(...uploadedChunk);
+          const uploadProgress = 40 + Math.round(((chunkIndex + 1) / Math.max(1, chunks.length)) * 60);
+          setProgressBySection((p) => ({ ...p, [section]: { percent: uploadProgress, status: "uploading" } }));
+        }
+
+        if (section === "complaints") allResults.complaints = uploadedRecords;
+        if (section === "deliveries") allResults.deliveries = uploadedRecords;
+        if (section === "plants") allResults.plants = uploadedRecords;
+        if (section === "ppap") allResults.ppaps = uploadedRecords;
+        if (section === "deviations") allResults.deviations = uploadedRecords;
+      } else {
+        if (needsMultipartChunking && files.length > MAX_FILES_PER_BATCH) {
+          const batches: File[][] = [];
+          for (let i = 0; i < files.length; i += MAX_FILES_PER_BATCH) {
+            batches.push(files.slice(i, i + MAX_FILES_PER_BATCH));
+          }
+
+          for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+            const batch = batches[batchIndex];
+            const formData = new FormData();
+            formData.append("fileType", section);
+            batch.forEach((f) => formData.append("files", f));
+
+            const batchProgress = (pct: number) => {
+              const baseProgress = (batchIndex / batches.length) * 100;
+              const partialProgress = pct / batches.length;
+              setProgressBySection((p) => ({ ...p, [section]: { percent: Math.round(baseProgress + partialProgress), status: "uploading" } }));
+            };
+
+            const batchData = await postFormDataWithProgress<any>("/api/upload", formData, batchProgress);
+            if (batchData.complaints) allResults.complaints.push(...(batchData.complaints || []));
+            if (batchData.deliveries) allResults.deliveries.push(...(batchData.deliveries || []));
+            if (batchData.plants) allResults.plants.push(...(batchData.plants || []));
+            if (batchData.ppaps) allResults.ppaps.push(...(batchData.ppaps || []));
+            if (batchData.deviations) allResults.deviations.push(...(batchData.deviations || []));
+            if (batchData.errors) allResults.errors.push(...(batchData.errors || []));
+          }
+        } else {
           const formData = new FormData();
           formData.append("fileType", section);
-          batch.forEach((f) => formData.append("files", f));
-          
-          const batchProgress = (pct: number) => {
-            // Calculate progress: previous batches + current batch progress
-            const baseProgress = (batchIndex / batches.length) * 100;
-            const batchProgress = (pct / batches.length);
-            setProgressBySection((p) => ({ ...p, [section]: { percent: Math.round(baseProgress + batchProgress), status: "uploading" } }));
-          };
-          
-          const batchData = await postFormDataWithProgress<any>("/api/upload", formData, batchProgress);
-          
-          // Merge results
-          if (batchData.complaints) allResults.complaints.push(...(batchData.complaints || []));
-          if (batchData.deliveries) allResults.deliveries.push(...(batchData.deliveries || []));
-          if (batchData.plants) allResults.plants.push(...(batchData.plants || []));
-          if (batchData.ppaps) allResults.ppaps.push(...(batchData.ppaps || []));
-          if (batchData.deviations) allResults.deviations.push(...(batchData.deviations || []));
-          if (batchData.errors) allResults.errors.push(...(batchData.errors || []));
+          files.forEach((f) => formData.append("files", f));
+          const data = await postFormDataWithProgress<any>("/api/upload", formData, (pct) => {
+            setProgressBySection((p) => ({ ...p, [section]: { percent: pct, status: "uploading" } }));
+          });
+
+          if (data.complaints) allResults.complaints = data.complaints;
+          if (data.deliveries) allResults.deliveries = data.deliveries;
+          if (data.plants) allResults.plants = data.plants;
+          if (data.ppaps) allResults.ppaps = data.ppaps;
+          if (data.deviations) allResults.deviations = data.deviations;
+          if (data.errors) allResults.errors = data.errors;
         }
-      } else {
-        // Single batch upload
-        const formData = new FormData();
-        formData.append("fileType", section);
-        files.forEach((f) => formData.append("files", f));
-        const data = await postFormDataWithProgress<any>("/api/upload", formData, (pct) => {
-          setProgressBySection((p) => ({ ...p, [section]: { percent: pct, status: "uploading" } }));
-        });
-        
-        // Copy results
-        if (data.complaints) allResults.complaints = data.complaints;
-        if (data.deliveries) allResults.deliveries = data.deliveries;
-        if (data.plants) allResults.plants = data.plants;
-        if (data.ppaps) allResults.ppaps = data.ppaps;
-        if (data.deviations) allResults.deviations = data.deviations;
-        if (data.errors) allResults.errors = data.errors;
       }
-      
+
       setProgressBySection((p) => ({ ...p, [section]: { percent: 100, status: "success" } }));
       setUploadedFileNamesBySection((p) => ({ ...p, [section]: files.map((f) => f.name) }));
       
@@ -670,8 +927,19 @@ export default function UploadPage() {
         // Persist parsed deliveries in IndexedDB (deduped)
         if (typeof window !== "undefined") {
           const revived = (items as any[]).filter((x) => x?.id).map(reviveDelivery);
-          const existingIds = new Set((await getAllDeliveries()).map((d) => d.id));
-          const { deduped, duplicates } = dedupeById(revived, existingIds);
+          const existingDeliveries = await getAllDeliveries();
+          const seenDeliveryKeys = new Set(existingDeliveries.map(getDeliveryLogicalKey));
+          const deduped: Delivery[] = [];
+          const duplicates: Delivery[] = [];
+          for (const d of revived) {
+            const key = getDeliveryLogicalKey(d);
+            if (seenDeliveryKeys.has(key)) {
+              duplicates.push(d);
+              continue;
+            }
+            seenDeliveryKeys.add(key);
+            deduped.push(d);
+          }
           summary.duplicateRecords = duplicates.length;
           if (duplicates.length > 0) {
             duplicates.forEach((d) => {
@@ -1093,6 +1361,52 @@ export default function UploadPage() {
     }
   }
 
+  async function uploadManualTemplate(file: File | null) {
+    setManualUploadError(null);
+    setManualUploadMessage(null);
+    setManualUploadImportedRequiredFields([]);
+    setManualUploadMissingRequiredFields([]);
+    if (!file) return;
+
+    try {
+      const fileBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(fileBuffer, { type: "array", cellDates: false });
+      const importedValues = extractManualDraftFromWorkbook(workbook);
+      const importedKeys = Object.keys(importedValues) as Array<keyof ManualDraft>;
+      const importedKeySet = new Set(importedKeys);
+
+      if (importedKeys.length === 0) {
+        throw new Error("No recognized field labels were found in the Excel file.");
+      }
+
+      const populatedRequired = MANUAL_UPLOAD_REQUIRED_FIELDS.filter((field) => importedKeySet.has(field));
+      const missingRequired = MANUAL_UPLOAD_REQUIRED_FIELDS.filter((field) => !importedKeySet.has(field));
+      setManualUploadImportedRequiredFields(populatedRequired);
+      setManualUploadMissingRequiredFields(missingRequired);
+
+      setManualDraft((previousDraft) => {
+        const mergedDraft: ManualDraft = { ...previousDraft, ...importedValues };
+        const trimmedSiteCode = mergedDraft.siteCode.trim();
+        if (!mergedDraft.siteLocation.trim() && /^\d{3}$/.test(trimmedSiteCode)) {
+          const plant = plantsData.find((item) => item.code === trimmedSiteCode);
+          const autoLocation =
+            plant?.location || plant?.city || plant?.abbreviation || plant?.country || plant?.name || "";
+          mergedDraft.siteLocation = autoLocation;
+        }
+        return mergedDraft;
+      });
+
+      setManualUploadFileName(file.name);
+      setManualUploadMessage(
+        `Imported ${importedKeys.length} field value(s) from ${file.name}. Please review and then click Add Entry.`
+      );
+    } catch (error) {
+      setManualUploadError(error instanceof Error ? error.message : "Failed to import Excel file.");
+    } finally {
+      if (manualUploadInputRef.current) manualUploadInputRef.current.value = "";
+    }
+  }
+
   function exportManualAndHistoryToExcel() {
     const wb = XLSX.utils.book_new();
     
@@ -1246,7 +1560,18 @@ export default function UploadPage() {
         <p className="text-muted-foreground">{t.upload.description}</p>
       </div>
 
-      <Tabs defaultValue="files">
+      <input
+        ref={manualUploadInputRef}
+        type="file"
+        accept=".xlsx,.xls,.XLSX,.XLS"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0] || null;
+          void uploadManualTemplate(file);
+        }}
+      />
+
+      <Tabs defaultValue="files" value={activeUploadTab} onValueChange={setActiveUploadTab}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList className="h-12 p-1.5 bg-muted/60 border border-border/60">
             <TabsTrigger
@@ -1275,10 +1600,18 @@ export default function UploadPage() {
               {t.upload.changeHistory}
             </TabsTrigger>
           </TabsList>
-          <Button variant="outline" onClick={exportManualAndHistoryToExcel}>
-            <Download className="h-4 w-4 mr-2" />
-            {t.upload.exportExcel}
-          </Button>
+          <div className="flex items-center gap-2">
+            {activeUploadTab === "form" && (
+              <Button type="button" variant="outline" onClick={() => manualUploadInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Excel Into Form
+              </Button>
+            )}
+            <Button variant="outline" onClick={exportManualAndHistoryToExcel}>
+              <Download className="h-4 w-4 mr-2" />
+              {t.upload.exportExcel}
+            </Button>
+          </div>
         </div>
 
         <TabsContent value="files" className="space-y-6">
@@ -1300,7 +1633,14 @@ export default function UploadPage() {
               ).map(([section, files]) => (
                 <Card key={section} className="glass-card-glow" style={{ borderColor: "#9E9E9E", borderWidth: "2px" }}>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{sectionMeta[section].title}</CardTitle>
+                    <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+                      <span>{sectionMeta[section].title}</span>
+                      {files.some((file) => file.size > LARGE_FILE_THRESHOLD_BYTES) && (
+                        <Badge variant="outline" className="text-[10px] border-amber-500/60 text-amber-700 dark:text-amber-300">
+                          Large file mode active (client parse + chunk upload)
+                        </Badge>
+                      )}
+                    </CardTitle>
                     <CardDescription>{sectionMeta[section].help}</CardDescription>
         </CardHeader>
                   <CardContent className="space-y-3">
@@ -1576,6 +1916,41 @@ export default function UploadPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="rounded-md border border-dashed border-border/70 p-3 space-y-2">
+                {manualUploadFileName && (
+                  <div className="text-xs text-muted-foreground">Loaded file: {manualUploadFileName}</div>
+                )}
+                {manualUploadMessage && (
+                  <p className="text-xs" style={{ color: "#00FF88" }}>
+                    {manualUploadMessage}
+                  </p>
+                )}
+                {manualUploadError && <p className="text-xs text-destructive">{manualUploadError}</p>}
+                {(manualUploadImportedRequiredFields.length > 0 || manualUploadMissingRequiredFields.length > 0) && (
+                  <div className="rounded-md border border-border/60 bg-muted/30 p-2 space-y-2">
+                    <div className="text-xs text-muted-foreground">
+                      Required fields imported:{" "}
+                      <span className="font-medium text-foreground">
+                        {manualUploadImportedRequiredFields.length}/{MANUAL_UPLOAD_REQUIRED_FIELDS.length}
+                      </span>
+                    </div>
+                    {manualUploadMissingRequiredFields.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {manualUploadMissingRequiredFields.map((field) => (
+                          <Badge key={field} variant="outline" className="text-xs">
+                            {MANUAL_DRAFT_FIELD_LABELS[field]}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs" style={{ color: "#00FF88" }}>
+                        All required fields were populated from the upload.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label>{t.upload.plant}</Label>

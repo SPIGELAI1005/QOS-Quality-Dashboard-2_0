@@ -231,6 +231,7 @@
 
 ### In Progress
 - ⏳ Deliveries: Partially (still uses IndexedDB in upload page)
+- ⏳ Upload resilience: Large files now use client-side parse + chunked JSON upload (`/api/upload-json-chunk`) while persistence still relies on local/IndexedDB for deliveries
 
 ### Not Started
 - ❌ MonthlySiteKpi: Schema, Repository, API, Client API, UI integration, Import

@@ -25,11 +25,11 @@ function excelSerialDateToJsDate(value: number): Date | null {
 /**
  * Parse PPAP notifications from Excel file buffer
  */
-export function parsePPAP(buffer: Buffer): PPAPNotification[] {
+export function parsePPAP(buffer: Uint8Array | ArrayBuffer): PPAPNotification[] {
   const ppaps: PPAPNotification[] = [];
   
   try {
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
     
     if (workbook.SheetNames.length === 0) {
       console.warn('PPAP file has no worksheets');

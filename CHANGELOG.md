@@ -7,6 +7,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - 2026-03-16
+**Type**: Added
+
+**Description**: Enter Data form supports Excel template import with field-label mapping and validation feedback
+
+**Details**:
+- Added Excel import for manual data entry (`/upload` → Enter Data):
+  - Reads field labels from a cell and takes the value from the immediate right cell
+  - Supports current template labels from `QOS_ET_Manual_Data_Entry_Form_v01_2026.xlsx`
+  - Populates form values for user review before clicking **Add Entry**
+- Added import validation panel:
+  - Shows required imported field count (`x/total`)
+  - Shows missing required fields list
+  - Shows success message when all required fields are present
+- Added contextual UI behavior:
+  - `Upload Excel Into Form` button appears in top-right toolbar next to Export
+  - Button is shown only when Enter Data tab is active
+  - Added badge in upload cards when large-file mode is active
+
+**Files Modified / Added**:
+- `app/(dashboard)/upload/page.tsx` - Manual form Excel import, template label mapping, validation panel, tab-aware button visibility, large-file mode badge
+
+**Breaking Changes**: None
+
+---
+
+### Changed - 2026-03-16
+**Type**: Changed
+
+**Description**: Large file upload path now uses client-side parse + chunked JSON upload with multipart fallback
+
+**Details**:
+- For large files (>2MB), upload now:
+  - Parses Excel client-side
+  - Splits parsed records into JSON chunks
+  - Uploads chunks via a dedicated API endpoint to reduce 413/timeouts on Vercel
+- For small files, existing multipart upload flow remains unchanged
+- Parsers were made isomorphic (`Uint8Array | ArrayBuffer`) so they can run in browser and server contexts
+
+**Files Modified / Added**:
+- `app/(dashboard)/upload/page.tsx` - Large-file detection, client parsing path, chunked JSON upload, fallback logic
+- `app/api/upload-json-chunk/route.ts` - New chunk ingestion endpoint
+- `lib/excel/parseComplaints.ts` - Browser/server compatible parser input
+- `lib/excel/parseDeliveries.ts` - Browser/server compatible parser input
+- `lib/excel/parsePlants.ts` - Browser/server compatible parser input
+- `lib/excel/parsePPAP.ts` - Browser/server compatible parser input
+- `lib/excel/parseDeviations.ts` - Browser/server compatible parser input
+
+**Breaking Changes**: None
+
+---
+
 ### Fixed - 2026-02-02
 **Type**: Fixed
 

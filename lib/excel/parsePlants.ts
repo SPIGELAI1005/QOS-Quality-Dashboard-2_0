@@ -40,9 +40,9 @@ export interface PlantData {
  * Parse plants from Excel file buffer
  * Expected columns: Code, City, Country (or similar variations)
  */
-export function parsePlants(buffer: Buffer): PlantData[] {
+export function parsePlants(buffer: Uint8Array | ArrayBuffer): PlantData[] {
   try {
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
     const sheetName = workbook.SheetNames[0];
     if (!sheetName) return [];
 

@@ -225,7 +225,7 @@ function parseDeliveryKind(
  * Returns one Delivery record per plant-date-kind combination with summed quantities
  */
 export function parseDeliveries(
-  buffer: Buffer,
+  buffer: Uint8Array | ArrayBuffer,
   mapping?: DeliveryColumnMapping,
   fileName?: string
 ): Delivery[] {
@@ -237,7 +237,7 @@ export function parseDeliveries(
 
   try {
     // Parse Excel file
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
 
     if (workbook.SheetNames.length === 0) {
       console.warn('Excel file has no worksheets');
@@ -496,10 +496,11 @@ export function parseDeliveries(
         
         rowsAdded++;
 
-        // Create a key for aggregation: plant-date-kind
-        // Use year-month for date key to aggregate by month
+        // Create a key for aggregation: plant-month-kind
+        // We aggregate at month granularity to avoid duplicate month rows across files.
         const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
         const aggregationKey = `${plant || siteCode}-${dateKey}-${kind}`;
+        const monthStartDate = new Date(date.getFullYear(), date.getMonth(), 1);
         
         // Aggregate quantities by plant-date-kind combination
         if (deliveryMap.has(aggregationKey)) {
@@ -512,7 +513,7 @@ export function parseDeliveries(
             plant: plant || siteCode,
             siteCode,
             siteName,
-            date, // Keep the first date encountered for this aggregation key
+            date: monthStartDate, // Normalize to month-start for deterministic IDs
             quantity: Math.max(0, quantity),
             kind,
           });

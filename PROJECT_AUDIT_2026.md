@@ -1,7 +1,7 @@
 # QOS ET Quality Report - Comprehensive Project Audit & Value Assessment
 
-**Audit Date**: 2026-02-02  
-**Version**: 1.0.6  
+**Audit Date**: 2026-03-16  
+**Version**: 1.0.7  
 **Status**: Production-Ready (Active Development)  
 **Auditor**: AI Code Review & Analysis
 
@@ -24,6 +24,15 @@ The QOS ET Quality Report is a **sophisticated, enterprise-grade web application
 | **Components** | 40+ | Reusable UI components |
 | **Test Coverage** | 2 test suites | Vitest unit tests |
 | **Languages Supported** | 3 | English, German, Italian |
+
+---
+
+## 🔄 Latest Progress Delta (2026-03-16)
+
+- Added manual Enter Data Excel import mapping (label cell + immediate right value cell) for the current template.
+- Added import completeness feedback panel (required imported count + missing required field list).
+- Added large-file upload resilience: client-side parse + chunked JSON upload for files >2MB, with existing multipart fallback for smaller files.
+- Added user-facing large-file mode badge in upload cards for transparency.
 
 ---
 

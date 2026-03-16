@@ -1,8 +1,8 @@
 # QOS ET Quality Report - Project Evaluation & Value Assessment
 
-**Date**: 2026-02-02 (Updated)  
+**Date**: 2026-03-16 (Updated)  
 **Previous**: 2026-01-11  
-**Version**: 1.0.2  
+**Version**: 1.0.3  
 **Status**: Production-Ready (Active Development)  
 **See Also**: `PROJECT_AUDIT_2026.md` for comprehensive audit
 
@@ -66,6 +66,9 @@ Measured from git-tracked files in this repository (PowerShell, Windows):
 - “How to read this chart” tooltip links from key charts to FAQ anchors
 - **Full i18n** for period mode, YTD subtitle, Change History panel, dashboard filter warning, month names (en/de/it)
 - **Layout chunk fix**: ThemeProvider + Toaster in dynamic chunk; fallback Retry on ChunkLoadError
+- **Manual Excel form import**: Enter Data can import template-based values (field label + right-adjacent cell), with review before Add Entry
+- **Import completeness panel**: Required imported fields count + missing required fields list
+- **Large-file upload resilience**: Files >2MB use client-side parse + chunked JSON upload with fallback to multipart for smaller files
 
 ---
 
@@ -374,5 +377,5 @@ Measured from git-tracked files in this repository (PowerShell, Windows):
 
 ---
 
-*Last Updated: 2026-01-11*
+*Last Updated: 2026-03-16*
 

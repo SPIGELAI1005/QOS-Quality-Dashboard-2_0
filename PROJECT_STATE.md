@@ -1,7 +1,7 @@
 # QOS ET Quality Report - Complete Project State Documentation
 
-**Last Updated**: 2026-02-02  
-**Version**: 1.0.6  
+**Last Updated**: 2026-03-16  
+**Version**: 1.0.7  
 **Status**: Active Development
 
 This document provides a complete snapshot of the application state, including all pages, components, features, charts, tables, and functionality. Use this document to rebuild the application if data is lost.
@@ -39,6 +39,8 @@ This document provides a complete snapshot of the application state, including a
 - **Multi-language support** (English, German, Italian) with full translation coverage (period mode, Change History, filter warning, month names)
 - **Period mode** (12 Months Back / Year to Date) on Dashboard, PPAPs, Deviations, Cost Poor Quality, Audit Management, Warranties Costs
 - **Upload duplicate handling**: merge and dedupe by record id; no full clear; duplicate badge and Change History filter
+- **Manual form Excel import**: Enter Data supports field-label + right-cell value mapping from template files, with required-field completeness panel
+- **Large file upload mode**: Files >2MB use client-side parsing + chunked JSON upload; smaller files keep multipart upload flow
 
 ---
 
@@ -261,6 +263,10 @@ QOS ET Report/
   - File upload form (complaints, deliveries, PPAP, deviations, audit, plants)
   - **Merge and dedupe**: New uploads merge with existing data; duplicates removed by record id (no full clear)
   - Upload summary shows duplicate count when applicable; Change History has Duplicate filter (all translated)
+  - Enter Data includes Excel import from template labels and right-adjacent values
+  - Enter Data shows imported required fields count and missing required field list
+  - `Upload Excel Into Form` appears in top-right toolbar only when Enter Data tab is active
+  - Upload cards show a large-file mode badge when files trigger client parse + chunk upload
   - Guided upload workflow (UI steps):
     - Step 1: Select data (custom translated button; native file input hidden)
     - Step 2: Upload
@@ -681,7 +687,33 @@ All UI components from Shadcn UI:
   - Unit tests: `app/api/iamq/__tests__/route.test.ts` (Vitest)
   - Smoke test: `scripts/test-iamq.ts` (run with `npm run test:iamq`)
 
-### 8. `/api/test-route` (GET)
+### 8. `/api/upload-json-chunk` (POST)
+- **File**: `app/api/upload-json-chunk/route.ts`
+- **Description**: Receives parsed upload records in chunks (used by large-file mode)
+- **Request**:
+  ```typescript
+  {
+    fileType: "complaints" | "deliveries" | "ppap" | "deviations" | "plants",
+    chunkIndex: number,
+    totalChunks: number,
+    records: unknown[]
+  }
+  ```
+- **Response**:
+  ```typescript
+  {
+    fileType: string,
+    chunkIndex: number,
+    totalChunks: number,
+    count: number,
+    records: unknown[]
+  }
+  ```
+- **Notes**:
+  - Used only for large-file upload flow
+  - Includes record-count guard per chunk
+
+### 9. `/api/test-route` (GET)
 - **File**: `app/api/test-route/route.ts`
 - **Description**: Test endpoint
 

@@ -1,6 +1,6 @@
 # Memory Bank — QOS ET Quality Report
 
-**Last Updated**: 2026-02-02  
+**Last Updated**: 2026-03-16  
 **Purpose**: Fast, accurate context for continuing development and recovery.
 
 ---
@@ -79,6 +79,14 @@ QOS ET Quality Report is a Next.js dashboard for **manufacturing quality KPIs** 
 - **Upload duplicates**: New uploads **merge** with existing data; duplicates are **deduped by record id** before persist (no full clear of IndexedDB). Change type `duplicate` and `duplicateRecords` count in upload summary; Change History panel has Duplicate filter.
 - **Plant filter**: Individual Plants options come **only from Webasto ET Plants.xlsx**; selected plants are cleaned when they drop out of the list; SAP P01 quick access uses plants data; plant 210 (Manisa) in PLANT_COLORS.
 - **i18n**: Period mode labels, YTD subtitle, “duplicates”, Change History panel (filters, types, labels), dashboard filter warning, and month names are fully translated (en/de/it).
+
+## Recent critical implementation decisions (2026-03-16)
+
+- **Manual form Excel import**: Enter Data form now supports template-driven import from Excel by reading **field label cell + right-adjacent value cell**; imported values are shown in the form for review before Add Entry.
+- **Template mapping coverage**: Label aliases were expanded to match `QOS_ET_Manual_Data_Entry_Form_v01_2026.xlsx` variants (including multi-line and prefixed labels like `Nr. of ...`, `Total Quantity ...`, and `(template)` suffixes).
+- **Import validation panel**: Enter Data now shows required imported fields count and missing required fields list, giving immediate completeness feedback after upload.
+- **Large file resilience**: For files >2MB, upload uses **client-side parse + chunked JSON upload** to reduce Vercel payload/timeout failures; small files still use multipart upload.
+- **Large file transparency**: Upload cards now show a badge when large-file mode is active so users understand behavior differences.
 
 ## Recent critical implementation decisions (2026-01-17)
 

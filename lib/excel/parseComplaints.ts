@@ -415,7 +415,7 @@ function parseNumber(value: unknown): number {
  * Parse complaints from Excel file buffer
  */
 export function parseComplaints(
-  buffer: Buffer,
+  buffer: Uint8Array | ArrayBuffer,
   mapping?: ComplaintColumnMapping,
   source: DataSource = 'SAP_S4'
 ): Complaint[] {
@@ -425,7 +425,7 @@ export function parseComplaints(
 
   try {
     // Parse Excel file
-    const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
 
     if (workbook.SheetNames.length === 0) {
       console.warn('Excel file has no worksheets');
