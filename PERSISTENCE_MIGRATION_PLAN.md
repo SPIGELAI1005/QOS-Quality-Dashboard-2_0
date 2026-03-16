@@ -1,5 +1,7 @@
 # Persistence Migration Plan: Browser Storage → Server-Side Postgres
 
+**Last Updated**: 2026-03-16
+
 ## A) Inventory Table: All Persistence Touchpoints
 
 | Touchpoint | File Path | Storage Key/Type | Description |

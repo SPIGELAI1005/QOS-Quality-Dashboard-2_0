@@ -1,5 +1,8 @@
 # Database Implementation Status
 
+**Last Updated**: 2026-03-16  
+**Scope Note**: Latest project changes in this cycle were primarily UI/export/i18n/mailto/hydration improvements; database migration scope remains unchanged.
+
 ## ✅ What Has Been Created
 
 ### 1. Foundation & Infrastructure

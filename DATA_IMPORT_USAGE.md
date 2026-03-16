@@ -1,5 +1,7 @@
 # Data Import Usage Instructions
 
+**Last Updated**: 2026-03-16
+
 ## Overview
 
 The data import feature allows you to migrate existing complaints from local storage (IndexedDB) to the server database. This is a one-time migration operation that can be run safely multiple times (it will update existing records).

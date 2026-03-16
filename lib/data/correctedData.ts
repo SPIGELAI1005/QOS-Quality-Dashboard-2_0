@@ -30,7 +30,14 @@ export function getCorrectedComplaints(): Complaint[] {
         if (wasCorrected && !seenIds.has(complaint.id)) {
           // Ensure complaint has all required fields before pushing
           if ('category' in complaint && 'plant' in complaint && 'source' in complaint && 'defectiveParts' in complaint) {
-            correctedComplaints.push(complaint as Complaint);
+            const fullComplaint: Complaint = {
+              ...(complaint as Complaint),
+              createdOn:
+                (complaint as any).createdOn instanceof Date
+                  ? (complaint as any).createdOn
+                  : new Date((complaint as any).createdOn),
+            };
+            correctedComplaints.push(fullComplaint);
             seenIds.add(complaint.id);
           }
         }

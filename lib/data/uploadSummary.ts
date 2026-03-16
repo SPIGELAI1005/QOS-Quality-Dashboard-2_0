@@ -294,22 +294,14 @@ export function saveUploadSummary(summary: UploadSummaryEntry): void {
         })) || [],
       },
       processedData: {
+        // Keep full corrected records so edits persist across reloads and KPI recalculation
         complaints: summary.processedData.complaints?.map(c => ({
-          id: c.id,
-          notificationNumber: c.notificationNumber,
-          notificationType: c.notificationType,
-          siteCode: c.siteCode,
+          ...c,
           createdOn: c.createdOn instanceof Date ? c.createdOn.toISOString() : c.createdOn,
-          materialNumber: (c as any).materialNumber,
-          // Store minimal fields - rest can be reconstructed from conversionStatus
         })) || [],
         deliveries: summary.processedData.deliveries?.map(d => ({
-          id: d.id,
-          plant: d.plant,
-          siteCode: d.siteCode,
+          ...d,
           date: d.date instanceof Date ? d.date.toISOString() : d.date,
-          kind: d.kind,
-          quantity: d.quantity,
         })) || [],
       },
     };

@@ -1,6 +1,6 @@
 # QOS ET Quality Report - Comprehensive Project Audit & Value Assessment
 
-**Audit Date**: 2026-03-16  
+**Last Updated**: 2026-03-16  
 **Version**: 1.0.7  
 **Status**: Production-Ready (Active Development)  
 **Auditor**: AI Code Review & Analysis
@@ -33,6 +33,13 @@ The QOS ET Quality Report is a **sophisticated, enterprise-grade web application
 - Added import completeness feedback panel (required imported count + missing required field list).
 - Added large-file upload resilience: client-side parse + chunked JSON upload for files >2MB, with existing multipart fallback for smaller files.
 - Added user-facing large-file mode badge in upload cards for transparency.
+- Updated PPAP nomenclature in filters (`P1 - Customer PPAP`, `P2 - Supplier PPAP`) and removed unnecessary P3 filter option.
+- Hardened light/dark theme chart label contrast with component-level theme colors and global SVG overrides for Recharts text/axis elements.
+- Updated Upload Enter Data model and layout for `P1/P2` and `D1/D2/D3` fields (aligned naming + row layout consistency).
+- Implemented combined PPM site-contribution Excel export with two tabs (Customer PPM, Supplier PPM) and rolling 12-month overview structure.
+- Fixed mailto encoding for AI Summary/Glossary so spaces are preserved as `%20` (no `+` separators), and added a unit-test safeguard.
+- Resolved glossary hydration issue by removing nested button pattern in FAQ copy-link action.
+- Refreshed FAQ/Glossary terminology across EN/DE/IT for current PPAP/Deviation naming.
 
 ---
 
@@ -702,11 +709,12 @@ other/        : 5,163 lines (21%) - Config, styles, etc.
 - ⚠️ Test coverage (quality assurance) - **Still needs improvement**
 - ⚠️ Some large files (maintainability) - **Still needs refactoring**
 
-**Recent Improvements (2026-01-15)**:
-- ✅ **Data Accumulation Fixed** - File uploads now merge correctly
-- ✅ **Change History Enhanced** - Professional audit trail implemented
-- ✅ **Manual Form Enhanced** - Recorded By field, validation, one-pager links
-- ✅ **I AM Q Expanded** - Data Lineage integration added
+**Recent Improvements (2026-03-16)**:
+- ✅ **PPAP/Deviation terminology alignment** - Filters, manual form fields, and FAQ/glossary content updated
+- ✅ **Theme contrast reliability** - Chart/table labels remain readable in dark/light mode switches
+- ✅ **Dashboard export parity** - Combined two-tab PPM workbook with rolling 12-month structure
+- ✅ **Mailto encoding reliability** - No `+` words in AI summary emails; regression test added
+- ✅ **Glossary hydration fix** - Nested button issue removed; interaction remains keyboard accessible
 
 ### Strategic Path Forward
 
@@ -748,7 +756,6 @@ With Phase 1 complete, the app becomes a **viable SaaS product**:
 
 ---
 
-*Last Updated: 2026-01-17*  
 *Next Review: After Phase 1 completion or significant feature additions*
 
 ---

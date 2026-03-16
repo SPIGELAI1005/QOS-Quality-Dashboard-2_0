@@ -221,6 +221,97 @@
     transform: translateY(-2px);
   }
 
+  /* Theme-aware chart contrast for light/dark mode toggles */
+  .recharts-wrapper .recharts-cartesian-grid line {
+    stroke: hsl(var(--border) / 0.55) !important;
+  }
+
+  .recharts-wrapper .recharts-cartesian-axis-line,
+  .recharts-wrapper .recharts-cartesian-axis-tick-line {
+    stroke: hsl(var(--border) / 0.8) !important;
+  }
+
+  .recharts-wrapper .recharts-cartesian-axis-tick-value,
+  .recharts-wrapper .recharts-legend-item-text {
+    fill: hsl(var(--muted-foreground)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
+  .recharts-wrapper .recharts-cartesian-axis-tick text,
+  .recharts-wrapper .recharts-cartesian-axis text {
+    fill: hsl(var(--muted-foreground)) !important;
+  }
+
+  .recharts-wrapper text.recharts-text {
+    fill: hsl(var(--foreground)) !important;
+  }
+
+  .recharts-wrapper .recharts-cartesian-axis-tick-value tspan,
+  .recharts-wrapper .recharts-cartesian-axis text tspan,
+  .recharts-wrapper text.recharts-text tspan {
+    fill: hsl(var(--foreground)) !important;
+  }
+
+  .recharts-wrapper .recharts-label-list text,
+  .recharts-wrapper .recharts-polar-angle-axis-tick-value,
+  .recharts-wrapper .recharts-polar-radius-axis-tick-value {
+    fill: hsl(var(--foreground)) !important;
+  }
+
+  /* Fallback overrides for inline SVG attribute colors used in chart components */
+  .recharts-wrapper [stroke="rgba(255, 255, 255, 0.1)"] {
+    stroke: hsl(var(--border) / 0.55) !important;
+  }
+
+  .recharts-wrapper [stroke="rgba(255,255,255,0.1)"] {
+    stroke: hsl(var(--border) / 0.55) !important;
+  }
+
+  .recharts-wrapper [stroke="rgba(255, 255, 255, 0.5)"] {
+    stroke: hsl(var(--muted-foreground) / 0.75) !important;
+  }
+
+  .recharts-wrapper [stroke="rgba(255,255,255,0.5)"] {
+    stroke: hsl(var(--muted-foreground) / 0.75) !important;
+  }
+
+  .recharts-wrapper [fill="rgba(255, 255, 255, 0.9)"] {
+    fill: hsl(var(--foreground)) !important;
+  }
+
+  .recharts-wrapper [fill="rgba(255,255,255,0.9)"] {
+    fill: hsl(var(--foreground)) !important;
+  }
+
+  .recharts-wrapper [fill="rgba(255, 255, 255, 0.7)"],
+  .recharts-wrapper [fill="rgba(255,255,255,0.7)"] {
+    fill: hsl(var(--foreground)) !important;
+  }
+
+  .recharts-wrapper [fill="#fff"],
+  .recharts-wrapper [fill="#ffffff"],
+  .recharts-wrapper [fill="white"] {
+    fill: hsl(var(--foreground)) !important;
+  }
+
+  .recharts-wrapper [stroke="#fff"],
+  .recharts-wrapper [stroke="#ffffff"],
+  .recharts-wrapper [stroke="white"] {
+    stroke: hsl(var(--muted-foreground)) !important;
+  }
+
+  .recharts-tooltip-wrapper .recharts-default-tooltip {
+    background-color: hsl(var(--popover)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+    color: hsl(var(--popover-foreground)) !important;
+    backdrop-filter: blur(8px);
+  }
+
+  .recharts-tooltip-wrapper .recharts-tooltip-label,
+  .recharts-tooltip-wrapper .recharts-tooltip-item {
+    color: hsl(var(--popover-foreground)) !important;
+  }
+
   /* Accordion animations */
   @keyframes accordion-down {
     from {

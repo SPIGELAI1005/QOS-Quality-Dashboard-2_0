@@ -120,6 +120,67 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
     return map[key] ?? key.replace("_", " ");
   };
 
+  const getSummaryValue = (change: ChangeHistoryEntry, key: string): number | null => {
+    const detailsSummary = (change.dataDetails as any)?.summary;
+    if (detailsSummary && typeof detailsSummary[key] === "number") return detailsSummary[key];
+    if (change.newValue && typeof change.newValue === "object" && typeof (change.newValue as any)[key] === "number") {
+      return (change.newValue as any)[key];
+    }
+    return null;
+  };
+
+  const getAllFieldDescription = (change: ChangeHistoryEntry): string => {
+    if (change.changeType === "file_upload") {
+      const uploadedFiles: string[] = Array.isArray((change.dataDetails as any)?.files)
+        ? (change.dataDetails as any).files.map((f: any) => f?.name).filter(Boolean)
+        : [];
+      const records = getSummaryValue(change, "records");
+      const duplicates = getSummaryValue(change, "duplicateRecords");
+      const section = recordTypeLabel(change.recordType);
+
+      const parts: string[] = [`Uploaded file data for ${section}.`];
+      if (uploadedFiles.length > 0) parts.push(`Files: ${uploadedFiles.join(", ")}.`);
+      if (records !== null) parts.push(`Parsed records: ${records.toLocaleString("de-DE")}.`);
+      if (duplicates !== null && duplicates > 0) {
+        parts.push(`Duplicate records ignored: ${duplicates.toLocaleString("de-DE")}.`);
+      }
+      return parts.join(" ");
+    }
+
+    if (change.recordType === "manual_entry" || change.changeType === "new_entry") {
+      return "A complete manual KPI entry was added from the Enter Data form.";
+    }
+
+    return "Multiple fields were updated in a single action.";
+  };
+
+  const getWhyThisMatters = (change: ChangeHistoryEntry): string => {
+    const metricCount = change.affectedMetrics.metrics.length;
+    const pageCount = change.affectedMetrics.pages.length;
+    const vizCount = change.affectedMetrics.visualizations.length;
+
+    if (metricCount === 0 && pageCount === 0 && vizCount === 0) {
+      return "This update is recorded for auditability and may affect downstream reporting.";
+    }
+
+    const metricsPreview =
+      metricCount > 0 ? change.affectedMetrics.metrics.slice(0, 2).join(", ") : "";
+    const pagesPreview =
+      pageCount > 0 ? change.affectedMetrics.pages.slice(0, 2).join(", ") : "";
+
+    if (change.changeType === "file_upload") {
+      return `This can update KPI calculations and dashboard outputs (${metricsPreview || "quality metrics"}) across ${
+        pagesPreview || "related pages"
+      }.`;
+    }
+
+    if (change.changeType === "conversion" || change.field === "defectiveParts" || change.field === "unitOfMeasure") {
+      return `This directly affects PPM/defect-related KPIs and charts (${metricsPreview || "PPM metrics"}).`;
+    }
+
+    return `This can change reported values in charts/tables across ${pagesPreview || "the affected pages"}.`;
+  };
+
   if (changes.length === 0) {
     return (
       <Card>
@@ -221,9 +282,9 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
               .replace("(en)", changes.length !== 1 ? "en" : "")
               .replace("/he", changes.length !== 1 ? "he" : "")}
           </div>
-          {filteredChanges.map((change) => (
+          {filteredChanges.map((change, index) => (
             <div
-              key={change.id}
+              key={`${change.id}-${change.timestamp}-${change.recordId}-${index}`}
               className="border rounded-md p-4 space-y-3 hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-start justify-between">
@@ -261,14 +322,8 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
                     )}
                     {change.field === "all" ? (
                       <div>
-                        <span className="font-medium">Data Added/Changed:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {change.recordType === "manual_entry" 
-                            ? "Complete manual form entry with all KPI fields"
-                            : change.recordType === "file_upload"
-                            ? `File upload: ${change.dataDetails?.files?.map((f: any) => f.name).join(", ") || "Multiple files"}`
-                            : "Multiple fields"}
-                        </span>
+                        <span className="font-medium">What happened:</span>{" "}
+                        <span className="text-muted-foreground">{getAllFieldDescription(change)}</span>
                       </div>
                     ) : (
                       <div>
@@ -290,6 +345,10 @@ export function ChangeHistoryPanel({ changes }: ChangeHistoryPanelProps) {
                         </span>
                       </div>
                     )}
+                    <div>
+                      <span className="font-medium">Why this matters:</span>{" "}
+                      <span className="text-muted-foreground">{getWhyThisMatters(change)}</span>
+                    </div>
                     {change.reason && (
                       <div>
                         <span className="font-medium">{t.upload.reasonLabel}</span> {change.reason}

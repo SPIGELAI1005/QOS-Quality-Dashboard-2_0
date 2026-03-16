@@ -1,5 +1,7 @@
 # Documentation Index
 
+**Last Updated**: 2026-03-16
+
 Quick reference guide to all documentation files in the QOS ET Quality Report project.
 
 ---
@@ -198,6 +200,4 @@ Files modified:
 - **Recent Changes**: See `CHANGELOG.md`
 
 ---
-
-**Last Updated**: 2026-02-02
 

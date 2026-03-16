@@ -240,17 +240,16 @@ export function buildMailtoLink(
   pageUrl?: string
 ): string {
   const emailContent = composeEmail(context, pageUrl);
-  const params = new URLSearchParams();
   // NOTE: Many email clients/browsers have strict URL length limits for mailto.
   // Keep content compact to avoid "nothing happens" behavior.
-  params.set('subject', truncateForMailto(emailContent.subject, 140));
-  params.set('body', truncateForMailto(emailContent.body, 1400));
+  const subject = truncateForMailto(emailContent.subject, 140);
+  const body = truncateForMailto(emailContent.body, 1400);
+  const encodeMailtoParam = (value: string): string => encodeURIComponent(value);
   
   // Add recipients if provided
   const toParam = recipients.length > 0 ? recipients.join(',') : '';
-  const mailtoLink = toParam 
-    ? `mailto:${toParam}?${params.toString()}`
-    : `mailto:?${params.toString()}`;
+  const query = `subject=${encodeMailtoParam(subject)}&body=${encodeMailtoParam(body)}`;
+  const mailtoLink = toParam ? `mailto:${toParam}?${query}` : `mailto:?${query}`;
   
   return mailtoLink;
 }

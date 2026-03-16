@@ -1,7 +1,7 @@
 # QOS ET Quality Report - Complete Project State Documentation
 
 **Last Updated**: 2026-03-16  
-**Version**: 1.0.7  
+**Version**: 1.0.8  
 **Status**: Active Development
 
 This document provides a complete snapshot of the application state, including all pages, components, features, charts, tables, and functionality. Use this document to rebuild the application if data is lost.
@@ -41,6 +41,11 @@ This document provides a complete snapshot of the application state, including a
 - **Upload duplicate handling**: merge and dedupe by record id; no full clear; duplicate badge and Change History filter
 - **Manual form Excel import**: Enter Data supports field-label + right-cell value mapping from template files, with required-field completeness panel
 - **Large file upload mode**: Files >2MB use client-side parsing + chunked JSON upload; smaller files keep multipart upload flow
+- **PPAP filter naming update**: PPAPs UI uses `P1 - Customer PPAP` and `P2 - Supplier PPAP` (no P3 filter option)
+- **Chart contrast hardening**: Recharts labels/axes use theme-aware colors and global SVG overrides for consistent readability in both light and dark mode
+- **PPM export alignment**: Dashboard site contribution export produces a single workbook with two tabs (Customer/Supplier), matching rolling 12-month reporting structure
+- **Mailto encoding stability**: AI summary and glossary mailto links now use `%20` spacing encoding (no `+` separators), backed by unit test
+- **Glossary hydration fix**: FAQ copy-link trigger no longer nests a button inside accordion trigger button
 
 ---
 
@@ -209,10 +214,11 @@ QOS ET Report/
 - **Files**:
   - `app/(dashboard)/ppaps/page.tsx`
   - `app/(dashboard)/ppaps/ppaps-client.tsx`
-- **Description**: View PPAP status (P1, P2, P3)
+- **Description**: View PPAP status with business-aligned labels (P1 Customer PPAP, P2 Supplier PPAP)
 - **Features**:
   - Filter panel
   - Summary cards (Total, In Progress, Completed)
+  - PPAP notification filter options aligned to business naming (P1/P2 only in filter UI)
   - PPAP trend chart
   - Detailed table by site and month
 - **Charts**: 
@@ -275,6 +281,10 @@ QOS ET Report/
   - "Calculate KPIs" button remains available as a manual re-run trigger
   - KPI calculation progress bar
   - Manual data entry form
+  - Enter Data PPAP/Deviation fields aligned to current model:
+    - `P1 - Customer PPAP`, `P2 - Supplier PPAP`
+    - `D1 - Customer Deviation`, `D2 - Supplier Deviation`, `D3 - Internal Deviation`
+    - D1/D2/D3 arranged in one row; P1/P2 with consistent width
   - **Upload Summary Table** (new tab):
     - Displays all imported complaints in table format
     - Shows conversion status (Converted, Failed, Needs Attention, Not Applicable)
@@ -334,6 +344,8 @@ QOS ET Report/
     - Mailto button to `george.neacsu@webasto.com` with context prefilled
     - Diagnostics JSON download (user can attach to email)
   - Improvement Ideas short form with email send button
+  - Mailto links encode spaces safely (`%20`) for broader client compatibility
+  - FAQ copy-link control avoids nested button hydration issues
   - “How to read key charts” anchor sections used by dashboard chart tooltips (links from charts → `/glossary#how-to-*`)
 
 ### 14. Settings (`/settings`)

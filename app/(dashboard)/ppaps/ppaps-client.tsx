@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -78,6 +81,9 @@ export function PPAPsClient() {
   const [ppaps, setPpaps] = useState<PPAPApiItem[]>([]);
   const [plantsData, setPlantsData] = useState<PlantData[]>([]);
   const [selectedPlantForStatusChart, setSelectedPlantForStatusChart] = useState<string | null>(null);
+  const [selectedPTypes, setSelectedPTypes] = useState<Set<"P1" | "P2">>(
+    new Set(["P1", "P2"])
+  );
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [periodMode, setPeriodMode] = useState<"12mb" | "ytd">("12mb");
@@ -253,14 +259,22 @@ export function PPAPsClient() {
     });
   }, [ppaps, filters.selectedPlants, filters.dateFrom, filters.dateTo, lookbackPeriod.start, lookbackPeriod.end, periodMode, selectedMonth, selectedYear]);
 
-  const totalPNotifications = filteredPpaps.length;
-  const inProgress = filteredPpaps.filter((p) => p.status === "In Progress" || p.status === "Pending").length;
-  const closed = filteredPpaps.filter((p) => p.status === "Completed").length;
+  const notificationTypeFilteredPpaps = useMemo(() => {
+    if (selectedPTypes.size === 0) return [];
+    return filteredPpaps.filter((p) => {
+      if (p.notificationType !== "P1" && p.notificationType !== "P2") return false;
+      return selectedPTypes.has(p.notificationType);
+    });
+  }, [filteredPpaps, selectedPTypes]);
+
+  const totalPNotifications = notificationTypeFilteredPpaps.length;
+  const inProgress = notificationTypeFilteredPpaps.filter((p) => p.status === "In Progress" || p.status === "Pending").length;
+  const closed = notificationTypeFilteredPpaps.filter((p) => p.status === "Completed").length;
 
   const ppapMonthlySiteKpisForAi = useMemo<MonthlySiteKpi[]>(() => {
     const byKey = new Map<string, MonthlySiteKpi>();
 
-    for (const p of filteredPpaps) {
+    for (const p of notificationTypeFilteredPpaps) {
       const site = String(p.siteCode || p.plant || "").trim();
       if (!site) continue;
       const created = p.createdOn instanceof Date ? p.createdOn : new Date(p.createdOn);
@@ -299,7 +313,7 @@ export function PPAPsClient() {
     }
 
     return Array.from(byKey.values()).sort((a, b) => a.month.localeCompare(b.month) || a.siteCode.localeCompare(b.siteCode));
-  }, [filteredPpaps, plantsData]);
+  }, [notificationTypeFilteredPpaps, plantsData]);
 
   const generateAISummary = useCallback(async () => {
     if (ppapMonthlySiteKpisForAi.length === 0) {
@@ -329,7 +343,7 @@ export function PPAPsClient() {
                 to: filters.dateTo ? filters.dateTo.toISOString().split("T")[0] : null,
               }
             : null,
-        notificationTypes: ["P1", "P2", "P3"],
+        notificationTypes: ["P1", "P2"],
         complaintTypes: null,
       };
 
@@ -383,7 +397,7 @@ export function PPAPsClient() {
     const byMonth = new Map<string, Record<string, number>>();
     const sitesSet = new Set<string>();
 
-    for (const p of filteredPpaps) {
+    for (const p of notificationTypeFilteredPpaps) {
       const site = String(p.siteCode || p.plant || "").trim();
       if (!site) continue;
       const created = p.createdOn instanceof Date ? p.createdOn : new Date(p.createdOn);
@@ -411,11 +425,11 @@ export function PPAPsClient() {
     });
 
     return { data, sites };
-  }, [filteredPpaps, getDisplayMonths]);
+  }, [notificationTypeFilteredPpaps, getDisplayMonths]);
 
   const availablePpapSites = useMemo(() => {
     const s = new Set<string>();
-    for (const p of filteredPpaps) {
+    for (const p of notificationTypeFilteredPpaps) {
       const site = String(p.siteCode || p.plant || "").trim();
       if (site) s.add(site);
     }
@@ -425,12 +439,12 @@ export function PPAPsClient() {
       if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
       return a.localeCompare(b);
     });
-  }, [filteredPpaps]);
+  }, [notificationTypeFilteredPpaps]);
 
   const ppapStatusByMonth = useMemo(() => {
     const base = selectedPlantForStatusChart
-      ? filteredPpaps.filter((p) => String(p.siteCode || p.plant || "").trim() === selectedPlantForStatusChart)
-      : filteredPpaps;
+      ? notificationTypeFilteredPpaps.filter((p) => String(p.siteCode || p.plant || "").trim() === selectedPlantForStatusChart)
+      : notificationTypeFilteredPpaps;
 
     const byMonth = new Map<string, { closed: number; inProgress: number; total: number }>();
 
@@ -453,7 +467,7 @@ export function PPAPsClient() {
       const v = byMonth.get(month) ?? { closed: 0, inProgress: 0, total: 0 };
       return { month, [t.charts.deviations.closed]: v.closed, [t.ppaps.inProgress]: v.inProgress, total: v.total };
     });
-  }, [filteredPpaps, selectedPlantForStatusChart, getDisplayMonths]);
+  }, [notificationTypeFilteredPpaps, selectedPlantForStatusChart, getDisplayMonths]);
 
   const PlantLegend = useCallback(({
     sites,
@@ -577,7 +591,7 @@ export function PPAPsClient() {
                 <CardContent className="p-6 flex flex-col">
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">P Notifications</p>
                   <div className="text-3xl font-bold mt-1">{totalPNotifications.toLocaleString("de-DE")}</div>
-                  <p className="text-xs text-muted-foreground mt-1">P1 / P2 / P3 notifications</p>
+                  <p className="text-xs text-muted-foreground mt-1">P1 / P2 notifications</p>
                   <p className="text-xs text-muted-foreground mt-auto">Filtered by plants/date</p>
                 </CardContent>
               </Card>
@@ -622,7 +636,7 @@ export function PPAPsClient() {
                         onClick={() => {
                           setChartContext({
                             title: "AI Summary - PPAPs",
-                            description: "AI-generated summary of PPAP (P1, P2, P3) notifications and trends",
+                            description: "AI-generated summary of PPAP (P1, P2) notifications and trends",
                             chartType: "metric",
                             dataType: "ppaps",
                             hasData: ppapMonthlySiteKpisForAi.length > 0,
@@ -763,19 +777,60 @@ export function PPAPsClient() {
                   <CardTitle>{withScopedPlantTitle("YTD P Notifications by Month and Plant")}</CardTitle>
                   <CardDescription>Number of PPAP notifications by month and plant (stacked)</CardDescription>
                 </div>
-                <IAmQButton
-                  onClick={() => {
-                    setChartContext({
-                      title: withScopedPlantTitle("YTD P Notifications by Month and Plant"),
-                      description: "Number of PPAP notifications by month and plant (stacked)",
-                      chartType: "bar",
-                      dataType: "ppaps",
-                      hasData: ppapNotificationsByMonthPlant.data.length > 0 && ppapNotificationsByMonthPlant.sites.length > 0,
-                      dataCount: ppapNotificationsByMonthPlant.sites.length,
-                    });
-                    setIsChatOpen(true);
-                  }}
-                />
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Notification Type
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56" align="end">
+                      <div className="space-y-3">
+                        <div className="font-semibold text-sm mb-2">Notification Type</div>
+                        <div className="space-y-2">
+                          {([
+                            ["P1", "P1 - Customer PPAP"],
+                            ["P2", "P2 - Supplier PPAP"],
+                          ] as const).map(([type, label]) => (
+                            <div key={type} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`ppap-chart1-filter-${type.toLowerCase()}`}
+                                checked={selectedPTypes.has(type)}
+                                onCheckedChange={(checked) => {
+                                  const next = new Set(selectedPTypes);
+                                  if (checked) next.add(type);
+                                  else next.delete(type);
+                                  setSelectedPTypes(next);
+                                }}
+                              />
+                              <Label htmlFor={`ppap-chart1-filter-${type.toLowerCase()}`} className="text-sm cursor-pointer">
+                                {label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedPTypes.size < 2 && (
+                    <Button variant="outline" size="sm" onClick={() => setSelectedPTypes(new Set(["P1", "P2"]))}>
+                      Reset
+                    </Button>
+                  )}
+                  <IAmQButton
+                    onClick={() => {
+                      setChartContext({
+                        title: withScopedPlantTitle("YTD P Notifications by Month and Plant"),
+                        description: "Number of PPAP notifications by month and plant (stacked)",
+                        chartType: "bar",
+                        dataType: "ppaps",
+                        hasData: ppapNotificationsByMonthPlant.data.length > 0 && ppapNotificationsByMonthPlant.sites.length > 0,
+                        dataCount: ppapNotificationsByMonthPlant.sites.length,
+                      });
+                      setIsChatOpen(true);
+                    }}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -848,26 +903,67 @@ export function PPAPsClient() {
                       : "Closed vs. In Progress across all selected plants"}
                   </CardDescription>
                 </div>
-                {selectedPlantForStatusChart && (
-                  <Button variant="outline" size="sm" onClick={() => setSelectedPlantForStatusChart(null)}>
-                    Reset Filter
-                  </Button>
-                )}
-                <IAmQButton
-                  onClick={() => {
-                    setChartContext({
-                      title: withScopedPlantTitle("YTD P Notifications Closed vs. In Progress by Month and Plant"),
-                      description: selectedPlantForStatusChart
-                        ? `Closed vs. In Progress for ${formatPlantLabel(selectedPlantForStatusChart)}`
-                        : "Closed vs. In Progress across all selected plants",
-                      chartType: "bar",
-                      dataType: "ppaps",
-                      hasData: ppapStatusByMonth.length > 0,
-                      dataCount: ppapStatusByMonth.length,
-                    });
-                    setIsChatOpen(true);
-                  }}
-                />
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Notification Type
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56" align="end">
+                      <div className="space-y-3">
+                        <div className="font-semibold text-sm mb-2">Notification Type</div>
+                        <div className="space-y-2">
+                          {([
+                            ["P1", "P1 - Customer PPAP"],
+                            ["P2", "P2 - Supplier PPAP"],
+                          ] as const).map(([type, label]) => (
+                            <div key={type} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`ppap-chart2-filter-${type.toLowerCase()}`}
+                                checked={selectedPTypes.has(type)}
+                                onCheckedChange={(checked) => {
+                                  const next = new Set(selectedPTypes);
+                                  if (checked) next.add(type);
+                                  else next.delete(type);
+                                  setSelectedPTypes(next);
+                                }}
+                              />
+                              <Label htmlFor={`ppap-chart2-filter-${type.toLowerCase()}`} className="text-sm cursor-pointer">
+                                {label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedPTypes.size < 2 && (
+                    <Button variant="outline" size="sm" onClick={() => setSelectedPTypes(new Set(["P1", "P2"]))}>
+                      Reset
+                    </Button>
+                  )}
+                  {selectedPlantForStatusChart && (
+                    <Button variant="outline" size="sm" onClick={() => setSelectedPlantForStatusChart(null)}>
+                      Reset Plant
+                    </Button>
+                  )}
+                  <IAmQButton
+                    onClick={() => {
+                      setChartContext({
+                        title: withScopedPlantTitle("YTD P Notifications Closed vs. In Progress by Month and Plant"),
+                        description: selectedPlantForStatusChart
+                          ? `Closed vs. In Progress for ${formatPlantLabel(selectedPlantForStatusChart)}`
+                          : "Closed vs. In Progress across all selected plants",
+                        chartType: "bar",
+                        dataType: "ppaps",
+                        hasData: ppapStatusByMonth.length > 0,
+                        dataCount: ppapStatusByMonth.length,
+                      });
+                      setIsChatOpen(true);
+                    }}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -938,7 +1034,7 @@ export function PPAPsClient() {
                 <div className="flex-1">
                   <h4 className="font-semibold mb-1">PPAP Notifications</h4>
                   <p className="text-sm text-muted-foreground mb-2">PPAP P Notif_PS4.XLSX</p>
-                  <p className="text-sm mb-3">P1/P2/P3 notifications</p>
+                  <p className="text-sm mb-3">P1/P2 notifications</p>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="secondary" className="bg-green-500/20 text-green-500 border-green-500/30">
                       Notification Number

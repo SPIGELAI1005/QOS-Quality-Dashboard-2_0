@@ -87,6 +87,13 @@ QOS ET Quality Report is a Next.js dashboard for **manufacturing quality KPIs** 
 - **Import validation panel**: Enter Data now shows required imported fields count and missing required fields list, giving immediate completeness feedback after upload.
 - **Large file resilience**: For files >2MB, upload uses **client-side parse + chunked JSON upload** to reduce Vercel payload/timeout failures; small files still use multipart upload.
 - **Large file transparency**: Upload cards now show a badge when large-file mode is active so users understand behavior differences.
+- **PPAP naming standardization in UI**: PPAP filter labels now reflect business naming (`P1 - Customer PPAP`, `P2 - Supplier PPAP`) and remove unnecessary `P3` option in filter UI.
+- **Cross-theme chart readability**: Recharts label/axis text now uses theme-aware colors (plus stronger global SVG overrides) to keep text readable when switching between dark and light mode without white-text regressions.
+- **PPM export unification**: Dashboard site-contribution export now generates one Excel workbook with two tabs (`Customer PPM`, `Supplier PPM`) and rolling 12-month structure aligned to reference reporting format.
+- **Mailto reliability**: AI summary and glossary mailto builders now encode subject/body with `encodeURIComponent`, preventing `+` characters between words in email clients.
+- **Regression safety net**: Added a dedicated unit test for `buildMailtoLink` to ensure future refactors do not reintroduce `+` in mailto body text.
+- **Glossary hydration compliance**: Fixed invalid nested interactive structure (`button` inside `button`) in FAQ accordion by using a keyboard-accessible non-button element for copy-link action.
+- **Terminology refresh (EN/DE/IT)**: FAQ and glossary definitions were updated to reflect current PPAP/Deviation naming (`P1/P2`, `D1/D2/D3` semantics).
 
 ## Recent critical implementation decisions (2026-01-17)
 

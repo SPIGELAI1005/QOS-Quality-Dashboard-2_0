@@ -90,9 +90,18 @@ export function ComplaintRowEditor({
     const finalValue = convertedValue !== null ? convertedValue : newValue;
     const finalUnit = convertedValue !== null ? "PC" : (unitOfMeasure || undefined);
     
-    const fieldChanged = complaint.defectiveParts !== finalValue ? "defectiveParts" : 
-                        complaint.unitOfMeasure !== finalUnit ? "unitOfMeasure" : 
-                        complaint.materialDescription !== materialDescription ? "materialDescription" : "other";
+    const isDefectivePartsChanged = complaint.defectiveParts !== finalValue;
+    const isUnitChanged = (complaint.unitOfMeasure || "PC") !== (finalUnit || "PC");
+    const isMaterialChanged = (complaint.materialDescription || "") !== (materialDescription || "");
+    const hasManualConversionContext = isUnitChanged || (convertedValue !== null && status?.originalUnit !== "PC");
+
+    const fieldChanged = hasManualConversionContext
+      ? "conversion"
+      : isDefectivePartsChanged
+        ? "defectiveParts"
+        : isMaterialChanged
+          ? "materialDescription"
+          : "other";
 
     const updatedComplaint: Complaint = {
       ...complaint,
@@ -109,6 +118,26 @@ export function ComplaintRowEditor({
     };
 
     const affectedMetrics = getAffectedMetricsForComplaint(updatedComplaint, fieldChanged);
+    const oldFieldValue =
+      fieldChanged === "conversion"
+        ? {
+            defectiveParts: complaint.defectiveParts,
+            unitOfMeasure: complaint.unitOfMeasure || "PC",
+            materialDescription: complaint.materialDescription || "",
+          }
+        : fieldChanged === "materialDescription"
+          ? (complaint.materialDescription || "")
+          : complaint.defectiveParts;
+    const newFieldValue =
+      fieldChanged === "conversion"
+        ? {
+            defectiveParts: updatedComplaint.defectiveParts,
+            unitOfMeasure: updatedComplaint.unitOfMeasure || "PC",
+            materialDescription: updatedComplaint.materialDescription || "",
+          }
+        : fieldChanged === "materialDescription"
+          ? (updatedComplaint.materialDescription || "")
+          : finalValue;
 
     const change: ChangeHistoryEntry = {
       id: `change_${Date.now()}_${Math.random().toString(16).slice(2)}`,
@@ -117,10 +146,10 @@ export function ComplaintRowEditor({
       recordId: complaint.id,
       recordType: "complaint",
       field: fieldChanged,
-      oldValue: complaint.defectiveParts,
-      newValue: finalValue,
+      oldValue: oldFieldValue,
+      newValue: newFieldValue,
       reason: reason || undefined,
-      changeType: status?.status === "failed" ? "conversion" : "manual_edit",
+      changeType: fieldChanged === "conversion" || status?.status === "failed" ? "conversion" : "manual_edit",
       affectedMetrics,
     };
 

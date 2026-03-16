@@ -1,5 +1,7 @@
 # Complaints API Endpoints - Example Requests
 
+**Last Updated**: 2026-03-16
+
 ## Base URL
 ```
 http://localhost:3005/api/complaints

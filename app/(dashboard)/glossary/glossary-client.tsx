@@ -51,10 +51,8 @@ function formatWhen(iso: string): string {
 }
 
 function buildMailtoHref(args: { to: string; subject: string; body: string }): string {
-  const q = new URLSearchParams();
-  q.set("subject", args.subject);
-  q.set("body", args.body);
-  return `mailto:${args.to}?${q.toString()}`;
+  const query = `subject=${encodeURIComponent(args.subject)}&body=${encodeURIComponent(args.body)}`;
+  return `mailto:${args.to}?${query}`;
 }
 
 export function GlossaryClient() {
@@ -447,11 +445,22 @@ export function GlossaryClient() {
                       <AccordionTrigger className="text-left">
                         <div className="flex items-start justify-between gap-3 w-full">
                           <span className="flex-1">{f.q}</span>
-                          <button
-                            type="button"
-                            className="ml-2 p-2 rounded-md hover:bg-muted/50 transition-colors"
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            className="ml-2 p-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
                             title={t.glossary.copyLink}
+                            aria-label={t.glossary.copyLink}
                             onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const url = `${window.location.origin}/glossary#${f.id}`;
+                              navigator.clipboard?.writeText(url);
+                              setCopiedFaqId(f.id);
+                              setTimeout(() => setCopiedFaqId(null), 1200);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key !== "Enter" && e.key !== " ") return;
                               e.preventDefault();
                               e.stopPropagation();
                               const url = `${window.location.origin}/glossary#${f.id}`;
@@ -465,7 +474,7 @@ export function GlossaryClient() {
                             ) : (
                               <Link2 className="h-4 w-4 text-muted-foreground" />
                             )}
-                          </button>
+                          </span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>

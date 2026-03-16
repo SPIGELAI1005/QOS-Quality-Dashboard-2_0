@@ -1,8 +1,8 @@
 # QOS ET Quality Report - Project Evaluation & Value Assessment
 
-**Date**: 2026-03-16 (Updated)  
-**Previous**: 2026-01-11  
-**Version**: 1.0.3  
+**Last Updated**: 2026-03-16  
+**Previous Updated**: 2026-01-11  
+**Version**: 1.0.4  
 **Status**: Production-Ready (Active Development)  
 **See Also**: `PROJECT_AUDIT_2026.md` for comprehensive audit
 
@@ -69,6 +69,11 @@ Measured from git-tracked files in this repository (PowerShell, Windows):
 - **Manual Excel form import**: Enter Data can import template-based values (field label + right-adjacent cell), with review before Add Entry
 - **Import completeness panel**: Required imported fields count + missing required fields list
 - **Large-file upload resilience**: Files >2MB use client-side parse + chunked JSON upload with fallback to multipart for smaller files
+- **PPAP/Deviation nomenclature alignment**: PPAP UI filter uses `P1 - Customer PPAP` and `P2 - Supplier PPAP`; upload manual form includes aligned `P1/P2` and `D1/D2/D3` fields with consistent layout
+- **Cross-theme readability hardening**: Chart/table labels use stronger theme-aware contrast behavior in both light and dark modes
+- **Dashboard export parity**: Site contribution export now creates one combined workbook with two tabs (Customer PPM and Supplier PPM) and rolling 12-month view
+- **Email output quality**: AI Management/Glossary mailto text keeps proper spaces (no `+` separators), with unit test regression guard
+- **Glossary stability**: FAQ copy-link interaction updated to avoid nested button hydration errors
 
 ---
 
@@ -229,14 +234,14 @@ Measured from git-tracked files in this repository (PowerShell, Windows):
 
 ### Low-Value Additions (€2,000 - €5,000 value increase each)
 
-#### 11. **Internationalization (i18n)** (€3,000 value)
-- **What**: Multi-language support (German, English, etc.)
-- **Why**: Global deployment
+#### 11. **Localization Expansion & Governance** (€3,000 value)
+- **What**: Expand current i18n with translation QA workflow and terminology governance
+- **Why**: Multi-language support is implemented; next gain is quality and consistency at scale
 - **Implementation**:
-  - i18n library integration (e.g., `next-intl`)
-  - Translation files (EN/DE/IT)
-  - Connect to the existing language dropdown in header
-- **Impact**: Global market access
+  - Add translation validation checks in CI
+  - Introduce glossary-term lock and locale review checklist
+  - Add locale fallback auditing for new features
+- **Impact**: Sustained translation quality and lower regression risk
 
 #### 12. **Enhanced Visualization** (€4,000 value)
 - **What**: 3D charts, heatmaps, geographic maps
@@ -376,6 +381,4 @@ Measured from git-tracked files in this repository (PowerShell, Windows):
 **ROI**: 172% value increase with €55,000 investment
 
 ---
-
-*Last Updated: 2026-03-16*
 

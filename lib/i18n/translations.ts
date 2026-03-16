@@ -991,12 +991,12 @@ const translations: Record<LanguageKey, Translations> = {
         },
         notifications: {
           notificationNumber: { term: "Notification Number", definition: "Unique identifier for each SAP quality notification." },
-          notificationType: { term: "Notification Type", definition: "SAP notification classification: Q1/Q2/Q3 (complaints), D1/D2/D3 (deviations), P1/P2/P3 (PPAP)." },
+          notificationType: { term: "Notification Type", definition: "SAP notification classification: Q1/Q2/Q3 (complaints), D1/D2/D3 (deviations), P1/P2 (PPAP)." },
           q1: { term: "Q1 (Customer Complaint)", definition: "Customer-originated quality notifications; contributes to customer complaints and Customer PPM." },
           q2: { term: "Q2 (Supplier Complaint)", definition: "Supplier-related quality notifications; contributes to supplier complaints and Supplier PPM." },
           q3: { term: "Q3 (Internal Complaint)", definition: "Internal quality notifications; used in internal complaint reporting (e.g., Poor Quality Costs placeholders)." },
           d1d2d3: { term: "D1/D2/D3 (Deviation)", definition: "Deviation notifications representing exceptions or approvals. Reported on Deviations Overview." },
-          p1p2p3: { term: "P1/P2/P3 (PPAP)", definition: "PPAP notifications representing approval process states. Reported on PPAPs Overview." },
+          p1p2p3: { term: "P1/P2 (PPAP)", definition: "PPAP notification types where P1 = Customer PPAP and P2 = Supplier PPAP. Reported on PPAPs Overview." },
           nocoOsno: { term: "NOCO / OSNO", definition: "SAP system-status tokens used to infer status (NOCO ≈ Completed, OSNO ≈ In Progress)." },
         },
         metrics: {
@@ -1052,11 +1052,11 @@ const translations: Record<LanguageKey, Translations> = {
         },
         d1d2d3Meaning: {
           q: "What do D1, D2, D3 represent on the Deviations page?",
-          a: "D1/D2/D3 are deviation notification types. The Deviations Overview page shows counts by month and plant, and a status view (Closed vs In Progress).",
+          a: "D1 = Customer Deviation, D2 = Supplier Deviation, D3 = Internal Deviation. The Deviations Overview page shows counts by month and plant, and a status view (Closed vs In Progress).",
         },
         p1p2p3Meaning: {
-          q: "What do P1, P2, P3 represent on the PPAPs page?",
-          a: "P1/P2/P3 are PPAP notification types. The PPAPs Overview page shows PPAP counts by month/plant and a status view (Closed vs In Progress).",
+          q: "What do P1 and P2 represent on the PPAPs page?",
+          a: "P1 = Customer PPAP and P2 = Supplier PPAP. The PPAPs Overview page shows PPAP counts by month/plant and a status view (Closed vs In Progress).",
         },
         ytdLookback: {
           q: "Why do charts show Rolling 12 Months (R12M) even when the page says YTD?",
@@ -1635,12 +1635,12 @@ const translations: Record<LanguageKey, Translations> = {
         },
         notifications: {
           notificationNumber: { term: "Benachrichtigungsnummer", definition: "Eindeutiger Identifikator für jede SAP-Qualitätsbenachrichtigung." },
-          notificationType: { term: "Benachrichtigungstyp", definition: "SAP-Benachrichtigungsklassifizierung: Q1/Q2/Q3 (Reklamationen), D1/D2/D3 (Abweichungen), P1/P2/P3 (PPAP)." },
+          notificationType: { term: "Benachrichtigungstyp", definition: "SAP-Benachrichtigungsklassifizierung: Q1/Q2/Q3 (Reklamationen), D1/D2/D3 (Abweichungen), P1/P2 (PPAP)." },
           q1: { term: "Q1 (Kundenreklamation)", definition: "Kunden-originierte Qualitätsbenachrichtigungen; trägt zu Kundenreklamationen und Kunden-PPM bei." },
           q2: { term: "Q2 (Lieferantenreklamation)", definition: "Lieferantenbezogene Qualitätsbenachrichtigungen; trägt zu Lieferantenreklamationen und Lieferanten-PPM bei." },
           q3: { term: "Q3 (Interne Reklamation)", definition: "Interne Qualitätsbenachrichtigungen; wird in der internen Reklamationsberichterstattung verwendet (z.B. Poor Quality Costs Platzhalter)." },
           d1d2d3: { term: "D1/D2/D3 (Abweichung)", definition: "Abweichungsbenachrichtigungen, die Ausnahmen oder Genehmigungen darstellen. Wird in der Abweichungsübersicht gemeldet." },
-          p1p2p3: { term: "P1/P2/P3 (PPAP)", definition: "PPAP-Benachrichtigungen, die Genehmigungsprozesszustände darstellen. Wird in der PPAPs-Übersicht gemeldet." },
+          p1p2p3: { term: "P1/P2 (PPAP)", definition: "PPAP-Benachrichtigungstypen, wobei P1 = Customer PPAP und P2 = Supplier PPAP. Wird in der PPAPs-Übersicht gemeldet." },
           nocoOsno: { term: "NOCO / OSNO", definition: "SAP-Systemstatus-Token zur Statusableitung (NOCO ≈ Abgeschlossen, OSNO ≈ In Bearbeitung)." },
         },
         metrics: {
@@ -1696,11 +1696,11 @@ const translations: Record<LanguageKey, Translations> = {
         },
         d1d2d3Meaning: {
           q: "Was repräsentieren D1, D2, D3 auf der Abweichungsseite?",
-          a: "D1/D2/D3 sind Abweichungsbenachrichtigungstypen. Die Abweichungsübersichtsseite zeigt Zählungen nach Monat und Werk sowie eine Statusansicht (Abgeschlossen vs. In Bearbeitung).",
+          a: "D1 = Customer Deviation, D2 = Supplier Deviation, D3 = Internal Deviation. Die Abweichungsübersichtsseite zeigt Zählungen nach Monat und Werk sowie eine Statusansicht (Abgeschlossen vs. In Bearbeitung).",
         },
         p1p2p3Meaning: {
-          q: "Was repräsentieren P1, P2, P3 auf der PPAPs-Seite?",
-          a: "P1/P2/P3 sind PPAP-Benachrichtigungstypen. Die PPAPs-Übersichtsseite zeigt PPAP-Zählungen nach Monat/Werk und eine Statusansicht (Abgeschlossen vs. In Bearbeitung).",
+          q: "Was repräsentieren P1 und P2 auf der PPAPs-Seite?",
+          a: "P1 = Customer PPAP und P2 = Supplier PPAP. Die PPAPs-Übersichtsseite zeigt PPAP-Zählungen nach Monat/Werk und eine Statusansicht (Abgeschlossen vs. In Bearbeitung).",
         },
         ytdLookback: {
           q: "Warum zeigen Diagramme rollierende 12 Monate (R12M), auch wenn die Seite JTD sagt?",
@@ -2280,12 +2280,12 @@ const translations: Record<LanguageKey, Translations> = {
         },
         notifications: {
           notificationNumber: { term: "Numero Notifica", definition: "Identificatore univoco per ogni notifica qualità SAP." },
-          notificationType: { term: "Tipo Notifica", definition: "Classificazione notifica SAP: Q1/Q2/Q3 (reclami), D1/D2/D3 (deviazioni), P1/P2/P3 (PPAP)." },
+          notificationType: { term: "Tipo Notifica", definition: "Classificazione notifica SAP: Q1/Q2/Q3 (reclami), D1/D2/D3 (deviazioni), P1/P2 (PPAP)." },
           q1: { term: "Q1 (Reclamo Cliente)", definition: "Notifiche qualità originate dal cliente; contribuisce a reclami cliente e PPM Cliente." },
           q2: { term: "Q2 (Reclamo Fornitore)", definition: "Notifiche qualità relative al fornitore; contribuisce a reclami fornitore e PPM Fornitore." },
           q3: { term: "Q3 (Reclamo Interno)", definition: "Notifiche qualità interne; usate nella segnalazione reclami interni (es. segnaposto Poor Quality Costs)." },
           d1d2d3: { term: "D1/D2/D3 (Deviazione)", definition: "Notifiche deviazione che rappresentano eccezioni o approvazioni. Segnalate nella Panoramica Deviazioni." },
-          p1p2p3: { term: "P1/P2/P3 (PPAP)", definition: "Notifiche PPAP che rappresentano stati del processo di approvazione. Segnalate nella Panoramica PPAP." },
+          p1p2p3: { term: "P1/P2 (PPAP)", definition: "Tipi di notifica PPAP in cui P1 = Customer PPAP e P2 = Supplier PPAP. Segnalate nella Panoramica PPAP." },
           nocoOsno: { term: "NOCO / OSNO", definition: "Token stato sistema SAP usati per dedurre lo stato (NOCO ≈ Completato, OSNO ≈ In Corso)." },
         },
         metrics: {
@@ -2341,11 +2341,11 @@ const translations: Record<LanguageKey, Translations> = {
         },
         d1d2d3Meaning: {
           q: "Cosa rappresentano D1, D2, D3 nella pagina Deviazioni?",
-          a: "D1/D2/D3 sono tipi di notifica deviazione. La pagina Panoramica Deviazioni mostra conteggi per mese e impianto e una vista stato (Completato vs In Corso).",
+          a: "D1 = Customer Deviation, D2 = Supplier Deviation, D3 = Internal Deviation. La pagina Panoramica Deviazioni mostra conteggi per mese e impianto e una vista stato (Completato vs In Corso).",
         },
         p1p2p3Meaning: {
-          q: "Cosa rappresentano P1, P2, P3 nella pagina PPAP?",
-          a: "P1/P2/P3 sono tipi di notifica PPAP. La pagina Panoramica PPAP mostra conteggi PPAP per mese/impianto e una vista stato (Completato vs In Corso).",
+          q: "Cosa rappresentano P1 e P2 nella pagina PPAP?",
+          a: "P1 = Customer PPAP e P2 = Supplier PPAP. La pagina Panoramica PPAP mostra conteggi PPAP per mese/impianto e una vista stato (Completato vs In Corso).",
         },
         ytdLookback: {
           q: "Perché i diagrammi mostrano 12 mesi mobili (R12M) anche quando la pagina dice YTD?",

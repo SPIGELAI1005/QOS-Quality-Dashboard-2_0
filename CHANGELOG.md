@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - 2026-03-16
+**Type**: Fixed
+
+**Description**: PPAP/Deviation nomenclature, theme contrast, export parity, and glossary/email reliability updates
+
+**Details**:
+- **PPAP filter alignment**:
+  - PPAP notification filter now uses `P1 - Customer PPAP` and `P2 - Supplier PPAP`
+  - Removed `P3` option from PPAP filter UI where not needed
+- **Chart/table contrast in light mode**:
+  - Added stronger Recharts theme-aware overrides in global styles
+  - Replaced hardcoded white label/axis colors in key dashboard chart components with theme variables to avoid white text on light backgrounds and post-hydration flicker
+- **Upload Enter Data form alignment**:
+  - Added explicit fields for `P1`, `P2`, `D1`, `D2`, `D3` in manual entry
+  - Updated data mapping/export labels to match customer/supplier/internal terminology
+  - Improved form layout so D1/D2/D3 share one row and P1/P2 have consistent width
+- **Dashboard PPM export parity**:
+  - Export now creates one combined workbook with two sheets: `Customer PPM` and `Supplier PPM`
+  - Sheet structure aligned with reference format and rolling 12-month overview
+- **AI Management/Glossary mailto encoding**:
+  - Mailto links now use `encodeURIComponent` for subject/body so spaces remain `%20` (no `+` insertion)
+  - Added safeguard unit test to prevent regressions on `+` encoding in mailto body text
+- **Glossary hydration/accessibility fix**:
+  - Removed nested button pattern in FAQ trigger area to resolve hydration warning (`<button>` inside `<button>`)
+  - Replaced copy-link trigger with keyboard-accessible non-button element semantics
+- **FAQ/Glossary content refresh**:
+  - Updated EN/DE/IT FAQ and glossary text for revised PPAP/Deviation naming
+
+**Files Modified / Added**:
+- `app/(dashboard)/ppaps/ppaps-client.tsx` - PPAP filter options and labels updated to P1/P2 naming
+- `app/(dashboard)/dashboard/dashboard-client.tsx` - Theme-aware chart axis/label colors + combined PPM workbook export
+- `app/globals.css` - Recharts light/dark contrast overrides
+- `app/(dashboard)/upload/page.tsx` - Enter Data fields/model/export updates for P1/P2 and D1/D2/D3 + layout changes
+- `lib/utils/email-composer.ts` - Mailto query encoding via encodeURIComponent
+- `lib/utils/__tests__/email-composer.test.ts` - New regression test for mailto plus-sign prevention
+- `lib/i18n/translations.ts` - FAQ/glossary terminology updates (EN/DE/IT)
+- `app/(dashboard)/glossary/glossary-client.tsx` - Mailto encoding update + nested button hydration fix
+
+**Breaking Changes**: None
+
+---
+
 ### Added - 2026-03-16
 **Type**: Added
 

@@ -1,6 +1,7 @@
 # Recovery Guide - QOS ET Quality Report
 
-**Last Updated**: 2026-01-17
+**Last Updated**: 2026-03-16
+**Version**: 1.0.2
 
 This guide provides step-by-step instructions to recover and rebuild the QOS ET Quality Report application if data is lost due to crashes, corruption, or accidental deletion.
 
@@ -393,7 +394,4 @@ git push origin main
 - **Keep backups** of important files
 
 ---
-
-**Last Updated**: 2026-01-12  
-**Version**: 1.0.1
 

@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import type { Delivery, MonthlySiteKpi } from "@/lib/domain/types";
 import { calculateGlobalPPM, calculateMonthlySiteKpis } from "@/lib/domain/kpi";
 import { getAllComplaints, getAllDeliveries, getDatasetCounts, upsertComplaints, upsertDeliveries } from "@/lib/data/datasets-idb";
-import { createComplaints, listComplaints } from "@/lib/api/complaints";
+import { createComplaints, listComplaints, updateComplaint } from "@/lib/api/complaints";
 import { useApiMode } from "@/lib/hooks/useApiMode";
 import type { CreateComplaintInput } from "@/lib/repo/types";
 import * as XLSX from "xlsx";
@@ -70,6 +70,11 @@ interface UploadKpisResponse {
 
 interface ManualKpiEntry extends MonthlySiteKpi {
   // Extra placeholders for templates not yet supported by KPIs/pages
+  ppapP1?: number;
+  ppapP2?: number;
+  deviationsD1?: number;
+  deviationsD2?: number;
+  deviationsD3?: number;
   auditInternalSystem?: number;
   auditCertification?: number;
   auditProcess?: number;
@@ -111,6 +116,7 @@ interface ManualDraft {
   ppapCompleted: number;
   deviationsInProgress: number;
   deviationsCompleted: number;
+  deviationsD3: number;
   auditInternalSystem: number;
   auditCertification: number;
   auditProcess: number;
@@ -133,10 +139,11 @@ const MANUAL_DRAFT_LABEL_ALIASES: Record<keyof ManualDraft, string[]> = {
   internalDefectiveParts: ["internaldefectiveparts"],
   customerDeliveries: ["outbounddeliveries", "customerdeliveries", "totalquantityoutbounddeliveriescustomer"],
   supplierDeliveries: ["inbounddeliveries", "supplierdeliveries", "totalquantityinbounddeliveriessupplier"],
-  ppapInProgress: ["ppapsinprogress", "ppapinprogress", "nrofppapsinprogress"],
-  ppapCompleted: ["ppapscompleted", "ppapcompleted", "nrofppapscompleted"],
-  deviationsInProgress: ["deviationsinprogress", "nrofdeviationsinprogress"],
-  deviationsCompleted: ["deviationscompleted", "nrofdeviationscompleted"],
+  ppapInProgress: ["ppapsinprogress", "ppapinprogress", "nrofppapsinprogress", "p1", "p1customerppap"],
+  ppapCompleted: ["ppapscompleted", "ppapcompleted", "nrofppapscompleted", "p2", "p2supplierppap"],
+  deviationsInProgress: ["deviationsinprogress", "nrofdeviationsinprogress", "d1", "d1customerdeviation"],
+  deviationsCompleted: ["deviationscompleted", "nrofdeviationscompleted", "d2", "d2supplierdeviation"],
+  deviationsD3: ["d3", "d3internaldeviation", "deviationsd3", "nrofdeviationsd3"],
   auditInternalSystem: ["auditsinternalsystem", "auditinternalsystem", "auditsinternalsystemexcutedduringthemonth"],
   auditCertification: ["auditscertification", "auditcertification", "auditscertificationexcutedduringthemonth"],
   auditProcess: ["auditsprocess", "auditprocess", "auditsprocessexcutedduringthemonth"],
@@ -158,6 +165,7 @@ const MANUAL_DRAFT_NUMERIC_FIELDS = new Set<keyof ManualDraft>([
   "ppapCompleted",
   "deviationsInProgress",
   "deviationsCompleted",
+  "deviationsD3",
   "auditInternalSystem",
   "auditCertification",
   "auditProcess",
@@ -204,10 +212,11 @@ const MANUAL_DRAFT_FIELD_LABELS: Record<keyof ManualDraft, string> = {
   internalDefectiveParts: "Internal Defective Parts",
   customerDeliveries: "Outbound Deliveries (Customer)",
   supplierDeliveries: "Inbound Deliveries (Supplier)",
-  ppapInProgress: "PPAPs In Progress",
-  ppapCompleted: "PPAPs Completed",
-  deviationsInProgress: "Deviations In Progress",
-  deviationsCompleted: "Deviations Completed",
+  ppapInProgress: "P1 - Customer PPAP",
+  ppapCompleted: "P2 - Supplier PPAP",
+  deviationsInProgress: "D1 - Customer Deviation",
+  deviationsCompleted: "D2 - Supplier Deviation",
+  deviationsD3: "D3 - Internal Deviation",
   auditInternalSystem: "Audit Internal System",
   auditCertification: "Audit Certification",
   auditProcess: "Audit Process",
@@ -507,6 +516,7 @@ export default function UploadPage() {
     ppapCompleted: 0,
     deviationsInProgress: 0,
     deviationsCompleted: 0,
+    deviationsD3: 0,
     auditInternalSystem: 0,
     auditCertification: 0,
     auditProcess: 0,
@@ -1134,6 +1144,10 @@ export default function UploadPage() {
       const deliveriesRaw = await getAllDeliveries();
       deliveries = deliveriesRaw.map(reviveDelivery);
 
+      // Apply editor corrections saved from Upload Summary before KPI calculations
+      complaints = applyComplaintCorrections(complaints);
+      deliveries = applyDeliveryCorrections(deliveries);
+
       setKpiCalculationProgress({ percent: 60, status: "calculating" });
 
       const monthlySiteKpis = calculateMonthlySiteKpis(complaints, deliveries);
@@ -1216,7 +1230,10 @@ export default function UploadPage() {
       // Show validation error - could use a toast or inline error
       return;
     }
-    const deviationsTotal = (manualDraft.deviationsInProgress || 0) + (manualDraft.deviationsCompleted || 0);
+    const deviationsTotal =
+      (manualDraft.deviationsInProgress || 0) +
+      (manualDraft.deviationsCompleted || 0) +
+      (manualDraft.deviationsD3 || 0);
     const entry: ManualKpiEntry = {
       month: manualDraft.month,
       siteCode: site,
@@ -1233,12 +1250,17 @@ export default function UploadPage() {
       customerDefectiveParts: manualDraft.customerDefectiveParts,
       supplierDefectiveParts: manualDraft.supplierDefectiveParts,
       internalDefectiveParts: manualDraft.internalDefectiveParts,
+      ppapP1: manualDraft.ppapInProgress,
+      ppapP2: manualDraft.ppapCompleted,
+      deviationsD1: manualDraft.deviationsInProgress,
+      deviationsD2: manualDraft.deviationsCompleted,
+      deviationsD3: manualDraft.deviationsD3,
       auditInternalSystem: manualDraft.auditInternalSystem,
       auditCertification: manualDraft.auditCertification,
       auditProcess: manualDraft.auditProcess,
       auditProduct: manualDraft.auditProduct,
       deviationsInProgress: manualDraft.deviationsInProgress,
-      deviationsCompleted: manualDraft.deviationsCompleted,
+      deviationsCompleted: (manualDraft.deviationsCompleted || 0) + (manualDraft.deviationsD3 || 0),
       poorQualityCosts: manualDraft.poorQualityCosts,
       warrantyCosts: manualDraft.warrantyCosts,
       recordedBy: manualDraft.recordedBy.trim(),
@@ -1453,11 +1475,12 @@ export default function UploadPage() {
       "Internal Defective Parts": m.internalDefectiveParts,
       "Customer Deliveries": m.customerDeliveries,
       "Supplier Deliveries": m.supplierDeliveries,
-      "PPAP In Progress": m.ppapP?.inProgress ?? 0,
-      "PPAP Completed": m.ppapP?.completed ?? 0,
+      "P1 - Customer PPAP": m.ppapP1 ?? m.ppapP?.inProgress ?? 0,
+      "P2 - Supplier PPAP": m.ppapP2 ?? m.ppapP?.completed ?? 0,
       "Deviations Total": m.deviationsD,
-      "Deviations In Progress": m.deviationsInProgress ?? 0,
-      "Deviations Completed": m.deviationsCompleted ?? 0,
+      "D1 - Customer Deviation": m.deviationsD1 ?? m.deviationsInProgress ?? 0,
+      "D2 - Supplier Deviation": m.deviationsD2 ?? m.deviationsCompleted ?? 0,
+      "D3 - Internal Deviation": m.deviationsD3 ?? 0,
       "Audit Internal System": m.auditInternalSystem ?? 0,
       "Audit Certification": m.auditCertification ?? 0,
       "Audit Process": m.auditProcess ?? 0,
@@ -2004,7 +2027,7 @@ export default function UploadPage() {
 
               <Separator />
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1.5">
                   <Label htmlFor="recordedBy">
                     Name of Person Recording Data <span className="text-destructive">*</span>
@@ -2083,7 +2106,7 @@ export default function UploadPage() {
 
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label>{t.upload.ppapsInProgress}</Label>
+                  <Label>P1 - Customer PPAP</Label>
                   <Input
                     type="number"
                     min="0"
@@ -2092,7 +2115,7 @@ export default function UploadPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t.upload.ppapsCompleted}</Label>
+                  <Label>P2 - Supplier PPAP</Label>
                   <Input
                     type="number"
                     min="0"
@@ -2100,8 +2123,11 @@ export default function UploadPage() {
                     onChange={(e) => setManualDraft((p) => ({ ...p, ppapCompleted: Math.max(0, Number(e.target.value) || 0) }))}
                   />
                 </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
                 <div className="space-y-1.5">
-                  <Label>{t.upload.deviationsInProgress}</Label>
+                  <Label>D1 - Customer Deviation</Label>
                   <Input
                     type="number"
                     min="0"
@@ -2110,7 +2136,7 @@ export default function UploadPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t.upload.deviationsCompleted}</Label>
+                  <Label>D2 - Supplier Deviation</Label>
                   <Input
                     type="number"
                     min="0"
@@ -2118,8 +2144,17 @@ export default function UploadPage() {
                     onChange={(e) => setManualDraft((p) => ({ ...p, deviationsCompleted: Math.max(0, Number(e.target.value) || 0) }))}
                   />
                 </div>
-                <div className="md:col-span-2 text-xs text-muted-foreground">
-                  {t.upload.deviationsTotalNote}
+                <div className="space-y-1.5">
+                  <Label>D3 - Internal Deviation</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={manualDraft.deviationsD3}
+                    onChange={(e) => setManualDraft((p) => ({ ...p, deviationsD3: Math.max(0, Number(e.target.value) || 0) }))}
+                  />
+                </div>
+                <div className="md:col-span-3 text-xs text-muted-foreground">
+                  Deviations total used by KPI = D1 + D2 + D3.
                 </div>
               </div>
 
@@ -2251,8 +2286,64 @@ export default function UploadPage() {
                         summary={summary}
                         onSave={(updatedSummary, changes) => {
                           saveUploadSummary(updatedSummary);
-                          saveChangeHistory(updatedSummary.id, changes);
+                          saveChangeHistory(updatedSummary.id, updatedSummary.changeHistory);
                           setUploadSummaries(prev => new Map(prev).set(updatedSummary.id, updatedSummary));
+
+                          const changedComplaintIds = new Set(
+                            changes
+                              .filter((change) => change.recordType === "complaint")
+                              .map((change) => change.recordId)
+                          );
+
+                          if (changedComplaintIds.size === 0) return;
+
+                          const correctedComplaints = (updatedSummary.processedData.complaints || [])
+                            .filter((item) => changedComplaintIds.has(item.id))
+                            .map(reviveComplaint);
+
+                          if (correctedComplaints.length === 0) return;
+
+                          void (async () => {
+                            try {
+                              // Persist corrected complaints locally so corrections survive refresh/navigation
+                              await upsertComplaints(correctedComplaints);
+
+                              // Try to persist to API backend as well when enabled
+                              if (apiMode.isApiMode) {
+                                await Promise.allSettled(
+                                  correctedComplaints.map((complaint) =>
+                                    updateComplaint(complaint.id, {
+                                      notificationNumber: complaint.notificationNumber,
+                                      notificationType: complaint.notificationType,
+                                      category: complaint.category,
+                                      plant: complaint.plant,
+                                      siteCode: complaint.siteCode,
+                                      siteName: complaint.siteName,
+                                      createdOn: complaint.createdOn,
+                                      defectiveParts: complaint.defectiveParts,
+                                      source: complaint.source,
+                                      unitOfMeasure: complaint.unitOfMeasure,
+                                      materialDescription: complaint.materialDescription,
+                                      materialNumber: complaint.materialNumber,
+                                      conversionJson: complaint.conversion ? JSON.stringify(complaint.conversion) : undefined,
+                                    })
+                                  )
+                                );
+                              }
+
+                              // Recalculate KPIs so dashboard/PPM/tables immediately reflect corrected values
+                              await calculateKpisFromStoredData({ writeHistory: false });
+                            } catch (error) {
+                              console.error("[Upload Summary] Failed to persist corrections:", error);
+                              setErrors((prev) => ({
+                                ...prev,
+                                complaints:
+                                  error instanceof Error
+                                    ? `Corrections saved to summary, but KPI update failed: ${error.message}`
+                                    : "Corrections saved to summary, but KPI update failed.",
+                              }));
+                            }
+                          })();
                         }}
                         editorRole={role === "editor"}
                       />
@@ -2314,9 +2405,19 @@ export default function UploadPage() {
               const changes = loadChangeHistory(h.id);
               allChanges.push(...changes);
             });
+
+            // Deduplicate changes aggregated from summary + localStorage sources
+            const uniqueChanges = Array.from(
+              new Map(
+                allChanges.map((change) => [
+                  `${change.id}__${change.timestamp}__${change.recordId}__${change.field}__${change.changeType}`,
+                  change,
+                ])
+              ).values()
+            );
             
             // Sort by timestamp (newest first)
-            const sortedChanges = allChanges.sort((a, b) => 
+            const sortedChanges = uniqueChanges.sort((a, b) => 
               new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
             );
 

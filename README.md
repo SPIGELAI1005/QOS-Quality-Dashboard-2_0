@@ -1,5 +1,7 @@
 # QOS ET Quality Report
 
+**Last Updated**: 2026-03-16
+
 Web application for analyzing manufacturing quality data (SAP S/4HANA exports). It processes Excel files (complaints/notifications, deliveries, plant master data) to generate KPIs (incl. PPM) and AI-assisted insights.
 
 ## Key capabilities

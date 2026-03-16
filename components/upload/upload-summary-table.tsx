@@ -11,15 +11,9 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertTriangle, CheckCircle2, Edit, X, Save, AlertCircle, Filter } from "lucide-react";
 import type { Complaint } from "@/lib/domain/types";
 import type { UploadSummaryEntry, ChangeHistoryEntry } from "@/lib/data/uploadSummary";
@@ -39,60 +33,76 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
   
   // Filter states
   const [filterByIssues, setFilterByIssues] = useState<boolean>(false);
-  const [filterByPlant, setFilterByPlant] = useState<string>("all");
-  const [filterByUnit, setFilterByUnit] = useState<string>("all");
-  const [filterByType, setFilterByType] = useState<string>("all");
+  const [filterByPlant, setFilterByPlant] = useState<string[]>([]);
+  const [filterByUnit, setFilterByUnit] = useState<string[]>([]);
+  const [filterByType, setFilterByType] = useState<string[]>([]);
 
   const conversionStatus = summary.conversionStatus.complaints || [];
 
   const allComplaints = useMemo(() => {
-    // Use edited complaints if available, otherwise reconstruct from minimal stored data
-    const base: any[] = summary.processedData.complaints || summary.rawData.complaints || [];
-    
-    // Reconstruct full complaints from minimal stored data + conversion status
-    const fullComplaints = base.map((c: any) => {
-      // If complaint is already full (has all required fields), return as is
-      if ('category' in c && 'plant' in c && 'source' in c && 'defectiveParts' in c) {
-        return c as Complaint;
+    const rawBase: any[] = summary.rawData.complaints || [];
+    const correctedBase: any[] = summary.processedData.complaints || [];
+
+    function reconstructComplaint(c: any): Complaint {
+      // If complaint is already full (has all required fields), normalize date and return
+      if ("category" in c && "plant" in c && "source" in c && "defectiveParts" in c) {
+        return {
+          ...(c as Complaint),
+          createdOn: typeof c.createdOn === "string" ? new Date(c.createdOn) : (c.createdOn || new Date()),
+        };
       }
-      
-      // Otherwise, reconstruct from minimal data + conversion status
-      const status = conversionStatus.find(s => s.complaintId === c.id);
-      const notificationType = c.notificationType || status?.notificationType || status?.notificationNumber?.match(/^Q[123]/)?.[0] || 'Q1';
-      
-      // Determine category from notification type
-      let category: any = 'CustomerComplaint';
-      if (notificationType === 'Q2') category = 'SupplierComplaint';
-      else if (notificationType === 'Q3') category = 'InternalComplaint';
-      
+
+      // Reconstruct from minimal data + conversion status
+      const status = conversionStatus.find((s) => s.complaintId === c.id);
+      const notificationType =
+        c.notificationType || status?.notificationType || status?.notificationNumber?.match(/^Q[123]/)?.[0] || "Q1";
+
+      let category: any = "CustomerComplaint";
+      if (notificationType === "Q2") category = "SupplierComplaint";
+      else if (notificationType === "Q3") category = "InternalComplaint";
+
       return {
         id: c.id,
-        notificationNumber: c.notificationNumber || status?.notificationNumber || '',
+        notificationNumber: c.notificationNumber || status?.notificationNumber || "",
         notificationType: notificationType as any,
         category,
-        plant: c.plant || c.siteCode || status?.siteCode || '',
-        siteCode: c.siteCode || status?.siteCode || '',
+        plant: c.plant || c.siteCode || status?.siteCode || "",
+        siteCode: c.siteCode || status?.siteCode || "",
         siteName: c.siteName,
-        createdOn: typeof c.createdOn === 'string' ? new Date(c.createdOn) : (c.createdOn || new Date()),
-        defectiveParts: status?.originalValue || c.defectiveParts || 0,
-        source: 'Import' as any,
-        unitOfMeasure: status?.originalUnit || c.unitOfMeasure || 'PC',
-        materialDescription: status?.materialDescription || c.materialDescription || '',
+        createdOn: typeof c.createdOn === "string" ? new Date(c.createdOn) : (c.createdOn || new Date()),
+        defectiveParts: status?.originalValue ?? c.defectiveParts ?? 0,
+        source: "Import" as any,
+        unitOfMeasure: status?.originalUnit || c.unitOfMeasure || "PC",
+        materialDescription: status?.materialDescription || c.materialDescription || "",
         materialNumber: (c as any).materialNumber,
-        conversion: status?.convertedValue ? {
-          originalValue: status.originalValue,
-          originalUnit: status.originalUnit,
-          convertedValue: status.convertedValue,
-          wasConverted: true,
-          materialDescription: status.materialDescription,
-        } : undefined,
+        conversion: status?.convertedValue
+          ? {
+              originalValue: status.originalValue,
+              originalUnit: status.originalUnit,
+              convertedValue: status.convertedValue,
+              wasConverted: true,
+              materialDescription: status.materialDescription,
+            }
+          : undefined,
       } as Complaint;
+    }
+
+    const combinedById = new Map<string, Complaint>();
+    rawBase.forEach((item) => {
+      const reconstructed = reconstructComplaint(item);
+      combinedById.set(reconstructed.id, reconstructed);
     });
-    
-    const edited = Array.from(editedComplaints.values());
-    const editedIds = new Set(edited.map(c => c.id));
-    const unchanged = fullComplaints.filter(c => !editedIds.has(c.id));
-    return [...unchanged, ...edited];
+
+    // Corrected values from processed data override raw reconstructed values
+    correctedBase.forEach((item) => {
+      const reconstructed = reconstructComplaint(item);
+      combinedById.set(reconstructed.id, reconstructed);
+    });
+
+    // Unsaved edits from current session override both
+    editedComplaints.forEach((item) => combinedById.set(item.id, item));
+
+    return Array.from(combinedById.values());
   }, [summary, editedComplaints, conversionStatus]);
   
   // Get unique values for filters (filter out empty strings)
@@ -108,6 +118,24 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
     return Array.from(new Set(allComplaints.map(c => c.notificationType).filter(t => t && t.trim() !== ""))).sort();
   }, [allComplaints]);
 
+  const unitFilterLabel = useMemo(() => {
+    if (filterByUnit.length === 0) return "All units";
+    if (filterByUnit.length === 1) return filterByUnit[0];
+    return `${filterByUnit.length} units selected`;
+  }, [filterByUnit]);
+
+  const plantFilterLabel = useMemo(() => {
+    if (filterByPlant.length === 0) return "All plants";
+    if (filterByPlant.length === 1) return filterByPlant[0];
+    return `${filterByPlant.length} plants selected`;
+  }, [filterByPlant]);
+
+  const typeFilterLabel = useMemo(() => {
+    if (filterByType.length === 0) return "All types";
+    if (filterByType.length === 1) return filterByType[0];
+    return `${filterByType.length} types selected`;
+  }, [filterByType]);
+
   // Filter complaints based on filter criteria
   const complaints = useMemo(() => {
     let filtered = allComplaints;
@@ -121,22 +149,40 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
     }
     
     // Filter by plant
-    if (filterByPlant !== "all") {
-      filtered = filtered.filter(c => c.siteCode === filterByPlant);
+    if (filterByPlant.length > 0) {
+      filtered = filtered.filter(c => filterByPlant.includes(c.siteCode));
     }
     
     // Filter by unit of measure
-    if (filterByUnit !== "all") {
-      filtered = filtered.filter(c => (c.unitOfMeasure || "PC") === filterByUnit);
+    if (filterByUnit.length > 0) {
+      filtered = filtered.filter(c => filterByUnit.includes(c.unitOfMeasure || "PC"));
     }
     
     // Filter by notification type
-    if (filterByType !== "all") {
-      filtered = filtered.filter(c => c.notificationType === filterByType);
+    if (filterByType.length > 0) {
+      filtered = filtered.filter(c => filterByType.includes(c.notificationType));
     }
     
     return filtered;
   }, [allComplaints, conversionStatus, filterByIssues, filterByPlant, filterByUnit, filterByType]);
+
+  function toggleUnitFilter(unit: string) {
+    setFilterByUnit((previous) =>
+      previous.includes(unit) ? previous.filter((value) => value !== unit) : [...previous, unit]
+    );
+  }
+
+  function togglePlantFilter(plant: string) {
+    setFilterByPlant((previous) =>
+      previous.includes(plant) ? previous.filter((value) => value !== plant) : [...previous, plant]
+    );
+  }
+
+  function toggleTypeFilter(type: string) {
+    setFilterByType((previous) =>
+      previous.includes(type) ? previous.filter((value) => value !== type) : [...previous, type]
+    );
+  }
 
   const handleEdit = (complaint: Complaint) => {
     setEditingId(complaint.id);
@@ -157,17 +203,25 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
   };
 
   const handleSaveAll = () => {
+    const existingProcessedMap = new Map((summary.processedData.complaints || []).map((item: any) => [item.id, item as Complaint]));
+    editedComplaints.forEach((item) => existingProcessedMap.set(item.id, item));
+    const mergedProcessedComplaints = Array.from(existingProcessedMap.values());
+    const mergedChangeHistory = [...summary.changeHistory, ...pendingChanges];
+    const correctedComplaintIds = new Set(
+      mergedChangeHistory.filter((change) => change.recordType === "complaint").map((change) => change.recordId)
+    );
+
     const updatedSummary: UploadSummaryEntry = {
       ...summary,
       processedData: {
         ...summary.processedData,
-        complaints: complaints,
+        complaints: mergedProcessedComplaints,
       },
-      changeHistory: [...summary.changeHistory, ...pendingChanges],
+      changeHistory: mergedChangeHistory,
       summary: {
         ...summary.summary,
-        recordsCorrected: summary.summary.recordsCorrected + pendingChanges.length,
-        recordsUnchanged: summary.summary.totalRecords - (summary.summary.recordsCorrected + pendingChanges.length),
+        recordsCorrected: correctedComplaintIds.size,
+        recordsUnchanged: Math.max(summary.summary.totalRecords - correctedComplaintIds.size, 0),
       },
     };
     onSave(updatedSummary, pendingChanges);
@@ -259,58 +313,97 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
           {/* Filter by Plant */}
           <div className="space-y-1.5">
             <Label htmlFor="filter-plant" className="text-xs text-muted-foreground">Plant</Label>
-            <Select value={filterByPlant} onValueChange={setFilterByPlant}>
-              <SelectTrigger id="filter-plant" className="h-9">
-                <SelectValue placeholder="All plants" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All plants</SelectItem>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button id="filter-plant" type="button" variant="outline" className="h-9 w-full justify-between font-normal">
+                  <span className="truncate">{plantFilterLabel}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[260px] p-2 space-y-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start h-8"
+                  onClick={() => setFilterByPlant([])}
+                >
+                  All plants
+                </Button>
                 {availablePlants.filter(plant => plant && plant.trim() !== "").map((plant) => (
-                  <SelectItem key={plant} value={plant}>
-                    {plant}
-                  </SelectItem>
+                  <label key={plant} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted cursor-pointer">
+                    <Checkbox
+                      checked={filterByPlant.includes(plant)}
+                      onCheckedChange={() => togglePlantFilter(plant)}
+                    />
+                    <span>{plant}</span>
+                  </label>
                 ))}
-              </SelectContent>
-            </Select>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Filter by Unit of Measure */}
           <div className="space-y-1.5">
             <Label htmlFor="filter-unit" className="text-xs text-muted-foreground">Unit of Measure</Label>
-            <Select value={filterByUnit} onValueChange={setFilterByUnit}>
-              <SelectTrigger id="filter-unit" className="h-9">
-                <SelectValue placeholder="All units" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All units</SelectItem>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button id="filter-unit" type="button" variant="outline" className="h-9 w-full justify-between font-normal">
+                  <span className="truncate">{unitFilterLabel}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[260px] p-2 space-y-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start h-8"
+                  onClick={() => setFilterByUnit([])}
+                >
+                  All units
+                </Button>
                 {availableUnits.filter(unit => unit && unit.trim() !== "").map((unit) => (
-                  <SelectItem key={unit} value={unit}>
-                    {unit}
-                  </SelectItem>
+                  <label key={unit} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted cursor-pointer">
+                    <Checkbox
+                      checked={filterByUnit.includes(unit)}
+                      onCheckedChange={() => toggleUnitFilter(unit)}
+                    />
+                    <span>{unit}</span>
+                  </label>
                 ))}
-              </SelectContent>
-            </Select>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Filter by Notification Type */}
           <div className="space-y-1.5">
             <Label htmlFor="filter-type" className="text-xs text-muted-foreground">Notification Type</Label>
-            <Select value={filterByType} onValueChange={setFilterByType}>
-              <SelectTrigger id="filter-type" className="h-9">
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button id="filter-type" type="button" variant="outline" className="h-9 w-full justify-between font-normal">
+                  <span className="truncate">{typeFilterLabel}</span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-[260px] p-2 space-y-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start h-8"
+                  onClick={() => setFilterByType([])}
+                >
+                  All types
+                </Button>
                 {availableTypes.filter(type => type && type.trim() !== "").map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
+                  <label key={type} className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted cursor-pointer">
+                    <Checkbox
+                      checked={filterByType.includes(type)}
+                      onCheckedChange={() => toggleTypeFilter(type)}
+                    />
+                    <span>{type}</span>
+                  </label>
                 ))}
-              </SelectContent>
-            </Select>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
-        {(filterByIssues || filterByPlant !== "all" || filterByUnit !== "all" || filterByType !== "all") && (
+        {(filterByIssues || filterByPlant.length > 0 || filterByUnit.length > 0 || filterByType.length > 0) && (
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="text-xs text-muted-foreground">
               Showing {complaints.length} of {allComplaints.length} records
@@ -320,9 +413,9 @@ export function UploadSummaryTable({ summary, onSave, editorRole }: UploadSummar
               size="sm"
               onClick={() => {
                 setFilterByIssues(false);
-                setFilterByPlant("all");
-                setFilterByUnit("all");
-                setFilterByType("all");
+                setFilterByPlant([]);
+                setFilterByUnit([]);
+                setFilterByType([]);
               }}
               className="h-7 text-xs"
             >

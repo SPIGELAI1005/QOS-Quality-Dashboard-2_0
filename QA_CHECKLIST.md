@@ -1,5 +1,7 @@
 # QA Checklist - UI API Refactor
 
+**Last Updated**: 2026-03-16
+
 ## Quick Verification Steps
 
 ### ✅ 1. Basic Upload Flow (Complaints)

@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -89,6 +92,9 @@ export function DeviationsClient() {
   const [deviations, setDeviations] = useState<DeviationApiItem[]>([]);
   const [plantsData, setPlantsData] = useState<PlantData[]>([]);
   const [selectedPlantForStatusChart, setSelectedPlantForStatusChart] = useState<string | null>(null);
+  const [selectedDTypes, setSelectedDTypes] = useState<Set<"D1" | "D2" | "D3">>(
+    new Set(["D1", "D2", "D3"])
+  );
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [periodMode, setPeriodMode] = useState<"12mb" | "ytd">("12mb");
@@ -264,14 +270,19 @@ export function DeviationsClient() {
     });
   }, [deviations, filters.selectedPlants, filters.dateFrom, filters.dateTo, lookbackPeriod.start, lookbackPeriod.end, periodMode, selectedMonth, selectedYear]);
 
-  const totalDNotifications = filteredDeviations.length;
-    const inProgress = filteredDeviations.filter((d) => d.status === "In Progress" || d.status === "Pending" || d.status === t.deviations.inProgress || d.status === t.deviations.pending).length;
-    const closed = filteredDeviations.filter((d) => d.status === "Completed" || d.status === t.deviations.completed).length;
+  const notificationTypeFilteredDeviations = useMemo(() => {
+    if (selectedDTypes.size === 0) return [];
+    return filteredDeviations.filter((d) => selectedDTypes.has(d.notificationType));
+  }, [filteredDeviations, selectedDTypes]);
+
+  const totalDNotifications = notificationTypeFilteredDeviations.length;
+    const inProgress = notificationTypeFilteredDeviations.filter((d) => d.status === "In Progress" || d.status === "Pending" || d.status === t.deviations.inProgress || d.status === t.deviations.pending).length;
+    const closed = notificationTypeFilteredDeviations.filter((d) => d.status === "Completed" || d.status === t.deviations.completed).length;
 
   const deviationsMonthlySiteKpisForAi = useMemo<MonthlySiteKpi[]>(() => {
     const byKey = new Map<string, MonthlySiteKpi>();
 
-    for (const d of filteredDeviations) {
+    for (const d of notificationTypeFilteredDeviations) {
       const site = String(d.siteCode || d.plant || "").trim();
       if (!site) continue;
       const created = d.createdOn instanceof Date ? d.createdOn : new Date(d.createdOn);
@@ -309,7 +320,7 @@ export function DeviationsClient() {
     }
 
     return Array.from(byKey.values()).sort((a, b) => a.month.localeCompare(b.month) || a.siteCode.localeCompare(b.siteCode));
-  }, [filteredDeviations, plantsData]);
+  }, [notificationTypeFilteredDeviations, plantsData]);
 
   const generateAISummary = useCallback(async () => {
     if (deviationsMonthlySiteKpisForAi.length === 0) {
@@ -392,7 +403,7 @@ export function DeviationsClient() {
     const byMonth = new Map<string, Record<string, number>>();
     const sitesSet = new Set<string>();
 
-    for (const d of filteredDeviations) {
+    for (const d of notificationTypeFilteredDeviations) {
       const site = String(d.siteCode || d.plant || "").trim();
       if (!site) continue;
       const created = d.createdOn instanceof Date ? d.createdOn : new Date(d.createdOn);
@@ -420,11 +431,11 @@ export function DeviationsClient() {
     });
 
     return { data, sites };
-  }, [filteredDeviations, getDisplayMonths]);
+  }, [notificationTypeFilteredDeviations, getDisplayMonths]);
 
   const availableDeviationSites = useMemo(() => {
     const s = new Set<string>();
-    for (const d of filteredDeviations) {
+    for (const d of notificationTypeFilteredDeviations) {
       const site = String(d.siteCode || d.plant || "").trim();
       if (site) s.add(site);
     }
@@ -434,12 +445,12 @@ export function DeviationsClient() {
       if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
       return a.localeCompare(b);
     });
-  }, [filteredDeviations]);
+  }, [notificationTypeFilteredDeviations]);
 
   const deviationStatusByMonth = useMemo(() => {
     const base = selectedPlantForStatusChart
-      ? filteredDeviations.filter((d) => String(d.siteCode || d.plant || "").trim() === selectedPlantForStatusChart)
-      : filteredDeviations;
+      ? notificationTypeFilteredDeviations.filter((d) => String(d.siteCode || d.plant || "").trim() === selectedPlantForStatusChart)
+      : notificationTypeFilteredDeviations;
 
     const byMonth = new Map<string, { closed: number; inProgress: number; total: number }>();
 
@@ -461,7 +472,7 @@ export function DeviationsClient() {
       const v = byMonth.get(month) ?? { closed: 0, inProgress: 0, total: 0 };
       return { month, [t.charts.deviations.closed]: v.closed, [t.deviations.inProgress]: v.inProgress, total: v.total };
     });
-  }, [filteredDeviations, selectedPlantForStatusChart, getDisplayMonths]);
+  }, [notificationTypeFilteredDeviations, selectedPlantForStatusChart, getDisplayMonths]);
 
   const PlantLegend = useCallback(({
     sites,
@@ -770,19 +781,61 @@ export function DeviationsClient() {
                   <CardTitle>{withScopedPlantTitle(t.charts.deviations.notificationsByMonth)}</CardTitle>
                   <CardDescription>{t.charts.deviations.notificationsDescription}</CardDescription>
                 </div>
-                <IAmQButton
-                  onClick={() => {
-                    setChartContext({
-                      title: withScopedPlantTitle(t.charts.deviations.notificationsByMonth),
-                      description: t.charts.deviations.notificationsDescription,
-                      chartType: "bar",
-                      dataType: "deviations",
-                      hasData: deviationsByMonthPlant.data.length > 0 && deviationsByMonthPlant.sites.length > 0,
-                      dataCount: deviationsByMonthPlant.sites.length,
-                    });
-                    setIsChatOpen(true);
-                  }}
-                />
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Notification Type
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56" align="end">
+                      <div className="space-y-3">
+                        <div className="font-semibold text-sm mb-2">Notification Type</div>
+                        <div className="space-y-2">
+                          {([
+                            ["D1", "D1 - Customer Deviation"],
+                            ["D2", "D2 - Supplier Deviation"],
+                            ["D3", "D3 - Internal Deviation"],
+                          ] as const).map(([type, label]) => (
+                            <div key={type} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`deviation-chart1-filter-${type.toLowerCase()}`}
+                                checked={selectedDTypes.has(type)}
+                                onCheckedChange={(checked) => {
+                                  const next = new Set(selectedDTypes);
+                                  if (checked) next.add(type);
+                                  else next.delete(type);
+                                  setSelectedDTypes(next);
+                                }}
+                              />
+                              <Label htmlFor={`deviation-chart1-filter-${type.toLowerCase()}`} className="text-sm cursor-pointer">
+                                {label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedDTypes.size < 3 && (
+                    <Button variant="outline" size="sm" onClick={() => setSelectedDTypes(new Set(["D1", "D2", "D3"]))}>
+                      Reset
+                    </Button>
+                  )}
+                  <IAmQButton
+                    onClick={() => {
+                      setChartContext({
+                        title: withScopedPlantTitle(t.charts.deviations.notificationsByMonth),
+                        description: t.charts.deviations.notificationsDescription,
+                        chartType: "bar",
+                        dataType: "deviations",
+                        hasData: deviationsByMonthPlant.data.length > 0 && deviationsByMonthPlant.sites.length > 0,
+                        dataCount: deviationsByMonthPlant.sites.length,
+                      });
+                      setIsChatOpen(true);
+                    }}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>
@@ -853,26 +906,68 @@ export function DeviationsClient() {
                       : "Closed vs. In Progress across all selected plants"}
                   </CardDescription>
                 </div>
-                {selectedPlantForStatusChart && (
-                  <Button variant="outline" size="sm" onClick={() => setSelectedPlantForStatusChart(null)}>
-                    Reset Filter
-                  </Button>
-                )}
-                <IAmQButton
-                  onClick={() => {
-                    setChartContext({
-                      title: withScopedPlantTitle("YTD D Notifications Closed vs. In Progress by Month and Plant"),
-                      description: selectedPlantForStatusChart
-                        ? `Closed vs. In Progress for ${formatPlantLabel(selectedPlantForStatusChart)}`
-                        : "Closed vs. In Progress across all selected plants",
-                      chartType: "bar",
-                      dataType: "deviations",
-                      hasData: deviationStatusByMonth.length > 0,
-                      dataCount: deviationStatusByMonth.length,
-                    });
-                    setIsChatOpen(true);
-                  }}
-                />
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        Notification Type
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-56" align="end">
+                      <div className="space-y-3">
+                        <div className="font-semibold text-sm mb-2">Notification Type</div>
+                        <div className="space-y-2">
+                          {([
+                            ["D1", "D1 - Customer Deviation"],
+                            ["D2", "D2 - Supplier Deviation"],
+                            ["D3", "D3 - Internal Deviation"],
+                          ] as const).map(([type, label]) => (
+                            <div key={type} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`deviation-chart2-filter-${type.toLowerCase()}`}
+                                checked={selectedDTypes.has(type)}
+                                onCheckedChange={(checked) => {
+                                  const next = new Set(selectedDTypes);
+                                  if (checked) next.add(type);
+                                  else next.delete(type);
+                                  setSelectedDTypes(next);
+                                }}
+                              />
+                              <Label htmlFor={`deviation-chart2-filter-${type.toLowerCase()}`} className="text-sm cursor-pointer">
+                                {label}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  {selectedDTypes.size < 3 && (
+                    <Button variant="outline" size="sm" onClick={() => setSelectedDTypes(new Set(["D1", "D2", "D3"]))}>
+                      Reset
+                    </Button>
+                  )}
+                  {selectedPlantForStatusChart && (
+                    <Button variant="outline" size="sm" onClick={() => setSelectedPlantForStatusChart(null)}>
+                      Reset Plant
+                    </Button>
+                  )}
+                  <IAmQButton
+                    onClick={() => {
+                      setChartContext({
+                        title: withScopedPlantTitle("YTD D Notifications Closed vs. In Progress by Month and Plant"),
+                        description: selectedPlantForStatusChart
+                          ? `Closed vs. In Progress for ${formatPlantLabel(selectedPlantForStatusChart)}`
+                          : "Closed vs. In Progress across all selected plants",
+                        chartType: "bar",
+                        dataType: "deviations",
+                        hasData: deviationStatusByMonth.length > 0,
+                        dataCount: deviationStatusByMonth.length,
+                      });
+                      setIsChatOpen(true);
+                    }}
+                  />
+                </div>
               </div>
             </CardHeader>
             <CardContent>

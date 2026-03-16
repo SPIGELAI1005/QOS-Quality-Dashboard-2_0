@@ -2458,6 +2458,97 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     });
   };
 
+  interface PpmSiteContributionExportData {
+    sites: string[];
+    months: string[];
+    bySiteMonth: Map<string, Map<string, { defective: number; deliveries: number }>>;
+    totalsByMonth: Map<string, { defective: number; deliveries: number; ppm: number }>;
+  }
+
+  const formatPpmExportMonth = useCallback((monthKey: string): string => {
+    const date = new Date(`${monthKey}-01`);
+    if (Number.isNaN(date.getTime())) return monthKey;
+    return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+  }, []);
+
+  const buildPpmSiteContributionSheetData = useCallback(
+    (title: "CUSTOMER PPM" | "SUPPLIER PPM", contribution: PpmSiteContributionExportData): any[][] => {
+      const months = contribution.months.slice(-12);
+      const wsData: any[][] = [];
+
+      wsData.push([title]);
+      wsData.push(["DATA", ...months.map(formatPpmExportMonth), "TOTAL"]);
+
+      contribution.sites.forEach((siteCode) => {
+        const formattedSiteName = formatSiteNameForChart(siteCode, false);
+        const row: Array<string | number> = [`${formattedSiteName} Defective Parts by Site`];
+        let siteTotal = 0;
+
+        months.forEach((month) => {
+          const siteData = contribution.bySiteMonth.get(siteCode);
+          const value = siteData?.get(month)?.defective || 0;
+          row.push(value);
+          siteTotal += value;
+        });
+
+        row.push(siteTotal);
+        wsData.push(row);
+      });
+
+      const totalDefectiveRow: Array<string | number> = ["Total Defective Parts"];
+      const totalDeliveriesRow: Array<string | number> = ["Total Deliveries"];
+      const calculatedPpmRow: Array<string | number> = ["Calculated PPM"];
+      let grandTotalDefective = 0;
+      let grandTotalDeliveries = 0;
+
+      months.forEach((month) => {
+        const monthTotals = contribution.totalsByMonth.get(month);
+        const defective = monthTotals?.defective || 0;
+        const deliveries = monthTotals?.deliveries || 0;
+        const ppm = monthTotals?.ppm || 0;
+
+        totalDefectiveRow.push(defective);
+        totalDeliveriesRow.push(deliveries);
+        calculatedPpmRow.push(ppm);
+
+        grandTotalDefective += defective;
+        grandTotalDeliveries += deliveries;
+      });
+
+      totalDefectiveRow.push(grandTotalDefective);
+      totalDeliveriesRow.push(grandTotalDeliveries);
+      calculatedPpmRow.push(grandTotalDeliveries > 0 ? (grandTotalDefective / grandTotalDeliveries) * 1_000_000 : 0);
+
+      wsData.push(totalDefectiveRow);
+      wsData.push(totalDeliveriesRow);
+      wsData.push(calculatedPpmRow);
+
+      return wsData;
+    },
+    [formatPpmExportMonth, formatSiteNameForChart]
+  );
+
+  const exportCombinedPpmSiteContributionWorkbook = useCallback(() => {
+    const wb = XLSX.utils.book_new();
+
+    const customerWsData = buildPpmSiteContributionSheetData("CUSTOMER PPM", customerPpmSiteContribution);
+    const customerWs = XLSX.utils.aoa_to_sheet(customerWsData);
+    const customerLastCol = customerPpmSiteContribution.months.slice(-12).length + 1;
+    customerWs["!merges"] = [XLSX.utils.decode_range(`A1:${XLSX.utils.encode_col(customerLastCol)}1`)];
+    customerWs["!cols"] = [{ wch: 44 }, ...customerPpmSiteContribution.months.slice(-12).map(() => ({ wch: 10 })), { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, customerWs, "Customer PPM");
+
+    const supplierWsData = buildPpmSiteContributionSheetData("SUPPLIER PPM", supplierPpmSiteContribution);
+    const supplierWs = XLSX.utils.aoa_to_sheet(supplierWsData);
+    const supplierLastCol = supplierPpmSiteContribution.months.slice(-12).length + 1;
+    supplierWs["!merges"] = [XLSX.utils.decode_range(`A1:${XLSX.utils.encode_col(supplierLastCol)}1`)];
+    supplierWs["!cols"] = [{ wch: 44 }, ...supplierPpmSiteContribution.months.slice(-12).map(() => ({ wch: 10 })), { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, supplierWs, "Supplier PPM");
+
+    const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+    XLSX.writeFile(wb, `Combined_PPM_Site_ETA_QOS_ET_${stamp}.xlsx`);
+  }, [buildPpmSiteContributionSheetData, customerPpmSiteContribution, supplierPpmSiteContribution]);
+
   const MetricTile = ({
     title, 
     value, 
@@ -3696,9 +3787,14 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={notificationsByMonthPlant} margin={{ top: 30, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                <XAxis dataKey="month" stroke="rgba(255, 255, 255, 0.5)" />
-                  <YAxis 
-                    stroke="rgba(255, 255, 255, 0.5)" 
+                <XAxis
+                  dataKey="month"
+                  stroke="hsl(var(--muted-foreground) / 0.75)"
+                  tick={{ fill: "hsl(var(--foreground))" }}
+                />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground) / 0.75)"
+                    tick={{ fill: "hsl(var(--foreground))" }}
                     domain={[0, maxYAxisValue]}
                   />
                 <Tooltip 
@@ -3726,7 +3822,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                         <LabelList 
                           dataKey="total"
                           position="top"
-                          fill="rgba(255, 255, 255, 0.9)"
+                          fill="hsl(var(--foreground))"
                           fontSize={12}
                           fontWeight="500"
                           offset={10}
@@ -3912,9 +4008,14 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={defectsByMonthPlant} margin={{ top: 30, right: 30, left: 20, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                  <XAxis dataKey="month" stroke="rgba(255, 255, 255, 0.5)" />
-                  <YAxis 
-                    stroke="rgba(255, 255, 255, 0.5)" 
+                  <XAxis
+                    dataKey="month"
+                    stroke="hsl(var(--muted-foreground) / 0.75)"
+                    tick={{ fill: "hsl(var(--foreground))" }}
+                  />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground) / 0.75)"
+                    tick={{ fill: "hsl(var(--foreground))" }}
                     domain={[0, maxYAxisValueDefects]}
                   />
                   <Tooltip 
@@ -3942,7 +4043,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                           <LabelList 
                             dataKey="total"
                             position="top"
-                            fill="rgba(255, 255, 255, 0.9)"
+                            fill="hsl(var(--foreground))"
                             fontSize={12}
                             fontWeight="500"
                             offset={10}
@@ -4110,8 +4211,15 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={notificationsByType} margin={{ top: 30, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                <XAxis dataKey="month" stroke="rgba(255, 255, 255, 0.5)" />
-                <YAxis stroke="rgba(255, 255, 255, 0.5)" />
+                <XAxis
+                  dataKey="month"
+                  stroke="hsl(var(--muted-foreground) / 0.75)"
+                  tick={{ fill: "hsl(var(--foreground))" }}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground) / 0.75)"
+                  tick={{ fill: "hsl(var(--foreground))" }}
+                />
                 <Tooltip 
                   contentStyle={{
                     backgroundColor: "rgba(0, 0, 0, 0.8)",
@@ -4153,7 +4261,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             <LabelList 
                               dataKey="total"
                               position="top"
-                              fill="rgba(255, 255, 255, 0.9)"
+                              fill="hsl(var(--foreground))"
                               fontSize={12}
                               fontWeight="500"
                               offset={10}
@@ -4181,7 +4289,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             <LabelList 
                               dataKey="total"
                               position="top"
-                              fill="rgba(255, 255, 255, 0.9)"
+                              fill="hsl(var(--foreground))"
                               fontSize={12}
                               fontWeight="500"
                               offset={10}
@@ -4209,7 +4317,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                             <LabelList 
                               dataKey="total"
                               position="top"
-                              fill="rgba(255, 255, 255, 0.9)"
+                              fill="hsl(var(--foreground))"
                               fontSize={12}
                               fontWeight="500"
                               offset={10}
@@ -4300,16 +4408,18 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={customerPpmTrendData} margin={{ top: 40, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                <XAxis 
-                  dataKey="month" 
-                  stroke="rgba(255, 255, 255, 0.5)"
+                <XAxis
+                  dataKey="month"
+                  stroke="hsl(var(--muted-foreground) / 0.75)"
+                  tick={{ fill: "hsl(var(--foreground))" }}
                   angle={-45}
                   textAnchor="end"
                   height={80}
                 />
-                <YAxis 
-                  stroke="rgba(255, 255, 255, 0.5)"
-                  label={{ value: 'PPM', angle: -90, position: 'insideLeft', fill: 'rgba(255, 255, 255, 0.7)' }}
+                <YAxis
+                  stroke="hsl(var(--muted-foreground) / 0.75)"
+                  tick={{ fill: "hsl(var(--foreground))" }}
+                  label={{ value: 'PPM', angle: -90, position: 'insideLeft', fill: "hsl(var(--foreground))" }}
                   tickFormatter={(value) => formatGermanNumber(value, 0)}
                 />
                 <Tooltip 
@@ -4337,7 +4447,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                   <LabelList 
                     dataKey="ppm"
                     position="top"
-                    fill="rgba(255, 255, 255, 0.9)"
+                    fill="hsl(var(--foreground))"
                     fontSize={12}
                     fontWeight="500"
                     offset={10}
@@ -4531,75 +4641,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => {
-                        // Prepare data for export
-                        const { sites, months, siteNames, siteLocations, bySiteMonth, totalsByMonth } = customerPpmSiteContribution;
-                      
-                      // Create worksheet data
-                      const wsData: any[][] = [];
-                      
-                      // Header row
-                      const header = ['DATA', ...months.map(m => {
-                        const date = new Date(m + "-01");
-                        return date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                      }), t.common.total];
-                      wsData.push(header);
-                      
-                      // Site rows
-                      sites.forEach((siteCode) => {
-                        const formattedSiteName = formatSiteNameForChart(siteCode, false);
-                        const row: Array<string | number> = [`${formattedSiteName} ${t.dashboard.defectivePartsBySite}`];
-                        let siteTotal = 0;
-                        months.forEach((month) => {
-                          const siteData = bySiteMonth.get(siteCode);
-                          const value = siteData?.get(month)?.defective || 0;
-                          row.push(value);
-                          siteTotal += value;
-                        });
-                        row.push(siteTotal);
-                        wsData.push(row);
-                      });
-                      
-                      // Total Defective Parts row
-                      const totalDefectiveRow: Array<string | number> = ['Total Defective Parts'];
-                      let grandTotalDefective = 0;
-                      months.forEach((month) => {
-                        const value = totalsByMonth.get(month)?.defective || 0;
-                        totalDefectiveRow.push(value);
-                        grandTotalDefective += value;
-                      });
-                      totalDefectiveRow.push(grandTotalDefective);
-                      wsData.push(totalDefectiveRow);
-                      
-                      // Total Deliveries row
-                      const totalDeliveriesRow: Array<string | number> = ['Total Deliveries'];
-                      let grandTotalDeliveries = 0;
-                      months.forEach((month) => {
-                        const value = totalsByMonth.get(month)?.deliveries || 0;
-                        totalDeliveriesRow.push(value);
-                        grandTotalDeliveries += value;
-                      });
-                      totalDeliveriesRow.push(grandTotalDeliveries);
-                      wsData.push(totalDeliveriesRow);
-                      
-                      // Calculated PPM row
-                      const ppmRow: Array<string | number> = ['Calculated PPM'];
-                      months.forEach((month) => {
-                        const ppm = totalsByMonth.get(month)?.ppm || 0;
-                        ppmRow.push(ppm);
-                      });
-                      const totalPpm = grandTotalDeliveries > 0 ? (grandTotalDefective / grandTotalDeliveries) * 1_000_000 : 0;
-                      ppmRow.push(totalPpm);
-                      wsData.push(ppmRow);
-                      
-                      // Create workbook and worksheet
-                      const wb = XLSX.utils.book_new();
-                      const ws = XLSX.utils.aoa_to_sheet(wsData);
-                      XLSX.utils.book_append_sheet(wb, ws, 'Customer PPM Site Contribution');
-                      
-                      // Export
-                      XLSX.writeFile(wb, `Customer_PPM_Site_Contribution_${new Date().toISOString().split('T')[0]}.xlsx`);
-                    }}
+                      onClick={exportCombinedPpmSiteContributionWorkbook}
                   >
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     {t.dashboard.exportToExcel}
@@ -5086,16 +5128,18 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                 <ResponsiveContainer width="100%" height={300}>
                   <ComposedChart data={supplierPpmTrendData} margin={{ top: 40, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.1)" />
-                    <XAxis 
-                      dataKey="month" 
-                      stroke="rgba(255, 255, 255, 0.5)"
+                    <XAxis
+                      dataKey="month"
+                      stroke="hsl(var(--muted-foreground) / 0.75)"
+                      tick={{ fill: "hsl(var(--foreground))" }}
                       angle={-45}
                       textAnchor="end"
                       height={80}
                     />
-                    <YAxis 
-                      stroke="rgba(255, 255, 255, 0.5)"
-                      label={{ value: 'PPM', angle: -90, position: 'insideLeft', fill: 'rgba(255, 255, 255, 0.7)' }}
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground) / 0.75)"
+                      tick={{ fill: "hsl(var(--foreground))" }}
+                      label={{ value: 'PPM', angle: -90, position: 'insideLeft', fill: "hsl(var(--foreground))" }}
                       tickFormatter={(value) => formatGermanNumber(value, 0)}
                     />
                     <Tooltip 
@@ -5123,7 +5167,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                       <LabelList 
                         dataKey="ppm"
                         position="top"
-                        fill="rgba(255, 255, 255, 0.9)"
+                        fill="hsl(var(--foreground))"
                         fontSize={12}
                         fontWeight="500"
                         offset={10}
@@ -5292,75 +5336,7 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => {
-                        // Prepare data for export
-                        const { sites, months, siteNames, siteLocations, bySiteMonth, totalsByMonth } = supplierPpmSiteContribution;
-                      
-                      // Create worksheet data
-                      const wsData: any[][] = [];
-                      
-                      // Header row
-                      const header = ['DATA', ...months.map(m => {
-                        const date = new Date(m + "-01");
-                        return date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-                      }), t.common.total];
-                      wsData.push(header);
-                      
-                      // Site rows
-                      sites.forEach((siteCode) => {
-                        const formattedSiteName = formatSiteNameForChart(siteCode, false);
-                        const row: Array<string | number> = [`${formattedSiteName} ${t.dashboard.defectivePartsBySite}`];
-                        let siteTotal = 0;
-                        months.forEach((month) => {
-                          const siteData = bySiteMonth.get(siteCode);
-                          const value = siteData?.get(month)?.defective || 0;
-                          row.push(value);
-                          siteTotal += value;
-                        });
-                        row.push(siteTotal);
-                        wsData.push(row);
-                      });
-                      
-                      // Total Defective Parts row
-                      const totalDefectiveRow: Array<string | number> = ['Total Defective Parts'];
-                      let grandTotalDefective = 0;
-                      months.forEach((month) => {
-                        const value = totalsByMonth.get(month)?.defective || 0;
-                        totalDefectiveRow.push(value);
-                        grandTotalDefective += value;
-                      });
-                      totalDefectiveRow.push(grandTotalDefective);
-                      wsData.push(totalDefectiveRow);
-                      
-                      // Total Deliveries row
-                      const totalDeliveriesRow: Array<string | number> = ['Total Deliveries'];
-                      let grandTotalDeliveries = 0;
-                      months.forEach((month) => {
-                        const value = totalsByMonth.get(month)?.deliveries || 0;
-                        totalDeliveriesRow.push(value);
-                        grandTotalDeliveries += value;
-                      });
-                      totalDeliveriesRow.push(grandTotalDeliveries);
-                      wsData.push(totalDeliveriesRow);
-                      
-                      // Calculated PPM row
-                      const ppmRow: Array<string | number> = ['Calculated PPM'];
-                      months.forEach((month) => {
-                        const ppm = totalsByMonth.get(month)?.ppm || 0;
-                        ppmRow.push(ppm);
-                      });
-                      const totalPpm = grandTotalDeliveries > 0 ? (grandTotalDefective / grandTotalDeliveries) * 1_000_000 : 0;
-                      ppmRow.push(totalPpm);
-                      wsData.push(ppmRow);
-                      
-                      // Create workbook and worksheet
-                      const wb = XLSX.utils.book_new();
-                      const ws = XLSX.utils.aoa_to_sheet(wsData);
-                      XLSX.utils.book_append_sheet(wb, ws, 'Supplier PPM Site Contribution');
-                      
-                      // Export
-                      XLSX.writeFile(wb, `Supplier_PPM_Site_Contribution_${new Date().toISOString().split('T')[0]}.xlsx`);
-                    }}
+                      onClick={exportCombinedPpmSiteContributionWorkbook}
                   >
                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                     {t.dashboard.exportToExcel}
