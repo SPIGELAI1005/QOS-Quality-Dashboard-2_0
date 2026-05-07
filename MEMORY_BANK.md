@@ -1,6 +1,6 @@
 # Memory Bank — QOS ET Quality Report
 
-**Last Updated**: 2026-03-16  
+**Last Updated**: 2026-05-07  
 **Purpose**: Fast, accurate context for continuing development and recovery.
 
 ---
@@ -54,8 +54,10 @@ QOS ET Quality Report is a Next.js dashboard for **manufacturing quality KPIs** 
   - `qos-et-global-ppm`: global PPM object
   - `qos-et-upload-history`: audit log of uploads
   - `qos-et-upload-summary-{uploadId}` / `qos-et-change-history-{uploadId}`
-  - `qos-et-manual-kpis`: manual KPI entries (template)
+  - `qos-et-manual-kpis`: manual KPI entries (template) — **deduped by `(month, siteCode)`, latest entry wins (2026-05-07)**
   - UI state: `qos-et-language`, `qos-et-role`, `qos-et-sidebar-collapsed`, `qos-et-filters-collapsed`
+- **sessionStorage (Management Summary)**:
+  - `qos-et-management-summary-export`: legacy handoff payload for the Chrome-safe dashboard fallback (`?msExport=1`). The primary flow is fully client-side on `/management-summary`.
 
 ### Cross-component update signal
 
@@ -79,6 +81,32 @@ QOS ET Quality Report is a Next.js dashboard for **manufacturing quality KPIs** 
 - **Upload duplicates**: New uploads **merge** with existing data; duplicates are **deduped by record id** before persist (no full clear of IndexedDB). Change type `duplicate` and `duplicateRecords` count in upload summary; Change History panel has Duplicate filter.
 - **Plant filter**: Individual Plants options come **only from Webasto ET Plants.xlsx**; selected plants are cleaned when they drop out of the list; SAP P01 quick access uses plants data; plant 210 (Manisa) in PLANT_COLORS.
 - **i18n**: Period mode labels, YTD subtitle, “duplicates”, Change History panel (filters, types, labels), dashboard filter warning, and month names are fully translated (en/de/it).
+
+## Recent critical implementation decisions (2026-05-07)
+
+### Management Summary report builder
+
+- New page **`/management-summary`** replaces the dashboard's instant "Export Management Summary" PDF with a full configuration form (title, logo, plants, per-plant remarks, section selection).
+- PDF is generated **client-side** in `components/management-summary/pdf-generator.ts` (uses `jsPDF`); the page does not redirect — a status banner reports progress/success/error.
+- **Reporting-month policy**: helper `getReportMonthInfo()` in `lib/management-summary/constants.ts` returns the **previous calendar month** relative to today. Example: a report created in May ⇒ April. The payload carries `reportMonthKey` (`YYYY-MM`) so the same period is used by every page in the PDF, every chart highlights this month's bar, and the filename includes it: `Management_Summary_2026-04_20260507.pdf`.
+- Trailing 12 months are computed by `buildLast12MonthsEnding(reportMonthKey)` so the PDF is consistent regardless of what the latest available data month is.
+- **Plant pages** are **3×2 charts + comparison table**:
+  - Row 1: Customer Complaints, Customer Defective Parts, Customer PPM (bars + 3-month moving-average trend)
+  - Row 2: Supplier Complaints, Supplier Defective Parts, Supplier PPM (bars + 3-month moving-average trend)
+  - Reported-month bar is highlighted on every chart.
+  - Comparison table: `Metric | Reported Month | Last 12 months` (customer/supplier complaints, defective parts, deliveries, PPM).
+  - Optional remarks block under the table.
+- **Notifications & Defects PDF page** uses top-8 **plant legend** (formatted as `<code> <CITY>, <CC>`, e.g. `210 MAN, TR`) plus a separate Q1/Q2/Q3 type legend for the notifications-by-type chart.
+- **Customer/Supplier PPM PDF pages** include: full-width bar+trend chart, Monthly Trend Analysis table (last 8 months + R12M total + reported-month row), Site Contribution per Month table (all selected plants + total).
+- Default app logo is loaded from `/Media/QM ET Triangle.png`; users can override via file input on `/management-summary`. Logo data is carried as a base64 data URL on the payload (`logoDataUrl`).
+- Section catalog (`lib/management-summary/section-catalog.ts`) drives the form checklist and which sections are rendered: `executive`, `chart-notifications-month`, `chart-defects-month`, `chart-notifications-type`, `customer-ppm`, `supplier-ppm`, `plant-pages`.
+
+### Manual upload latest-wins
+
+- Manual entries (`qos-et-manual-kpis`) are now deduped by `(month, siteCode)` before KPI recalculation; the **most recent** entry wins. `updatedAtIso` is stamped on every entry to allow ordering.
+- Fixes a regression where the first manual entry for a given month/plant could persist instead of the latest, producing wrong KPI/PPM values on the dashboard.
+
+---
 
 ## Recent critical implementation decisions (2026-03-16)
 

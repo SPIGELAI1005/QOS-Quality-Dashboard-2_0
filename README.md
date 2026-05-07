@@ -1,6 +1,6 @@
 # QOS ET Quality Report
 
-**Last Updated**: 2026-03-16
+**Last Updated**: 2026-05-07
 
 Web application for analyzing manufacturing quality data (SAP S/4HANA exports). It processes Excel files (complaints/notifications, deliveries, plant master data) to generate KPIs (incl. PPM) and AI-assisted insights.
 
@@ -11,10 +11,11 @@ Web application for analyzing manufacturing quality data (SAP S/4HANA exports). 
   - Customer PPM = (Q1 defective parts / customer deliveries) × 1,000,000
   - Supplier PPM = (Q2 defective parts / supplier deliveries) × 1,000,000
 - **Dashboards & pages**: KPI tiles, charts, tables, filters (plants/months), AI insights
-- **Uploads**: Structured multi-file uploads + progress + change history + manual entry form
+- **Uploads**: Structured multi-file uploads + progress + change history + manual entry form (latest entry per month/plant always wins)
 - **Incremental uploads**: complaints and deliveries can be uploaded separately; KPIs recalculate once both exist
 - **Large dataset support**: parsed uploads are stored in IndexedDB (avoids localStorage quota errors)
 - **Help**: FAQ & Glossary hub + “How to read this chart” links from key charts
+- **Management Summary builder** (`/management-summary`): configurable PDF report (title, logo, plants, per-plant remarks, section selection). The reporting month defaults to the **previous closed month** (e.g. a report created in May covers April) and is highlighted across all charts and tables. Plant pages include 6 charts (customer/supplier complaints, defective parts, PPM bars + 3-month trend) plus a comparison table for reported month vs last 12 months.
 
 ## Tech stack
 

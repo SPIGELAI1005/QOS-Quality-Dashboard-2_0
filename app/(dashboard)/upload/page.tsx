@@ -85,6 +85,7 @@ interface ManualKpiEntry extends MonthlySiteKpi {
   warrantyCosts?: number;
   recordedBy?: string;
   onePagerLink?: string;
+  updatedAtIso?: string;
 }
 
 interface PlantData {
@@ -237,6 +238,24 @@ function makeId(prefix: string): string {
 
 function formatGermanInt(value: number): string {
   return new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 }).format(value);
+}
+
+function getManualEntryKey(entry: { month: string; siteCode: string }): string {
+  return `${entry.month}__${entry.siteCode}`;
+}
+
+function dedupeManualEntries(entries: ManualKpiEntry[]): ManualKpiEntry[] {
+  // Keep the first occurrence per (month, siteCode). Since we store newest-first,
+  // "first wins" means "latest wins".
+  const seen = new Set<string>();
+  const deduped: ManualKpiEntry[] = [];
+  for (const entry of entries) {
+    const key = getManualEntryKey(entry);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(entry);
+  }
+  return deduped;
 }
 
 function safeJsonParse<T>(raw: string | null): T | null {
@@ -587,7 +606,13 @@ export default function UploadPage() {
     }
 
     const storedManual = safeJsonParse<ManualKpiEntry[]>(localStorage.getItem("qos-et-manual-kpis"));
-    if (storedManual) setManualEntries(storedManual);
+    if (storedManual) {
+      const dedupedManual = dedupeManualEntries(storedManual);
+      setManualEntries(dedupedManual);
+      if (dedupedManual.length !== storedManual.length) {
+        localStorage.setItem("qos-et-manual-kpis", JSON.stringify(dedupedManual));
+      }
+    }
 
     const storedKpis = safeJsonParse<UploadKpisResponse>(localStorage.getItem("qos-et-upload-kpis-result"));
     if (storedKpis) setKpisResult(storedKpis);
@@ -1217,7 +1242,8 @@ export default function UploadPage() {
     if (typeof window === "undefined") return;
     const existing = safeJsonParse<MonthlySiteKpi[]>(localStorage.getItem("qos-et-kpis")) || [];
     const byKey = new Map(existing.map((k) => [`${k.month}__${k.siteCode}`, k] as const));
-    for (const m of manual) byKey.set(`${m.month}__${m.siteCode}`, m);
+    const latestManual = dedupeManualEntries(manual);
+    for (const m of latestManual) byKey.set(getManualEntryKey(m), m);
     const merged = Array.from(byKey.values()).sort((a, b) => a.month.localeCompare(b.month) || a.siteCode.localeCompare(b.siteCode));
     localStorage.setItem("qos-et-kpis", JSON.stringify(merged));
     dispatchKpiDataUpdated();
@@ -1234,6 +1260,7 @@ export default function UploadPage() {
       (manualDraft.deviationsInProgress || 0) +
       (manualDraft.deviationsCompleted || 0) +
       (manualDraft.deviationsD3 || 0);
+    const nowIso = new Date().toISOString();
     const entry: ManualKpiEntry = {
       month: manualDraft.month,
       siteCode: site,
@@ -1265,13 +1292,14 @@ export default function UploadPage() {
       warrantyCosts: manualDraft.warrantyCosts,
       recordedBy: manualDraft.recordedBy.trim(),
       onePagerLink: manualDraft.onePagerLink.trim() || undefined,
+      updatedAtIso: nowIso,
     };
-    const next = [entry, ...manualEntries];
+    const next = dedupeManualEntries([entry, ...manualEntries]);
     persistManual(next);
     mergeManualIntoKpis(next);
     const historyEntry: UploadHistoryEntry = {
       id: makeId("manual"),
-      uploadedAtIso: new Date().toISOString(),
+      uploadedAtIso: nowIso,
       section: "complaints",
       files: [{ name: "Manual Form Entry", size: 0 }],
       summary: { month: entry.month, plant: entry.siteCode },

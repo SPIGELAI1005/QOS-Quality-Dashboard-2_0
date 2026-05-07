@@ -1,7 +1,7 @@
 # QOS ET Quality Report - Complete Project State Documentation
 
-**Last Updated**: 2026-03-16  
-**Version**: 1.0.8  
+**Last Updated**: 2026-05-07  
+**Version**: 1.0.9  
 **Status**: Active Development
 
 This document provides a complete snapshot of the application state, including all pages, components, features, charts, tables, and functionality. Use this document to rebuild the application if data is lost.
@@ -46,6 +46,8 @@ This document provides a complete snapshot of the application state, including a
 - **PPM export alignment**: Dashboard site contribution export produces a single workbook with two tabs (Customer/Supplier), matching rolling 12-month reporting structure
 - **Mailto encoding stability**: AI summary and glossary mailto links now use `%20` spacing encoding (no `+` separators), backed by unit test
 - **Glossary hydration fix**: FAQ copy-link trigger no longer nests a button inside accordion trigger button
+- **Management Summary builder (`/management-summary`)** (2026-05-07): configurable PDF report with title, optional logo, plant selection, per-plant remarks, and section selection (executive, notifications & defects, customer/supplier PPM, plant pages). Reporting month is locked to the **previous closed month** (e.g. May → April), highlighted across every chart and reported-month column in tables. Plant pages include 6 charts (customer/supplier complaints, defective parts, PPM bars+trend) plus a comparison table (reported month vs last 12 months).
+- **Manual entry latest-wins** (2026-05-07): manual KPI entries on `/upload` are deduped by `(month, siteCode)`; the latest entry overwrites prior duplicates so KPI/PPM calculations always use the most recent values.
 
 ---
 

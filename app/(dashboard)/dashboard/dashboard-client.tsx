@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import * as XLSX from "xlsx";
+import { jsPDF } from "jspdf";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ import {
   TrendingUp, 
   TrendingDown, 
   FileSpreadsheet, 
+  FileText,
   AlertCircle,
   AlertTriangle,
   Package,
@@ -80,7 +82,6 @@ import { IAmQButton } from "@/components/iamq/iamq-button";
 import { useTheme } from "next-themes";
 import {
   getPlantColorHex,
-  getPlantColorByIndex,
   generateColorPalette,
   getNotificationTypeColor,
   CHART_ANIMATION,
@@ -90,6 +91,12 @@ import {
   getStaggeredAnimation,
 } from "@/lib/utils/chartColors";
 import { applySinglePlantTitle, getSingleSelectedPlantLabel } from "@/lib/utils/plantTitle";
+import {
+  MANAGEMENT_SUMMARY_SESSION_KEY,
+  DEFAULT_EXPORT_SECTION_IDS,
+} from "@/lib/management-summary/constants";
+import type { ManagementSummaryExportPayload } from "@/lib/management-summary/types";
+import { isManagementSummaryPayload } from "@/lib/management-summary/types";
 
 interface DashboardClientProps {
   monthlySiteKpis?: MonthlySiteKpi[];
@@ -162,6 +169,15 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  function getMsExportFlag(): boolean {
+    if (typeof window === "undefined") return false;
+    try {
+      return new URLSearchParams(window.location.search).get("msExport") === "1";
+    } catch {
+      return false;
+    }
+  }
   
   // Load plants data from API (official "Webasto ET Plants.xlsx" file)
   useEffect(() => {
@@ -457,6 +473,11 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
   // AI Summary state
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [managementPdfLoading, setManagementPdfLoading] = useState(false);
+  const msExportHandledRef = useRef(false);
+  const msExportPendingRef = useRef(false);
+  const managementSummaryPayloadRef = useRef<ManagementSummaryExportPayload | null>(null);
+  const [msExportFallbackVisible, setMsExportFallbackVisible] = useState(false);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
   const [aiSummaryErrorType, setAiSummaryErrorType] = useState<'api_key' | 'rate_limit' | 'network' | 'unknown' | null>(null);
   const [aiSummaryErrorDetails, setAiSummaryErrorDetails] = useState<{ message: string; code?: string; statusCode?: number } | null>(null);
@@ -2549,6 +2570,1112 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
     XLSX.writeFile(wb, `Combined_PPM_Site_ETA_QOS_ET_${stamp}.xlsx`);
   }, [buildPpmSiteContributionSheetData, customerPpmSiteContribution, supplierPpmSiteContribution]);
 
+  interface PdfMetricCard {
+    title: string;
+    value: string;
+    subtitle: string;
+    color: [number, number, number];
+  }
+
+  interface PdfSeriesPoint {
+    label: string;
+    value: number;
+  }
+
+  interface PdfLegendItem {
+    label: string;
+    value: number;
+    color: [number, number, number];
+  }
+
+  const formatMonthShort = useCallback((monthKey: string): string => {
+    const date = new Date(`${monthKey}-01`);
+    if (Number.isNaN(date.getTime())) return monthKey;
+    return date.toLocaleDateString("en-US", { month: "short", year: "2-digit" });
+  }, []);
+
+  const buildTopPlantLegend = useCallback(
+    (
+      chartData: Array<Record<string, unknown>>,
+      fallbackColor: [number, number, number],
+      limit: number = 8
+    ): PdfLegendItem[] => {
+      const totals = new Map<string, number>();
+      chartData.forEach((row) => {
+        Object.entries(row).forEach(([key, value]) => {
+          if (!key.startsWith("Site ")) return;
+          const siteCode = key.replace("Site ", "");
+          const numericValue = Number(value ?? 0);
+          totals.set(siteCode, (totals.get(siteCode) || 0) + numericValue);
+        });
+      });
+
+      return Array.from(totals.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([siteCode, value], index) => {
+          const palette = generateColorPalette(Math.max(limit, 8));
+          const plantHex = getPlantColorHex(siteCode) || palette[index % palette.length] || "#06b6d4";
+          const hex = plantHex.replace("#", "");
+          const r = Number.parseInt(hex.substring(0, 2), 16) || fallbackColor[0];
+          const g = Number.parseInt(hex.substring(2, 4), 16) || fallbackColor[1];
+          const b = Number.parseInt(hex.substring(4, 6), 16) || fallbackColor[2];
+          return {
+            label: formatSiteNameForChart(siteCode, false),
+            value,
+            color: [r, g, b],
+          };
+        });
+    },
+    [formatSiteNameForChart]
+  );
+
+  const drawPdfHeader = useCallback(
+    (pdf: jsPDF, title: string, subtitle?: string, options?: { logoDataUrl?: string }) => {
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      pdf.setFillColor(12, 22, 34);
+      pdf.rect(0, 0, pageWidth, 18, "F");
+
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      const hasLogo = Boolean(options?.logoDataUrl);
+      const titleX = hasLogo ? 28 : 10;
+      if (hasLogo) {
+        try {
+          // Render logo in header (kept small to fit landscape A4).
+          pdf.addImage(options!.logoDataUrl!, "PNG", 10, 3, 14, 14, undefined, "FAST");
+        } catch {
+          // Ignore logo render errors (bad data URL etc).
+        }
+      }
+      pdf.text(title, titleX, 11);
+
+      if (subtitle) {
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        pdf.text(subtitle, titleX, 16);
+      }
+
+      const generatedOn = new Date().toLocaleString("en-GB");
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+      const generatedOnWidth = pdf.getTextWidth(generatedOn);
+      pdf.text(generatedOn, pageWidth - generatedOnWidth - 10, 11);
+
+      pdf.setTextColor(30, 35, 40);
+    },
+    []
+  );
+
+  const drawMetricCard = useCallback(
+    (pdf: jsPDF, card: PdfMetricCard, x: number, y: number, width: number, height: number) => {
+      pdf.setFillColor(248, 250, 252);
+      pdf.setDrawColor(220, 227, 236);
+      pdf.roundedRect(x, y, width, height, 2, 2, "FD");
+
+      pdf.setFillColor(card.color[0], card.color[1], card.color[2]);
+      pdf.rect(x, y, 3, height, "F");
+
+      pdf.setTextColor(95, 105, 120);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(8);
+      pdf.text(card.title, x + 6, y + 5);
+
+      pdf.setTextColor(25, 35, 50);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(14);
+      pdf.text(card.value, x + 6, y + 12);
+
+      pdf.setTextColor(110, 120, 135);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.text(card.subtitle, x + 6, y + 17);
+    },
+    []
+  );
+
+  const drawSimpleBarChart = useCallback(
+    (
+      pdf: jsPDF,
+      title: string,
+      data: PdfSeriesPoint[],
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      color: [number, number, number],
+      yAxisLabel: string,
+      legendItems: PdfLegendItem[] = [],
+      options?: { showBarValues?: boolean }
+    ) => {
+      pdf.setFillColor(255, 255, 255);
+      pdf.setDrawColor(220, 227, 236);
+      pdf.roundedRect(x, y, width, height, 2, 2, "FD");
+
+      pdf.setTextColor(35, 45, 60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.text(title, x + 3, y + 6);
+
+      const hasLegend = legendItems.length > 0;
+      const legendWidth = hasLegend ? width * 0.28 : 0;
+      const plotX = x + 10;
+      const plotY = y + 10;
+      const plotWidth = width - 16 - legendWidth;
+      const plotHeight = height - 24;
+      const maxValue = Math.max(...data.map((d) => d.value), 1);
+      const yTickValues = [0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue];
+
+      pdf.setDrawColor(235, 240, 246);
+      pdf.line(plotX, plotY + plotHeight, plotX + plotWidth, plotY + plotHeight);
+      pdf.line(plotX, plotY, plotX, plotY + plotHeight);
+
+      yTickValues.forEach((tick) => {
+        const tickY = plotY + plotHeight - (tick / maxValue) * plotHeight;
+        pdf.setDrawColor(240, 243, 248);
+        pdf.line(plotX, tickY, plotX + plotWidth, tickY);
+        pdf.setTextColor(130, 140, 155);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(6.5);
+        const tickText = formatGermanNumber(Math.round(tick), 0);
+        const tickWidth = pdf.getTextWidth(tickText);
+        pdf.text(tickText, plotX - tickWidth - 1.5, tickY + 1.8);
+      });
+
+      const barCount = data.length || 1;
+      const barGap = 1.2;
+      const barWidth = Math.max(2.5, Math.min(7.5, (plotWidth - (barCount - 1) * barGap) / barCount));
+      const totalBarsWidth = barWidth * barCount + (barCount - 1) * barGap;
+      let cursorX = plotX + (plotWidth - totalBarsWidth) / 2;
+
+      data.forEach((point, index) => {
+        const barHeight = (point.value / maxValue) * (plotHeight - 4);
+        const barTop = plotY + plotHeight - barHeight;
+        pdf.setFillColor(color[0], color[1], color[2]);
+        pdf.roundedRect(cursorX, barTop, barWidth, barHeight, 0.8, 0.8, "F");
+        const showValues = options?.showBarValues ?? true;
+        if (showValues) {
+          pdf.setTextColor(60, 70, 85);
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(6.2);
+          const valueText = formatGermanNumber(Math.round(point.value), 0);
+          const valueW = pdf.getTextWidth(valueText);
+          const textY = Math.max(plotY + 8.5, barTop - 1.3);
+          pdf.text(valueText, cursorX + barWidth / 2 - valueW / 2, textY);
+        }
+        // Always show each month label on X-axis
+        pdf.setTextColor(120, 130, 145);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(5.8);
+        const label = point.label;
+        // Rotate slightly to prevent overlap with 12 labels
+        pdf.text(label, cursorX + barWidth / 2, plotY + plotHeight + 6.2, {
+          angle: 45,
+          align: "center",
+        });
+        cursorX += barWidth + barGap;
+      });
+
+      pdf.setTextColor(110, 120, 135);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6.8);
+      pdf.text("X-axis: Month", plotX, y + height - 2.5);
+      const yAxisText = `Y-axis: ${yAxisLabel}`;
+      const yAxisTextWidth = pdf.getTextWidth(yAxisText);
+      pdf.text(yAxisText, plotX + plotWidth - yAxisTextWidth, y + height - 2.5);
+
+      if (hasLegend) {
+        const legendX = plotX + plotWidth + 6;
+        let legendY = y + 13;
+        pdf.setTextColor(70, 85, 105);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(7);
+        pdf.text("Plant Legend", legendX, legendY);
+        legendY += 3;
+
+        legendItems.slice(0, 8).forEach((item) => {
+          legendY += 4.6;
+          pdf.setFillColor(item.color[0], item.color[1], item.color[2]);
+          pdf.roundedRect(legendX, legendY - 2.3, 2.8, 2.8, 0.4, 0.4, "F");
+          pdf.setTextColor(85, 95, 110);
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(6.2);
+          const legendText = `${item.label}: ${formatGermanNumber(item.value, 0)}`;
+          pdf.text(legendText, legendX + 3.7, legendY);
+        });
+      }
+    },
+    [formatGermanNumber]
+  );
+
+  const drawBarWithTrendLineChart = useCallback(
+    (
+      pdf: jsPDF,
+      title: string,
+      bars: PdfSeriesPoint[],
+      trend: PdfSeriesPoint[],
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      barColor: [number, number, number],
+      lineColor: [number, number, number],
+      yAxisLabel: string
+    ) => {
+      pdf.setFillColor(255, 255, 255);
+      pdf.setDrawColor(220, 227, 236);
+      pdf.roundedRect(x, y, width, height, 2, 2, "FD");
+
+      pdf.setTextColor(35, 45, 60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.text(title, x + 3, y + 6);
+
+      const plotX = x + 10;
+      const plotY = y + 10;
+      const plotWidth = width - 16;
+      const plotHeight = height - 24;
+      const allValues = [...bars, ...trend].map((d) => d.value);
+      const maxValue = Math.max(...allValues, 1);
+      const yTickValues = [0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue];
+
+      pdf.setDrawColor(235, 240, 246);
+      pdf.line(plotX, plotY + plotHeight, plotX + plotWidth, plotY + plotHeight);
+      pdf.line(plotX, plotY, plotX, plotY + plotHeight);
+
+      yTickValues.forEach((tick) => {
+        const tickY = plotY + plotHeight - (tick / maxValue) * plotHeight;
+        pdf.setDrawColor(240, 243, 248);
+        pdf.line(plotX, tickY, plotX + plotWidth, tickY);
+        pdf.setTextColor(130, 140, 155);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(6.5);
+        const tickText = formatGermanNumber(Math.round(tick), 0);
+        const tickWidth = pdf.getTextWidth(tickText);
+        pdf.text(tickText, plotX - tickWidth - 1.5, tickY + 1.8);
+      });
+
+      const barCount = bars.length || 1;
+      const barGap = 1.2;
+      const barWidth = Math.max(2.5, Math.min(7.5, (plotWidth - (barCount - 1) * barGap) / barCount));
+      const totalBarsWidth = barWidth * barCount + (barCount - 1) * barGap;
+      let cursorX = plotX + (plotWidth - totalBarsWidth) / 2;
+
+      const toY = (value: number) => plotY + plotHeight - (value / maxValue) * (plotHeight - 4);
+
+      bars.forEach((point, index) => {
+        const barHeight = (point.value / maxValue) * (plotHeight - 4);
+        const barTop = plotY + plotHeight - barHeight;
+        pdf.setFillColor(barColor[0], barColor[1], barColor[2]);
+        pdf.roundedRect(cursorX, barTop, barWidth, barHeight, 0.8, 0.8, "F");
+
+        // Value labels
+        pdf.setTextColor(60, 70, 85);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(6.2);
+        const valueText = formatGermanNumber(Math.round(point.value), 0);
+        const valueW = pdf.getTextWidth(valueText);
+        const textY = Math.max(plotY + 8.5, barTop - 1.3);
+        pdf.text(valueText, cursorX + barWidth / 2 - valueW / 2, textY);
+
+        // Always show each month label on X-axis
+        pdf.setTextColor(120, 130, 145);
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(5.8);
+        const label = point.label;
+        pdf.text(label, cursorX + barWidth / 2, plotY + plotHeight + 6.2, {
+          angle: 45,
+          align: "center",
+        });
+
+        cursorX += barWidth + barGap;
+      });
+
+      // Trend line
+      if (trend.length > 1) {
+        pdf.setDrawColor(lineColor[0], lineColor[1], lineColor[2]);
+        pdf.setLineWidth(0.8);
+        for (let i = 0; i < trend.length - 1; i++) {
+          const a = trend[i];
+          const b = trend[i + 1];
+          if (!a || !b) continue;
+          const ax = plotX + (i / Math.max(trend.length - 1, 1)) * plotWidth;
+          const bx = plotX + ((i + 1) / Math.max(trend.length - 1, 1)) * plotWidth;
+          pdf.line(ax, toY(a.value), bx, toY(b.value));
+        }
+      }
+
+      pdf.setTextColor(110, 120, 135);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6.8);
+      pdf.text("X-axis: Month", plotX, y + height - 2.5);
+      const yAxisText = `Y-axis: ${yAxisLabel}`;
+      const yAxisTextWidth = pdf.getTextWidth(yAxisText);
+      pdf.text(yAxisText, plotX + plotWidth - yAxisTextWidth, y + height - 2.5);
+    },
+    [formatGermanNumber]
+  );
+
+  const drawDualLineChart = useCallback(
+    (
+      pdf: jsPDF,
+      title: string,
+      primary: PdfSeriesPoint[],
+      secondary: PdfSeriesPoint[],
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => {
+      pdf.setFillColor(255, 255, 255);
+      pdf.setDrawColor(220, 227, 236);
+      pdf.roundedRect(x, y, width, height, 2, 2, "FD");
+
+      pdf.setTextColor(35, 45, 60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.text(title, x + 3, y + 6);
+
+      const plotX = x + 8;
+      const plotY = y + 10;
+      const plotWidth = width - 12;
+      const plotHeight = height - 16;
+      const allValues = [...primary, ...secondary].map((d) => d.value);
+      const maxValue = Math.max(...allValues, 1);
+      const minValue = Math.min(...allValues, 0);
+      const range = Math.max(maxValue - minValue, 1);
+
+      const toX = (index: number, length: number) =>
+        plotX + (index / Math.max(length - 1, 1)) * plotWidth;
+      const toY = (value: number) => plotY + (1 - (value - minValue) / range) * plotHeight;
+
+      pdf.setDrawColor(235, 240, 246);
+      pdf.line(plotX, plotY + plotHeight, plotX + plotWidth, plotY + plotHeight);
+
+      pdf.setDrawColor(0, 163, 255);
+      primary.forEach((point, index) => {
+        if (index === 0) return;
+        pdf.line(
+          toX(index - 1, primary.length),
+          toY(primary[index - 1].value),
+          toX(index, primary.length),
+          toY(point.value)
+        );
+      });
+
+      pdf.setDrawColor(255, 140, 0);
+      secondary.forEach((point, index) => {
+        if (index === 0) return;
+        pdf.line(
+          toX(index - 1, secondary.length),
+          toY(secondary[index - 1].value),
+          toX(index, secondary.length),
+          toY(point.value)
+        );
+      });
+
+      pdf.setTextColor(110, 120, 135);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7);
+      const firstLabel = primary[0]?.label ?? "";
+      const lastLabel = primary[primary.length - 1]?.label ?? "";
+      pdf.text(firstLabel, plotX, y + height - 2.5);
+      const lastLabelWidth = pdf.getTextWidth(lastLabel);
+      pdf.text(lastLabel, x + width - lastLabelWidth - 3, y + height - 2.5);
+
+      pdf.setFontSize(7);
+      pdf.setTextColor(0, 163, 255);
+      pdf.text("Actual PPM", x + 5, y + 9.5);
+      pdf.setTextColor(255, 140, 0);
+      pdf.text("Average Trend", x + 26, y + 9.5);
+      pdf.setTextColor(30, 35, 40);
+    },
+    []
+  );
+
+  const drawPdfTable = useCallback(
+    (
+      pdf: jsPDF,
+      title: string,
+      headers: string[],
+      rows: Array<Array<string | number>>,
+      x: number,
+      y: number,
+      width: number,
+      height: number
+    ) => {
+      pdf.setFillColor(255, 255, 255);
+      pdf.setDrawColor(220, 227, 236);
+      pdf.roundedRect(x, y, width, height, 2, 2, "FD");
+
+      pdf.setTextColor(35, 45, 60);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      pdf.text(title, x + 3, y + 6);
+
+      const tableTop = y + 9;
+      const rowHeight = 5.5;
+      const maxRows = Math.floor((height - 12) / rowHeight) - 1;
+      const displayRows = rows.slice(0, Math.max(0, maxRows));
+      const colWidths = headers.map((_h, idx) => {
+        if (idx === 0) return width * 0.33;
+        const remaining = width * 0.67;
+        return remaining / Math.max(headers.length - 1, 1);
+      });
+
+      let cursorX = x;
+      pdf.setFillColor(240, 246, 252);
+      pdf.rect(x, tableTop, width, rowHeight, "F");
+      pdf.setFontSize(7.2);
+      headers.forEach((header, idx) => {
+        pdf.setTextColor(70, 85, 105);
+        pdf.text(header, cursorX + 1.5, tableTop + 3.8);
+        cursorX += colWidths[idx];
+      });
+
+      displayRows.forEach((row, rowIndex) => {
+        const rowY = tableTop + rowHeight * (rowIndex + 1);
+        if (rowIndex % 2 === 1) {
+          pdf.setFillColor(249, 251, 253);
+          pdf.rect(x, rowY, width, rowHeight, "F");
+        }
+        let valueX = x;
+        row.forEach((value, colIndex) => {
+          const text = String(value);
+          pdf.setTextColor(colIndex === 0 ? 45 : 65, colIndex === 0 ? 55 : 75, colIndex === 0 ? 70 : 95);
+          pdf.setFont("helvetica", colIndex === 0 ? "bold" : "normal");
+          pdf.text(text, valueX + 1.5, rowY + 3.8);
+          valueX += colWidths[colIndex] ?? colWidths[colWidths.length - 1];
+        });
+      });
+      pdf.setTextColor(30, 35, 40);
+    },
+    []
+  );
+
+  const exportManagementSummaryPdf = useCallback(() => {
+    if (managementPdfLoading) return;
+
+    setManagementPdfLoading(true);
+    try {
+      const payload = managementSummaryPayloadRef.current;
+      // Keep payload available for a manual "Download" retry if the browser blocks the auto-download.
+
+      const sectionSet = new Set(
+        payload?.sectionIds?.length ? payload.sectionIds : DEFAULT_EXPORT_SECTION_IDS
+      );
+      const reportTitleBase = payload?.title?.trim() || "Management Summary QOS ET Report";
+
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const monthContext = `${selectedMonthName || "Month"}, ${selectedYear ?? new Date().getFullYear()}`;
+      const selectedSitesCount = customerMetrics.selectedSites;
+      const reportContext = `Rolling 12 Months | ${monthContext} | ${selectedSitesCount} "Selected Sites"`;
+      const logoDataUrl = payload?.logoDataUrl;
+
+      let isFirstPdfPage = true;
+
+      if (sectionSet.has("executive")) {
+        if (!isFirstPdfPage) pdf.addPage();
+        isFirstPdfPage = false;
+        drawPdfHeader(pdf, reportTitleBase, reportContext, { logoDataUrl });
+        const cardW = (pageWidth - 26) / 4;
+        const customerCards: PdfMetricCard[] = [
+          { title: "Customer Complaints", value: formatGermanNumber(customerMetrics.complaints.value, 0), subtitle: "Q1 notifications", color: [6, 182, 212] },
+          { title: "Customer Deliveries", value: customerMetrics.deliveries.value > 0 ? `${formatGermanNumber(customerMetrics.deliveries.value / 1_000_000, 2)}M` : "N/A", subtitle: "Parts shipped", color: [0, 188, 212] },
+          { title: "Customer Defective Parts", value: formatGermanNumber(customerMetrics.defective.value, 0), subtitle: "Q1 defective", color: [244, 67, 54] },
+          { title: "Customer PPM", value: customerMetrics.ppm.value > 0 ? formatGermanNumber(customerMetrics.ppm.value, 2) : "N/A", subtitle: "Parts per million", color: [76, 175, 80] },
+        ];
+        const supplierCards: PdfMetricCard[] = [
+          { title: "Supplier Complaints", value: formatGermanNumber(supplierMetrics.complaints.value, 0), subtitle: "Q2 notifications", color: [20, 184, 166] },
+          { title: "Supplier Deliveries", value: supplierMetrics.deliveries.value > 0 ? `${formatGermanNumber(supplierMetrics.deliveries.value / 1_000_000, 2)}M` : "N/A", subtitle: "Parts received", color: [0, 188, 212] },
+          { title: "Supplier Defective Parts", value: formatGermanNumber(supplierMetrics.defective.value, 0), subtitle: "Q2 defective", color: [244, 67, 54] },
+          { title: "Supplier PPM", value: supplierMetrics.ppm.value > 0 ? formatGermanNumber(supplierMetrics.ppm.value, 2) : "N/A", subtitle: "Parts per million", color: [76, 175, 80] },
+        ];
+
+        customerCards.forEach((card, idx) => drawMetricCard(pdf, card, 10 + idx * (cardW + 2), 24, cardW, 24));
+        supplierCards.forEach((card, idx) => drawMetricCard(pdf, card, 10 + idx * (cardW + 2), 52, cardW, 24));
+        drawPdfTable(
+          pdf,
+          "Executive Context",
+          ["Metric", "Value"],
+          [
+            ["Selected Sites", `${customerMetrics.selectedSites} of ${totalSites}`],
+            ["Period Mode", periodLabel],
+            ["Month Context", selectedMonthName || "All"],
+            ["AI Summary", aiSummary ? "Available" : "Not generated"],
+          ],
+          10,
+          84,
+          pageWidth - 20,
+          38
+        );
+      }
+
+      const page2Any =
+        sectionSet.has("chart-notifications-month") ||
+        sectionSet.has("chart-defects-month") ||
+        sectionSet.has("chart-notifications-type");
+      if (page2Any) {
+        if (!isFirstPdfPage) pdf.addPage();
+        isFirstPdfPage = false;
+        drawPdfHeader(pdf, `${reportTitleBase} — Notifications & Defects`, reportContext, { logoDataUrl });
+        const notifSeries = notificationsByMonthPlant.slice(-12).map((d) => ({
+          label: formatMonthShort(String(d.month)),
+          value: Number(d.total ?? 0),
+        }));
+        const defectSeries = defectsByMonthPlant.slice(-12).map((d) => ({
+          label: formatMonthShort(String(d.month)),
+          value: Number(d.total ?? 0),
+        }));
+        const notifTypeSeries = notificationsByType.slice(-12).map((d) => ({
+          label: formatMonthShort(String(d.month)),
+          value: Number((d.Q1 ?? 0) + (d.Q2 ?? 0) + (d.Q3 ?? 0)),
+        }));
+        const notifPlantLegend = buildTopPlantLegend(notificationsByMonthPlant as Array<Record<string, unknown>>, [6, 182, 212], 8);
+        const defectPlantLegend = buildTopPlantLegend(defectsByMonthPlant as Array<Record<string, unknown>>, [244, 67, 54], 8);
+        const notificationTypeLegend: PdfLegendItem[] = [
+          { label: "Q1 - Customer", value: notificationsByType.reduce((sum, row) => sum + Number(row.Q1 || 0), 0), color: [6, 182, 212] },
+          { label: "Q2 - Supplier", value: notificationsByType.reduce((sum, row) => sum + Number(row.Q2 || 0), 0), color: [20, 184, 166] },
+          { label: "Q3 - Internal", value: notificationsByType.reduce((sum, row) => sum + Number(row.Q3 || 0), 0), color: [244, 67, 54] },
+        ];
+        if (sectionSet.has("chart-notifications-month")) {
+          drawSimpleBarChart(
+            pdf,
+            `${periodLabel} Total Number of Notifications by Month and Plant`,
+            notifSeries,
+            10,
+            24,
+            pageWidth - 20,
+            54,
+            [6, 182, 212],
+            "Notifications",
+            notifPlantLegend
+          );
+        }
+        if (sectionSet.has("chart-defects-month")) {
+          drawSimpleBarChart(
+            pdf,
+            `${periodLabel} Total Number of Defects by Month and Plant`,
+            defectSeries,
+            10,
+            82,
+            pageWidth - 20,
+            54,
+            [244, 67, 54],
+            "Defective Parts",
+            defectPlantLegend
+          );
+        }
+        if (sectionSet.has("chart-notifications-type")) {
+          drawSimpleBarChart(
+            pdf,
+            `${periodLabel} Number of Notifications by Month and Notification Type`,
+            notifTypeSeries,
+            10,
+            140,
+            pageWidth - 20,
+            54,
+            [20, 184, 166],
+            "Notifications",
+            notificationTypeLegend
+          );
+        }
+      }
+
+      if (sectionSet.has("customer-ppm")) {
+        if (!isFirstPdfPage) pdf.addPage();
+        isFirstPdfPage = false;
+        drawPdfHeader(pdf, `${reportTitleBase} — Customer PPM`, reportContext, { logoDataUrl });
+        const customerPrimary = customerPpmTrendData.slice(-12).map((d) => ({ label: formatMonthShort(d.month), value: Number(d.ppm || 0) }));
+        const customerSecondary = customerPpmTrendData.slice(-12).map((d) => ({ label: formatMonthShort(d.month), value: Number(d.averageTarget || 0) }));
+        drawBarWithTrendLineChart(
+          pdf,
+          `${periodLabel} Customer PPM — monthly values + trend`,
+          customerPrimary,
+          customerSecondary,
+          10,
+          24,
+          pageWidth - 20,
+          58,
+          [6, 182, 212],
+          [76, 175, 80],
+          "PPM"
+        );
+        drawPdfTable(
+          pdf,
+          `${periodLabel} Customer PPM Monthly Trend Analysis - All Sites`,
+          ["Month", "PPM", "Defective", "Deliveries"],
+          (() => {
+            const tableRows = monthlyTrendTable.slice(-8).map((row) => [
+              row.month,
+              formatGermanNumber(row.ppm, 0),
+              formatGermanNumber(row.defective, 0),
+              formatGermanNumber(row.deliveries, 0),
+            ]);
+            const totalDefective = monthlyTrendTable.reduce((sum, row) => sum + row.defective, 0);
+            const totalDeliveries = monthlyTrendTable.reduce((sum, row) => sum + row.deliveries, 0);
+            const totalPpm = totalDeliveries > 0 ? (totalDefective / totalDeliveries) * 1_000_000 : 0;
+            tableRows.push([
+              "TOTAL",
+              formatGermanNumber(totalPpm, 0),
+              formatGermanNumber(totalDefective, 0),
+              formatGermanNumber(totalDeliveries, 0),
+            ]);
+            return tableRows;
+          })(),
+          10,
+          86,
+          142,
+          106
+        );
+        const customerContributionRows = customerPpmSiteContribution.sites.slice(0, 8).map((siteCode) => {
+          const siteData = customerPpmSiteContribution.bySiteMonth.get(siteCode);
+          let defective = 0;
+          let deliveries = 0;
+          customerPpmSiteContribution.months.slice(-12).forEach((month) => {
+            defective += siteData?.get(month)?.defective || 0;
+            deliveries += siteData?.get(month)?.deliveries || 0;
+          });
+          const ppm = deliveries > 0 ? (defective / deliveries) * 1_000_000 : 0;
+          return [
+            formatSiteNameForChart(siteCode, false),
+            formatGermanNumber(defective, 0),
+            formatGermanNumber(deliveries, 0),
+            formatGermanNumber(ppm, 0),
+          ];
+        });
+        const customerTotalDefective = customerPpmSiteContribution.months.slice(-12).reduce((sum, month) => sum + (customerPpmSiteContribution.totalsByMonth.get(month)?.defective || 0), 0);
+        const customerTotalDeliveries = customerPpmSiteContribution.months.slice(-12).reduce((sum, month) => sum + (customerPpmSiteContribution.totalsByMonth.get(month)?.deliveries || 0), 0);
+        const customerTotalPpm = customerTotalDeliveries > 0 ? (customerTotalDefective / customerTotalDeliveries) * 1_000_000 : 0;
+        customerContributionRows.push([
+          "TOTAL",
+          formatGermanNumber(customerTotalDefective, 0),
+          formatGermanNumber(customerTotalDeliveries, 0),
+          formatGermanNumber(customerTotalPpm, 0),
+        ]);
+        drawPdfTable(
+          pdf,
+          "Customer PPM - Site Contribution per Month",
+          ["Site", "Defective", "Deliveries", "PPM"],
+          customerContributionRows,
+          155,
+          86,
+          pageWidth - 165,
+          106
+        );
+      }
+
+      if (sectionSet.has("supplier-ppm")) {
+        if (!isFirstPdfPage) pdf.addPage();
+        isFirstPdfPage = false;
+        drawPdfHeader(pdf, `${reportTitleBase} — Supplier PPM`, reportContext, { logoDataUrl });
+        const supplierPrimary = supplierPpmTrendData.slice(-12).map((d) => ({ label: formatMonthShort(d.month), value: Number(d.ppm || 0) }));
+        const supplierSecondary = supplierPpmTrendData.slice(-12).map((d) => ({ label: formatMonthShort(d.month), value: Number(d.averageTarget || 0) }));
+        drawBarWithTrendLineChart(
+          pdf,
+          `${periodLabel} Supplier PPM — monthly values + trend`,
+          supplierPrimary,
+          supplierSecondary,
+          10,
+          24,
+          pageWidth - 20,
+          58,
+          [20, 184, 166],
+          [76, 175, 80],
+          "PPM"
+        );
+        drawPdfTable(
+          pdf,
+          `${periodLabel} Supplier PPM Monthly Trend Analysis - All Sites`,
+          ["Month", "PPM", "Defective", "Deliveries"],
+          (() => {
+            const tableRows = supplierMonthlyTrendTable.slice(-8).map((row) => [
+              row.month,
+              formatGermanNumber(row.ppm, 0),
+              formatGermanNumber(row.defective, 0),
+              formatGermanNumber(row.deliveries, 0),
+            ]);
+            const totalDefective = supplierMonthlyTrendTable.reduce((sum, row) => sum + row.defective, 0);
+            const totalDeliveries = supplierMonthlyTrendTable.reduce((sum, row) => sum + row.deliveries, 0);
+            const totalPpm = totalDeliveries > 0 ? (totalDefective / totalDeliveries) * 1_000_000 : 0;
+            tableRows.push([
+              "TOTAL",
+              formatGermanNumber(totalPpm, 0),
+              formatGermanNumber(totalDefective, 0),
+              formatGermanNumber(totalDeliveries, 0),
+            ]);
+            return tableRows;
+          })(),
+          10,
+          86,
+          142,
+          106
+        );
+        const supplierContributionRows = supplierPpmSiteContribution.sites.slice(0, 8).map((siteCode) => {
+          const siteData = supplierPpmSiteContribution.bySiteMonth.get(siteCode);
+          let defective = 0;
+          let deliveries = 0;
+          supplierPpmSiteContribution.months.slice(-12).forEach((month) => {
+            defective += siteData?.get(month)?.defective || 0;
+            deliveries += siteData?.get(month)?.deliveries || 0;
+          });
+          const ppm = deliveries > 0 ? (defective / deliveries) * 1_000_000 : 0;
+          return [
+            formatSiteNameForChart(siteCode, false),
+            formatGermanNumber(defective, 0),
+            formatGermanNumber(deliveries, 0),
+            formatGermanNumber(ppm, 0),
+          ];
+        });
+        const supplierTotalDefective = supplierPpmSiteContribution.months.slice(-12).reduce((sum, month) => sum + (supplierPpmSiteContribution.totalsByMonth.get(month)?.defective || 0), 0);
+        const supplierTotalDeliveries = supplierPpmSiteContribution.months.slice(-12).reduce((sum, month) => sum + (supplierPpmSiteContribution.totalsByMonth.get(month)?.deliveries || 0), 0);
+        const supplierTotalPpm = supplierTotalDeliveries > 0 ? (supplierTotalDefective / supplierTotalDeliveries) * 1_000_000 : 0;
+        supplierContributionRows.push([
+          "TOTAL",
+          formatGermanNumber(supplierTotalDefective, 0),
+          formatGermanNumber(supplierTotalDeliveries, 0),
+          formatGermanNumber(supplierTotalPpm, 0),
+        ]);
+        drawPdfTable(
+          pdf,
+          "Supplier PPM - Site Contribution per Month",
+          ["Site", "Defective", "Deliveries", "PPM"],
+          supplierContributionRows,
+          155,
+          86,
+          pageWidth - 165,
+          106
+        );
+      }
+
+      if (sectionSet.has("plant-pages") && payload?.plantCodes?.length) {
+        const plantCodes = payload.plantCodes;
+        const lastMonths = (arr: string[]) => arr.slice(-12);
+
+        const buildPlantBarSeries = (rows: Array<Record<string, unknown>>, plantCode: string) => {
+          const key = `Site ${plantCode}`;
+          return rows.slice(-12).map((row) => ({
+            label: formatMonthShort(String(row.month)),
+            value: Number((row as any)[key] ?? 0),
+          }));
+        };
+
+        const buildPlantPpmSeries = (
+          bySiteMonth: Map<string, Map<string, { defective: number; deliveries: number }>>,
+          months: string[],
+          plantCode: string
+        ) => {
+          const siteData = bySiteMonth.get(plantCode);
+          return lastMonths(months).map((month) => {
+            const defective = siteData?.get(month)?.defective || 0;
+            const deliveries = siteData?.get(month)?.deliveries || 0;
+            const ppm = deliveries > 0 ? (defective / deliveries) * 1_000_000 : 0;
+            return { label: formatMonthShort(month), value: Number(ppm || 0) };
+          });
+        };
+
+        const buildMovingAverage = (series: PdfSeriesPoint[], windowSize: number) => {
+          const values = series.map((p) => Number(p.value || 0));
+          return series.map((p, idx) => {
+            const start = Math.max(0, idx - windowSize + 1);
+            const slice = values.slice(start, idx + 1);
+            const avg = slice.length ? slice.reduce((a, b) => a + b, 0) / slice.length : 0;
+            return { label: p.label, value: avg };
+          });
+        };
+
+        const buildPlantTotalsRows = (
+          bySiteMonth: Map<string, Map<string, { defective: number; deliveries: number }>>,
+          months: string[],
+          plantCode: string
+        ) => {
+          const siteData = bySiteMonth.get(plantCode);
+          let defective = 0;
+          let deliveries = 0;
+          lastMonths(months).forEach((month) => {
+            defective += siteData?.get(month)?.defective || 0;
+            deliveries += siteData?.get(month)?.deliveries || 0;
+          });
+          const ppm = deliveries > 0 ? (defective / deliveries) * 1_000_000 : 0;
+          return [
+            ["Defective parts", formatGermanNumber(defective, 0)],
+            ["Deliveries", formatGermanNumber(deliveries, 0)],
+            ["PPM", formatGermanNumber(ppm, 0)],
+          ];
+        };
+
+        for (const plantCode of plantCodes) {
+          if (!isFirstPdfPage) pdf.addPage();
+          isFirstPdfPage = false;
+
+          const plantLabel = formatSiteNameForChart(plantCode, false);
+          drawPdfHeader(pdf, `${reportTitleBase} — ${plantLabel}`, reportContext, { logoDataUrl });
+
+          const notifPlantSeries = buildPlantBarSeries(notificationsByMonthPlant as any[], plantCode);
+          const defectPlantSeries = buildPlantBarSeries(defectsByMonthPlant as any[], plantCode);
+
+          drawSimpleBarChart(
+            pdf,
+            `${periodLabel} Notifications — ${plantLabel}`,
+            notifPlantSeries,
+            10,
+            24,
+            (pageWidth - 24) / 2,
+            60,
+            [6, 182, 212],
+            "Notifications",
+            []
+          );
+
+          drawSimpleBarChart(
+            pdf,
+            `${periodLabel} Defective Parts — ${plantLabel}`,
+            defectPlantSeries,
+            10 + (pageWidth - 24) / 2 + 4,
+            24,
+            (pageWidth - 24) / 2,
+            60,
+            [244, 67, 54],
+            "Defective Parts",
+            []
+          );
+
+          const customerPlantPpm = buildPlantPpmSeries(
+            customerPpmSiteContribution.bySiteMonth,
+            customerPpmSiteContribution.months,
+            plantCode
+          );
+          const supplierPlantPpm = buildPlantPpmSeries(
+            supplierPpmSiteContribution.bySiteMonth,
+            supplierPpmSiteContribution.months,
+            plantCode
+          );
+
+          drawBarWithTrendLineChart(
+            pdf,
+            `${periodLabel} Customer PPM — ${plantLabel}`,
+            customerPlantPpm,
+            buildMovingAverage(customerPlantPpm, 3),
+            10,
+            90,
+            (pageWidth - 24) / 2,
+            58,
+            [6, 182, 212],
+            [76, 175, 80],
+            "PPM"
+          );
+
+          drawBarWithTrendLineChart(
+            pdf,
+            `${periodLabel} Supplier PPM — ${plantLabel}`,
+            supplierPlantPpm,
+            buildMovingAverage(supplierPlantPpm, 3),
+            10 + (pageWidth - 24) / 2 + 4,
+            90,
+            (pageWidth - 24) / 2,
+            58,
+            [20, 184, 166],
+            [76, 175, 80],
+            "PPM"
+          );
+
+          drawPdfTable(
+            pdf,
+            `Totals (last 12 months) — ${plantLabel}`,
+            ["Metric", "Value"],
+            [
+              ...buildPlantTotalsRows(customerPpmSiteContribution.bySiteMonth, customerPpmSiteContribution.months, plantCode).map(
+                ([metric, value]) => [`Customer ${metric}`, value]
+              ),
+              ...buildPlantTotalsRows(supplierPpmSiteContribution.bySiteMonth, supplierPpmSiteContribution.months, plantCode).map(
+                ([metric, value]) => [`Supplier ${metric}`, value]
+              ),
+            ],
+            10,
+            152,
+            pageWidth - 20,
+            38
+          );
+
+          const remark = (payload.plantRemarks?.[plantCode] || "").trim();
+          if (remark) {
+            pdf.setTextColor(45, 55, 70);
+            pdf.setFont("helvetica", "bold");
+            pdf.setFontSize(10);
+            pdf.text("Remarks / Top topics", 10, pageHeight - 18);
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9.2);
+            const lines = pdf.splitTextToSize(remark, pageWidth - 24);
+            const maxLines = 3;
+            const shown = lines.slice(0, maxLines);
+            shown.forEach((line: string, idx: number) => pdf.text(line, 12, pageHeight - 12 + idx * 4.2));
+          }
+        }
+      }
+
+      const remarkPairs =
+        payload?.plantRemarks && payload.plantCodes?.length
+          ? Object.entries(payload.plantRemarks).filter(
+              ([code, txt]) => payload.plantCodes.includes(code) && String(txt).trim().length > 0
+            )
+          : [];
+
+      // Keep the legacy aggregated remark pages for backward compatibility (when plant pages are not selected).
+      if (!sectionSet.has("plant-pages") && remarkPairs.length > 0) {
+        if (!isFirstPdfPage) pdf.addPage();
+        isFirstPdfPage = false;
+        drawPdfHeader(pdf, `${reportTitleBase} — Plant remarks`, reportContext, { logoDataUrl });
+        let y = 24;
+        pdf.setTextColor(45, 55, 70);
+        for (const [code, rawText] of remarkPairs) {
+          if (y > pageHeight - 28) {
+            pdf.addPage();
+            drawPdfHeader(pdf, `${reportTitleBase} — Plant remarks (continued)`, reportContext, { logoDataUrl });
+            y = 24;
+          }
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(11);
+          pdf.text(`Plant ${code}`, 10, y);
+          y += 7;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9.5);
+          const lines = pdf.splitTextToSize(String(rawText).trim(), pageWidth - 24);
+          for (const line of lines) {
+            if (y > pageHeight - 14) {
+              pdf.addPage();
+              drawPdfHeader(pdf, `${reportTitleBase} — Plant remarks (continued)`, reportContext);
+              y = 24;
+            }
+            pdf.text(line, 12, y);
+            y += 4.8;
+          }
+          y += 8;
+        }
+      }
+
+      if (isFirstPdfPage) {
+        window.alert("Nothing to export. Open Management Summary and select at least one section or add plant remarks.");
+      } else {
+        const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+        pdf.save(`Management_Summary_${stamp}.pdf`);
+      }
+    } catch (error) {
+      console.error("[Management PDF] Export failed:", error);
+      window.alert("Failed to export Management Summary PDF. Please try again.");
+    } finally {
+      setManagementPdfLoading(false);
+    }
+  }, [
+    customerMetrics,
+    supplierMetrics,
+    periodLabel,
+    selectedMonthName,
+    selectedYear,
+    filters.selectedPlants,
+    aiSummary,
+    totalSites,
+    buildTopPlantLegend,
+    drawPdfHeader,
+    drawMetricCard,
+    drawSimpleBarChart,
+    drawDualLineChart,
+    drawPdfTable,
+    formatGermanNumber,
+    formatMonthShort,
+    notificationsByMonthPlant,
+    defectsByMonthPlant,
+    notificationsByType,
+    customerPpmTrendData,
+    monthlyTrendTable,
+    customerPpmSiteContribution,
+    supplierPpmTrendData,
+    supplierMonthlyTrendTable,
+    supplierPpmSiteContribution,
+    formatSiteNameForChart,
+    managementPdfLoading,
+  ]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!mounted) return;
+
+    if (!getMsExportFlag()) {
+      msExportHandledRef.current = false;
+      msExportPendingRef.current = false;
+      managementSummaryPayloadRef.current = null;
+      return;
+    }
+
+    if (msExportHandledRef.current) return;
+
+    const raw = sessionStorage.getItem(MANAGEMENT_SUMMARY_SESSION_KEY);
+    if (!raw) {
+      msExportHandledRef.current = true;
+      router.replace("/dashboard");
+      return;
+    }
+
+    let payload: ManagementSummaryExportPayload;
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (!isManagementSummaryPayload(parsed)) throw new Error("invalid payload");
+      payload = parsed;
+    } catch {
+      sessionStorage.removeItem(MANAGEMENT_SUMMARY_SESSION_KEY);
+      msExportHandledRef.current = true;
+      router.replace("/dashboard");
+      return;
+    }
+
+    sessionStorage.removeItem(MANAGEMENT_SUMMARY_SESSION_KEY);
+    msExportHandledRef.current = true;
+    managementSummaryPayloadRef.current = payload;
+    msExportPendingRef.current = true;
+
+    setFilters((prev) => ({
+      ...prev,
+      selectedPlants: payload.plantCodes,
+    }));
+  }, [mounted, setFilters, router]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!mounted) return;
+    if (!getMsExportFlag()) return;
+    if (!msExportPendingRef.current) return;
+
+    const payload = managementSummaryPayloadRef.current;
+    if (!payload) return;
+
+    const selectedSet = new Set(filters.selectedPlants || []);
+    const payloadSet = new Set(payload.plantCodes || []);
+    const setsMatch =
+      selectedSet.size === payloadSet.size &&
+      Array.from(payloadSet.values()).every((code) => selectedSet.has(code));
+
+    if (!setsMatch) return;
+    if (managementPdfLoading) return;
+
+    msExportPendingRef.current = false;
+    setMsExportFallbackVisible(true);
+
+    const raf1 = window.requestAnimationFrame(() => {
+      const raf2 = window.requestAnimationFrame(() => {
+        exportManagementSummaryPdf();
+        window.setTimeout(() => setMsExportFallbackVisible(false), 3000);
+        router.replace("/dashboard");
+      });
+      // Ensure raf2 is cancelled if component unmounts quickly
+      return () => window.cancelAnimationFrame(raf2);
+    });
+
+    return () => window.cancelAnimationFrame(raf1);
+  }, [mounted, filters.selectedPlants, managementPdfLoading, exportManagementSummaryPdf, router]);
+
   const MetricTile = ({
     title, 
     value, 
@@ -2884,6 +4011,29 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
         </div>
 
       {/* Combined Metrics Section with Sidebar */}
+      {msExportFallbackVisible ? (
+        <div className="rounded-md border border-[#00FF88]/40 bg-[#00FF88]/10 px-4 py-3 text-sm flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="font-medium text-foreground">Creating Management Summary PDF…</div>
+            <div className="text-xs text-muted-foreground">
+              If the download didn’t start automatically in Chrome, click “Download PDF”.
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={managementPdfLoading}
+              onClick={() => exportManagementSummaryPdf()}
+              className="border-[#00FF88]/50"
+            >
+              {managementPdfLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Download PDF
+            </Button>
+          </div>
+        </div>
+      ) : null}
       <div className="space-y-2">
         {/* Headings */}
         <h2 className="text-lg font-semibold text-foreground">
@@ -3485,6 +4635,19 @@ export function DashboardClient({ monthlySiteKpis: propsKpis = [], globalPpm: pr
 
                 {/* Bottom Section: Button and Subtitle - Fixed at bottom */}
                 <div className="mt-auto pt-3 space-y-1.5 flex-shrink-0 border-t border-border">
+                  <Button variant="outline" size="sm" className="w-full text-xs py-1.5 h-auto" asChild>
+                    <Link href="/management-summary">
+                      <FileText className="h-3 w-3 mr-1.5" />
+                      Export Management Summary
+                    </Link>
+                  </Button>
+                  {managementPdfLoading ? (
+                    <p className="text-[10px] text-muted-foreground text-center flex items-center justify-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Building PDF…
+                    </p>
+                  ) : null}
+
                   {/* Button to AI Management Summary */}
                   <Button
                     onClick={() => router.push('/ai-summary')}

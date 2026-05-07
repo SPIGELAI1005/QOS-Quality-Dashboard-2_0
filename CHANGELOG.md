@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - 2026-05-07
+**Type**: Added
+
+**Description**: Management Summary report builder (`/management-summary`) with comprehensive PDF export, customizable plant pages, and reporting-month policy
+
+**Details**:
+- **Configuration page (`/management-summary`)**:
+  - New route launched from the dashboard "Export Management Summary" button.
+  - Form fields: report title (with recommended default), optional logo upload (defaults to app sidebar logo), multi-select plants, per-plant Comments / Remarks / Top Topics, and per-section selection (executive overview, notifications & defects, customer/supplier PPM, plant pages).
+  - In-page generation status banner replaces the previous redirect-to-dashboard flow; the user stays on `/management-summary` while the PDF builds.
+  - Responsive layout (`max-w-5xl` container, scrollable plant list capped at `60vh`/`520px`).
+- **Reporting-month policy (May → April)**:
+  - New helper `getReportMonthInfo()` (in `lib/management-summary/constants.ts`) returns the **previous calendar month** relative to today (e.g. a report created in May 2026 = April 2026).
+  - `ManagementSummaryExportPayload` now carries `reportMonthKey` (`YYYY-MM`); the PDF generator anchors the trailing 12 months on this key, highlights the bar for the reported month, and filenames use this key (`Management_Summary_2026-04_20260507.pdf`).
+  - Title input description on `/management-summary` shows the resolved reporting month so the user understands the period.
+- **Comprehensive client-side PDF (`components/management-summary/pdf-generator.ts`)**:
+  - Page 1 — Executive overview: 4 customer + 4 supplier KPI cards and Executive Context table (Reporting month, Selected Sites X of Y, Period Mode R12M, Sections).
+  - Page 2 — Notifications & Defects: total notifications, total defective parts, and notifications by type (Q1/Q2/Q3) bar charts with top‑8 plant legend or type legend; bar values shown above each bar; X-axis labels rendered for every month, rotated 45°; reported-month bar highlighted.
+  - Page 3 — Customer PPM: full-width bar+trend chart, Monthly Trend Analysis table (last 8 months + R12M total + reported-month row), and Site Contribution table with totals.
+  - Page 4 — Supplier PPM: same structure as Customer PPM.
+  - Plant pages (one per selected plant) — **redesigned 3×2 chart grid**:
+    - Row 1: Customer Complaints, Customer Defective Parts, Customer PPM (bars + 3-month trend line)
+    - Row 2: Supplier Complaints, Supplier Defective Parts, Supplier PPM (bars + 3-month trend line)
+    - Reported-month bar highlighted on every plant chart.
+    - Comparison table per plant: `Metric | <Reported Month> | Last 12 months` covering Customer/Supplier complaints, defective parts, deliveries, and PPM.
+    - Optional `Remarks / Top topics` block beneath the table when a remark is entered for the plant.
+  - Logo support in the page header (uploaded logo overrides the default app logo).
+  - Subtitle on every page reads: `Rolling 12 Months ending <Month YYYY> | N "Selected Sites"`.
+- **Manual upload latest-wins** (carried from earlier in this Unreleased cycle):
+  - Manual KPI entries on `/upload` are now deduped by `(month, siteCode)` so the **most recent entry overwrites older duplicates** before KPIs/PPM are recalculated, fixing a regression where the first manual entry could persist instead of the latest one.
+
+**Files Modified / Added**:
+- `app/(dashboard)/management-summary/page.tsx` (new) — route shell that renders the client form
+- `components/management-summary/management-summary-client.tsx` (new) — configuration form, logo upload, status banner, payload assembly
+- `components/management-summary/pdf-generator.ts` (new) — full client-side PDF builder (executive, notifications/defects, customer & supplier PPM, plant pages)
+- `lib/management-summary/types.ts` (new) — `ManagementSummaryExportPayload` (incl. `logoDataUrl`, `reportMonthKey`)
+- `lib/management-summary/constants.ts` (new) — exportable section ids, default payload, recommended-title helper, `getReportMonthInfo`
+- `lib/management-summary/section-catalog.ts` (new) + `section-catalog.types.ts` (new) — grouped section catalog used by the configuration UI
+- `app/(dashboard)/dashboard/dashboard-client.tsx` — Export Management Summary button now navigates to `/management-summary`; legacy export remains as Chrome-safe fallback for `?msExport=1`
+- `app/(dashboard)/upload/page.tsx` — `dedupeManualEntries` (latest-wins) for `qos-et-manual-kpis`; manual entries timestamp via `updatedAtIso`
+
+**Breaking Changes**: None — the previous "instant export" button is preserved as a fallback; the new flow is opt-in via the configuration page.
+
+---
+
 ### Fixed - 2026-03-16
 **Type**: Fixed
 
