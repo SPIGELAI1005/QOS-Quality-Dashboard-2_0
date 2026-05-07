@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - 2026-05-07 (PDF refinements)
+**Type**: Changed
+
+**Description**: Management Summary PDF visual refinements based on first review
+
+**Details**:
+- **Global KPIs page (`Notifications & Defects`)**: removed the per-plant legend from `R12M Total Number of Notifications by Month` and `R12M Total Number of Defects by Month` since the bars show monthly totals, not per-plant distribution. Chart titles updated accordingly. The Q1/Q2/Q3 notification-type legend is kept on the third chart because it is not site-based.
+- **Bar value labels always above the bar**: bars in `drawSimpleBarChart` and `drawBarWithTrendLineChart` now reserve 8mm of plot headroom and the value text is drawn at `barTop − 1.3 mm`. The previous fallback that pushed labels inside the bar when it was tall is removed; trend-line projection scales to the same headroom so the line still aligns with bar tops.
+- **Plant page layout overhaul**:
+  - 6 charts shrunk from 50mm to 44mm in height to free up vertical space.
+  - Removed redundant `— <plant code>` suffix from each chart title (the page header already shows the plant); titles now read `Customer Complaints (Q1)`, `Customer Defective Parts`, `Customer PPM`, etc.
+  - One tall metric table replaced with **two compact side-by-side tables** (Customer / Supplier), each showing `Metric | <Reported Month> | Last 12 months` for Complaints, Defective Parts, Deliveries, PPM.
+  - **Remarks rendered as a dedicated card** (`drawRemarksCard`) below the tables instead of bare text overlapping the table. The card uses the same chrome as the other tables (rounded border, header rule, title, body) and gracefully truncates with `…` if the remarks exceed the available height.
+
+**Files Modified**:
+- `components/management-summary/pdf-generator.ts` — bar/label fix, plant-page layout, `drawRemarksCard`, removal of plant legend on global charts
+
+**Breaking Changes**: None
+
+---
+
 ### Added - 2026-05-07
 **Type**: Added
 

@@ -315,7 +315,7 @@ function drawSimpleBarChart(
   const highlightLabel = options?.highlightLabel;
 
   data.forEach((point) => {
-    const barHeight = (point.value / maxValue) * (plotHeight - 4);
+    const barHeight = (point.value / maxValue) * (plotHeight - 8);
     const barTop = plotY + plotHeight - barHeight;
     const isHighlight = highlightLabel && point.label === highlightLabel;
     const fill: [number, number, number] = isHighlight
@@ -330,7 +330,7 @@ function drawSimpleBarChart(
       pdf.setFontSize(6.2);
       const valueText = formatGermanNumber(Math.round(point.value), 0);
       const valueW = pdf.getTextWidth(valueText);
-      const textY = Math.max(plotY + 8.5, barTop - 1.3);
+      const textY = barTop - 1.3;
       pdf.text(valueText, cursorX + barWidth / 2 - valueW / 2, textY);
     }
 
@@ -427,10 +427,10 @@ function drawBarWithTrendLineChart(
   let cursorX = plotX + (plotWidth - totalBarsWidth) / 2;
   const highlightLabel = options?.highlightLabel;
 
-  const toY = (value: number) => plotY + plotHeight - (value / maxValue) * (plotHeight - 4);
+  const toY = (value: number) => plotY + plotHeight - (value / maxValue) * (plotHeight - 8);
 
   bars.forEach((point) => {
-    const barHeight = (point.value / maxValue) * (plotHeight - 4);
+    const barHeight = (point.value / maxValue) * (plotHeight - 8);
     const barTop = plotY + plotHeight - barHeight;
     const isHighlight = highlightLabel && point.label === highlightLabel;
     const fill: [number, number, number] = isHighlight
@@ -448,7 +448,7 @@ function drawBarWithTrendLineChart(
     pdf.setFontSize(6.2);
     const valueText = formatGermanNumber(Math.round(point.value), 0);
     const valueW = pdf.getTextWidth(valueText);
-    const textY = Math.max(plotY + 8.5, barTop - 1.3);
+    const textY = barTop - 1.3;
     pdf.text(valueText, cursorX + barWidth / 2 - valueW / 2, textY);
 
     pdf.setTextColor(120, 130, 145);
@@ -482,6 +482,47 @@ function drawBarWithTrendLineChart(
   const yAxisText = `Y-axis: ${yAxisLabel}`;
   const yAxisTextWidth = pdf.getTextWidth(yAxisText);
   pdf.text(yAxisText, plotX + plotWidth - yAxisTextWidth, y + height - 2.5);
+}
+
+function drawRemarksCard(
+  pdf: jsPDF,
+  title: string,
+  bodyText: string,
+  x: number,
+  y: number,
+  width: number,
+  height: number
+): void {
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(220, 227, 236);
+  pdf.roundedRect(x, y, width, height, 2, 2, "FD");
+
+  pdf.setTextColor(35, 45, 60);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.text(title, x + 3, y + 6);
+
+  pdf.setDrawColor(235, 240, 246);
+  pdf.line(x + 3, y + 8.5, x + width - 3, y + 8.5);
+
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(8.6);
+  pdf.setTextColor(60, 70, 90);
+  const lineHeight = 4.2;
+  const innerWidth = width - 8;
+  const lines = pdf.splitTextToSize(bodyText, innerWidth) as string[];
+  const usableHeight = height - 12;
+  const maxLines = Math.max(1, Math.floor(usableHeight / lineHeight));
+  const visible = lines.slice(0, maxLines);
+  visible.forEach((line, idx) => {
+    pdf.text(line, x + 4, y + 12.5 + idx * lineHeight);
+  });
+  if (lines.length > visible.length) {
+    pdf.setTextColor(140, 150, 165);
+    pdf.setFontSize(7.6);
+    pdf.text("…", x + 4, y + 12.5 + visible.length * lineHeight);
+  }
+  pdf.setTextColor(30, 35, 40);
 }
 
 function movingAverage(series: PdfSeriesPoint[], windowSize: number): PdfSeriesPoint[] {
@@ -719,41 +760,20 @@ export async function generateManagementSummaryPdf(
       logoDataUrl
     );
 
-    function buildPlantLegendForMetric(getValue: (m: MonthSums) => number): {
-      series: PdfSeriesPoint[];
-      legend: PdfLegendItem[];
-    } {
-      const series: PdfSeriesPoint[] = last12Months.map((m) => {
+    function buildSeriesForMetric(getValue: (m: MonthSums) => number): PdfSeriesPoint[] {
+      return last12Months.map((m) => {
         const ms = monthSums.get(m) || emptyMonthSums();
         return { label: monthLabelShort(m), value: getValue(ms) };
       });
-      const plantTotals = new Map<string, number>();
-      monthlyByPlant.forEach((map, code) => {
-        let total = 0;
-        last12Months.forEach((m) => {
-          const ms = map.get(m);
-          if (ms) total += getValue(ms);
-        });
-        if (total > 0) plantTotals.set(code, total);
-      });
-      const top = Array.from(plantTotals.entries())
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8);
-      const legend: PdfLegendItem[] = top.map(([code, value], idx) => ({
-        label: formatPlantLabel(code, plantsByCode),
-        value,
-        color: getPlantColor(idx),
-      }));
-      return { series, legend };
     }
 
     if (sectionSet.has("chart-notifications-month")) {
-      const { series, legend } = buildPlantLegendForMetric(
+      const series = buildSeriesForMetric(
         (m) => m.customerComplaints + m.supplierComplaints + m.internalComplaints
       );
       drawSimpleBarChart(
         pdf,
-        "R12M Total Number of Notifications by Month and Plant",
+        "R12M Total Number of Notifications by Month",
         series,
         10,
         24,
@@ -761,17 +781,17 @@ export async function generateManagementSummaryPdf(
         56,
         [6, 182, 212],
         "Notifications",
-        legend,
+        [],
         { highlightLabel: reportMonthLabelShort }
       );
     }
     if (sectionSet.has("chart-defects-month")) {
-      const { series, legend } = buildPlantLegendForMetric(
+      const series = buildSeriesForMetric(
         (m) => m.customerDefective + m.supplierDefective
       );
       drawSimpleBarChart(
         pdf,
-        "R12M Total Number of Defects by Month and Plant",
+        "R12M Total Number of Defects by Month",
         series,
         10,
         84,
@@ -779,7 +799,7 @@ export async function generateManagementSummaryPdf(
         56,
         [244, 67, 54],
         "Defective Parts",
-        legend,
+        [],
         { highlightLabel: reportMonthLabelShort }
       );
     }
@@ -975,30 +995,30 @@ export async function generateManagementSummaryPdf(
         return { label: monthLabelShort(m), value: del > 0 ? (def / del) * 1_000_000 : 0 };
       });
 
-      // 3x2 grid layout
+      // 3x2 grid of charts (compact so we have clear room for tables + remarks card)
       const left = 10;
       const gap = 4;
       const chartW = (pageWidth - 2 * left - 2 * gap) / 3;
-      const chartH = 50;
+      const chartH = 44;
       const row1Y = 24;
       const row2Y = row1Y + chartH + 4;
 
       drawSimpleBarChart(
         pdf,
-        `Customer Complaints — ${code}`,
+        "Customer Complaints (Q1)",
         customerComplaintsSeries,
         left,
         row1Y,
         chartW,
         chartH,
         [6, 182, 212],
-        "Q1 notifications",
+        "Notifications",
         [],
         { highlightLabel: reportMonthLabelShort }
       );
       drawSimpleBarChart(
         pdf,
-        `Customer Defective Parts — ${code}`,
+        "Customer Defective Parts",
         customerDefectiveSeries,
         left + chartW + gap,
         row1Y,
@@ -1011,7 +1031,7 @@ export async function generateManagementSummaryPdf(
       );
       drawBarWithTrendLineChart(
         pdf,
-        `Customer PPM — ${code}`,
+        "Customer PPM",
         customerPpmSeries,
         movingAverage(customerPpmSeries, 3),
         left + 2 * (chartW + gap),
@@ -1026,20 +1046,20 @@ export async function generateManagementSummaryPdf(
 
       drawSimpleBarChart(
         pdf,
-        `Supplier Complaints — ${code}`,
+        "Supplier Complaints (Q2)",
         supplierComplaintsSeries,
         left,
         row2Y,
         chartW,
         chartH,
         [20, 184, 166],
-        "Q2 notifications",
+        "Notifications",
         [],
         { highlightLabel: reportMonthLabelShort }
       );
       drawSimpleBarChart(
         pdf,
-        `Supplier Defective Parts — ${code}`,
+        "Supplier Defective Parts",
         supplierDefectiveSeries,
         left + chartW + gap,
         row2Y,
@@ -1052,7 +1072,7 @@ export async function generateManagementSummaryPdf(
       );
       drawBarWithTrendLineChart(
         pdf,
-        `Supplier PPM — ${code}`,
+        "Supplier PPM",
         supplierPpmSeries,
         movingAverage(supplierPpmSeries, 3),
         left + 2 * (chartW + gap),
@@ -1065,7 +1085,7 @@ export async function generateManagementSummaryPdf(
         { highlightLabel: reportMonthLabelShort }
       );
 
-      // Plant totals + reported month table
+      // Plant aggregates: reported month + R12M
       const reportMs = map.get(reportMonthKey) || emptyMonthSums();
       const r12 = months.reduce((acc, m) => {
         const ms = map.get(m);
@@ -1097,77 +1117,94 @@ export async function generateManagementSummaryPdf(
           ? (r12.supplierDefective / r12.supplierDeliveries) * 1_000_000
           : 0;
 
+      // Two compact side-by-side tables (Customer / Supplier) instead of one tall table.
       const tableY = row2Y + chartH + 4;
-      const remarksReserved = (payload.plantRemarks?.[code] || "").trim() ? 30 : 0;
-      const tableH = pageHeight - tableY - 10 - remarksReserved;
+      const tableH = 42;
+      const halfW = (pageWidth - 24) / 2;
+      const reportedHeader = `${reportMonthLabelShort} (reported)`;
 
       drawPdfTable(
         pdf,
-        `Plant ${code} — ${reportMonthLabelLong} vs Last 12 months`,
-        ["Metric", `${reportMonthLabelShort} (reported month)`, "Last 12 months"],
+        `Customer — ${reportMonthLabelLong} vs Last 12 months`,
+        ["Metric", reportedHeader, "Last 12 months"],
         [
           [
-            "Customer Complaints (Q1)",
+            "Complaints (Q1)",
             formatGermanNumber(reportMs.customerComplaints, 0),
             formatGermanNumber(r12.customerComplaints, 0),
           ],
           [
-            "Customer Defective Parts",
+            "Defective Parts",
             formatGermanNumber(reportMs.customerDefective, 0),
             formatGermanNumber(r12.customerDefective, 0),
           ],
           [
-            "Customer Deliveries",
+            "Deliveries",
             formatGermanNumber(reportMs.customerDeliveries, 0),
             formatGermanNumber(r12.customerDeliveries, 0),
           ],
           [
-            "Customer PPM",
+            "PPM",
             formatGermanNumber(reportCustomerPpm, 0),
             formatGermanNumber(r12CustomerPpm, 0),
-          ],
-          [
-            "Supplier Complaints (Q2)",
-            formatGermanNumber(reportMs.supplierComplaints, 0),
-            formatGermanNumber(r12.supplierComplaints, 0),
-          ],
-          [
-            "Supplier Defective Parts",
-            formatGermanNumber(reportMs.supplierDefective, 0),
-            formatGermanNumber(r12.supplierDefective, 0),
-          ],
-          [
-            "Supplier Deliveries",
-            formatGermanNumber(reportMs.supplierDeliveries, 0),
-            formatGermanNumber(r12.supplierDeliveries, 0),
-          ],
-          [
-            "Supplier PPM",
-            formatGermanNumber(reportSupplierPpm, 0),
-            formatGermanNumber(r12SupplierPpm, 0),
           ],
         ],
         10,
         tableY,
-        pageWidth - 20,
+        halfW,
         tableH,
-        { firstColRatio: 0.4 }
+        { firstColRatio: 0.42 }
       );
 
+      drawPdfTable(
+        pdf,
+        `Supplier — ${reportMonthLabelLong} vs Last 12 months`,
+        ["Metric", reportedHeader, "Last 12 months"],
+        [
+          [
+            "Complaints (Q2)",
+            formatGermanNumber(reportMs.supplierComplaints, 0),
+            formatGermanNumber(r12.supplierComplaints, 0),
+          ],
+          [
+            "Defective Parts",
+            formatGermanNumber(reportMs.supplierDefective, 0),
+            formatGermanNumber(r12.supplierDefective, 0),
+          ],
+          [
+            "Deliveries",
+            formatGermanNumber(reportMs.supplierDeliveries, 0),
+            formatGermanNumber(r12.supplierDeliveries, 0),
+          ],
+          [
+            "PPM",
+            formatGermanNumber(reportSupplierPpm, 0),
+            formatGermanNumber(r12SupplierPpm, 0),
+          ],
+        ],
+        10 + halfW + 4,
+        tableY,
+        halfW,
+        tableH,
+        { firstColRatio: 0.42 }
+      );
+
+      // Remarks rendered as a dedicated card below the tables (no overlap).
       const remark = (payload.plantRemarks?.[code] || "").trim();
       if (remark) {
-        const remarksY = tableY + tableH + 2;
-        pdf.setTextColor(45, 55, 70);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10);
-        pdf.text("Remarks / Top topics", 10, remarksY);
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9.2);
-        const lines = pdf.splitTextToSize(remark, pageWidth - 24);
-        const maxLines = Math.max(1, Math.floor((pageHeight - remarksY - 10) / 4.4));
-        lines
-          .slice(0, maxLines)
-          .forEach((line: string, idx: number) => pdf.text(line, 12, remarksY + 6 + idx * 4.4));
+        const remarksY = tableY + tableH + 4;
+        const remarksH = pageHeight - remarksY - 10;
+        if (remarksH > 12) {
+          drawRemarksCard(
+            pdf,
+            "Remarks / Top topics",
+            remark,
+            10,
+            remarksY,
+            pageWidth - 20,
+            remarksH
+          );
+        }
       }
     }
   }

@@ -90,13 +90,15 @@ QOS ET Quality Report is a Next.js dashboard for **manufacturing quality KPIs** 
 - PDF is generated **client-side** in `components/management-summary/pdf-generator.ts` (uses `jsPDF`); the page does not redirect — a status banner reports progress/success/error.
 - **Reporting-month policy**: helper `getReportMonthInfo()` in `lib/management-summary/constants.ts` returns the **previous calendar month** relative to today. Example: a report created in May ⇒ April. The payload carries `reportMonthKey` (`YYYY-MM`) so the same period is used by every page in the PDF, every chart highlights this month's bar, and the filename includes it: `Management_Summary_2026-04_20260507.pdf`.
 - Trailing 12 months are computed by `buildLast12MonthsEnding(reportMonthKey)` so the PDF is consistent regardless of what the latest available data month is.
-- **Plant pages** are **3×2 charts + comparison table**:
-  - Row 1: Customer Complaints, Customer Defective Parts, Customer PPM (bars + 3-month moving-average trend)
-  - Row 2: Supplier Complaints, Supplier Defective Parts, Supplier PPM (bars + 3-month moving-average trend)
+- **Plant pages** are **3×2 charts + two compact comparison tables + remarks card**:
+  - Row 1: Customer Complaints (Q1), Customer Defective Parts, Customer PPM (bars + 3-month moving-average trend)
+  - Row 2: Supplier Complaints (Q2), Supplier Defective Parts, Supplier PPM (bars + 3-month moving-average trend)
+  - Chart titles do not repeat the plant code (the page header already shows it).
   - Reported-month bar is highlighted on every chart.
-  - Comparison table: `Metric | Reported Month | Last 12 months` (customer/supplier complaints, defective parts, deliveries, PPM).
-  - Optional remarks block under the table.
-- **Notifications & Defects PDF page** uses top-8 **plant legend** (formatted as `<code> <CITY>, <CC>`, e.g. `210 MAN, TR`) plus a separate Q1/Q2/Q3 type legend for the notifications-by-type chart.
+  - Two side-by-side comparison tables (Customer / Supplier) with rows: Complaints, Defective Parts, Deliveries, PPM and columns `Metric | <Reported Month> | Last 12 months`.
+  - Remarks rendered as a separate **card** (`drawRemarksCard`, same chrome as tables) so it never overlaps the comparison tables; long remarks are truncated with an ellipsis indicator.
+- **Notifications & Defects PDF page**: the per-plant legend was intentionally **removed** from the `Notifications by Month` and `Defects by Month` charts because the bars represent monthly totals (no per-site distribution rendered). The Q1/Q2/Q3 type legend is kept on the `Notifications by Type` chart since it categorises by type, not by site.
+- **Bar value labels** in `drawSimpleBarChart` / `drawBarWithTrendLineChart` are always drawn above each bar (`barTop − 1.3 mm`) with 8 mm of plot-area headroom reserved so tall bars never push the label inside the bar; trend lines use the same headroom so they align with bar tops.
 - **Customer/Supplier PPM PDF pages** include: full-width bar+trend chart, Monthly Trend Analysis table (last 8 months + R12M total + reported-month row), Site Contribution per Month table (all selected plants + total).
 - Default app logo is loaded from `/Media/QM ET Triangle.png`; users can override via file input on `/management-summary`. Logo data is carried as a base64 data URL on the payload (`logoDataUrl`).
 - Section catalog (`lib/management-summary/section-catalog.ts`) drives the form checklist and which sections are rendered: `executive`, `chart-notifications-month`, `chart-defects-month`, `chart-notifications-type`, `customer-ppm`, `supplier-ppm`, `plant-pages`.
