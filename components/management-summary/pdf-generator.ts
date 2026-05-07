@@ -879,6 +879,33 @@ export async function generateManagementSummaryPdf(
       pageWidth - 20,
       40
     );
+
+    // Sites included in the report (rendered as a card below the Executive Context table)
+    const siteLabels = payload.plantCodes
+      .slice()
+      .sort((a, b) => a.localeCompare(b))
+      .map((code) => formatPlantLabel(code, plantsByCode));
+    const sitesText =
+      siteLabels.length > 0 ? siteLabels.join("   \u00B7   ") : "No sites selected.";
+
+    const sitesY = 128;
+    const sitesAvailableH = pageHeight - sitesY - 10;
+    const sitesLineHeight = 4.2;
+    const sitesInnerWidth = pageWidth - 20 - 8;
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8.6);
+    const wrappedSites = pdf.splitTextToSize(sitesText, sitesInnerWidth) as string[];
+    const desiredSitesH = 14 + Math.max(1, wrappedSites.length) * sitesLineHeight + 4;
+    const sitesH = Math.min(sitesAvailableH, Math.max(20, desiredSitesH));
+    drawRemarksCard(
+      pdf,
+      `Sites included in the report (${payload.plantCodes.length} of ${totalPlantsCount})`,
+      sitesText,
+      10,
+      sitesY,
+      pageWidth - 20,
+      sitesH
+    );
   }
 
   // ====== Page 2: Notifications & Defects ======

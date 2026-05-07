@@ -323,12 +323,16 @@ export function ManagementSummaryClient() {
             <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
               <div className="text-xs text-muted-foreground mb-1">Preview</div>
               <div className="h-10 w-[180px] flex items-center justify-center">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={logoDataUrl || defaultLogoDataUrl || ""}
-                  alt="Logo preview"
-                  className="max-h-10 max-w-[180px] object-contain"
-                />
+                {logoDataUrl || defaultLogoDataUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={(logoDataUrl || defaultLogoDataUrl) as string}
+                    alt="Logo preview"
+                    className="max-h-10 max-w-[180px] object-contain"
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground">Loading logo…</span>
+                )}
               </div>
             </div>
           </div>

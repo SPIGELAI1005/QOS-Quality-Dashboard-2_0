@@ -1241,7 +1241,9 @@ export default function UploadPage() {
   function mergeManualIntoKpis(manual: ManualKpiEntry[]) {
     if (typeof window === "undefined") return;
     const existing = safeJsonParse<MonthlySiteKpi[]>(localStorage.getItem("qos-et-kpis")) || [];
-    const byKey = new Map(existing.map((k) => [`${k.month}__${k.siteCode}`, k] as const));
+    const byKey = new Map<string, MonthlySiteKpi>(
+      existing.map((k) => [getManualEntryKey(k), k])
+    );
     const latestManual = dedupeManualEntries(manual);
     for (const m of latestManual) byKey.set(getManualEntryKey(m), m);
     const merged = Array.from(byKey.values()).sort((a, b) => a.month.localeCompare(b.month) || a.siteCode.localeCompare(b.siteCode));
