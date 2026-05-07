@@ -373,6 +373,143 @@ function drawSimpleBarChart(
   }
 }
 
+interface StackedBarPoint {
+  label: string;
+  /** Stacked segments rendered bottom-to-top in this order. */
+  segments: Array<{ key: string; value: number }>;
+}
+
+function drawStackedBarChart(
+  pdf: jsPDF,
+  title: string,
+  data: StackedBarPoint[],
+  segmentColors: Record<string, [number, number, number]>,
+  segmentOrder: string[],
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  yAxisLabel: string,
+  legendItems: PdfLegendItem[] = [],
+  options?: { legendTitle?: string; highlightLabel?: string }
+): void {
+  pdf.setFillColor(255, 255, 255);
+  pdf.setDrawColor(220, 227, 236);
+  pdf.roundedRect(x, y, width, height, 2, 2, "FD");
+
+  pdf.setTextColor(35, 45, 60);
+  pdf.setFont("helvetica", "bold");
+  pdf.setFontSize(9);
+  pdf.text(title, x + 3, y + 6);
+
+  const hasLegend = legendItems.length > 0;
+  const legendWidth = hasLegend ? width * 0.28 : 0;
+  const plotX = x + 10;
+  const plotY = y + 10;
+  const plotWidth = width - 16 - legendWidth;
+  const plotHeight = height - 24;
+
+  const totals = data.map((p) => p.segments.reduce((s, seg) => s + Math.max(0, seg.value), 0));
+  const maxValue = Math.max(...totals, 1);
+  const yTickValues = [0, maxValue * 0.25, maxValue * 0.5, maxValue * 0.75, maxValue];
+
+  pdf.setDrawColor(235, 240, 246);
+  pdf.line(plotX, plotY + plotHeight, plotX + plotWidth, plotY + plotHeight);
+  pdf.line(plotX, plotY, plotX, plotY + plotHeight);
+
+  yTickValues.forEach((tick) => {
+    const tickY = plotY + plotHeight - (tick / maxValue) * plotHeight;
+    pdf.setDrawColor(240, 243, 248);
+    pdf.line(plotX, tickY, plotX + plotWidth, tickY);
+    pdf.setTextColor(130, 140, 155);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(6.5);
+    const tickText = formatGermanNumber(Math.round(tick), 0);
+    const tickWidth = pdf.getTextWidth(tickText);
+    pdf.text(tickText, plotX - tickWidth - 1.5, tickY + 1.8);
+  });
+
+  const barCount = data.length || 1;
+  const barGap = 1.2;
+  const barWidth = Math.max(2.5, Math.min(7.5, (plotWidth - (barCount - 1) * barGap) / barCount));
+  const totalBarsWidth = barWidth * barCount + (barCount - 1) * barGap;
+  let cursorX = plotX + (plotWidth - totalBarsWidth) / 2;
+  const highlightLabel = options?.highlightLabel;
+
+  data.forEach((point, idx) => {
+    const total = totals[idx];
+    const totalBarHeight = (total / maxValue) * (plotHeight - 8);
+    let stackTop = plotY + plotHeight;
+
+    segmentOrder.forEach((key) => {
+      const seg = point.segments.find((s) => s.key === key);
+      const segValue = Math.max(0, seg?.value ?? 0);
+      if (segValue <= 0) return;
+      const segHeight = (segValue / maxValue) * (plotHeight - 8);
+      const segTop = stackTop - segHeight;
+      const baseColor = segmentColors[key] ?? [120, 130, 145];
+      const isHighlight = highlightLabel && point.label === highlightLabel;
+      const fill: [number, number, number] = isHighlight
+        ? [
+            Math.min(255, baseColor[0] + 30),
+            Math.min(255, baseColor[1] + 30),
+            Math.min(255, baseColor[2] + 30),
+          ]
+        : baseColor;
+      pdf.setFillColor(fill[0], fill[1], fill[2]);
+      pdf.rect(cursorX, segTop, barWidth, segHeight, "F");
+      stackTop = segTop;
+    });
+
+    if (total > 0) {
+      pdf.setTextColor(60, 70, 85);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(6.2);
+      const valueText = formatGermanNumber(Math.round(total), 0);
+      const valueW = pdf.getTextWidth(valueText);
+      const textY = plotY + plotHeight - totalBarHeight - 1.3;
+      pdf.text(valueText, cursorX + barWidth / 2 - valueW / 2, textY);
+    }
+
+    pdf.setTextColor(120, 130, 145);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(5.8);
+    pdf.text(point.label, cursorX + barWidth / 2, plotY + plotHeight + 6.2, {
+      angle: 45,
+      align: "center",
+    });
+
+    cursorX += barWidth + barGap;
+  });
+
+  pdf.setTextColor(110, 120, 135);
+  pdf.setFont("helvetica", "normal");
+  pdf.setFontSize(6.8);
+  pdf.text("X-axis: Month", plotX, y + height - 2.5);
+  const yAxisText = `Y-axis: ${yAxisLabel}`;
+  const yAxisTextWidth = pdf.getTextWidth(yAxisText);
+  pdf.text(yAxisText, plotX + plotWidth - yAxisTextWidth, y + height - 2.5);
+
+  if (hasLegend) {
+    const legendX = plotX + plotWidth + 6;
+    let legendY = y + 13;
+    pdf.setTextColor(70, 85, 105);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(7);
+    pdf.text(options?.legendTitle ?? "Legend", legendX, legendY);
+    legendY += 3;
+    legendItems.slice(0, 8).forEach((item) => {
+      legendY += 4.6;
+      pdf.setFillColor(item.color[0], item.color[1], item.color[2]);
+      pdf.roundedRect(legendX, legendY - 2.3, 2.8, 2.8, 0.4, 0.4, "F");
+      pdf.setTextColor(85, 95, 110);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(6.2);
+      pdf.text(`${item.label}: ${formatGermanNumber(item.value, 0)}`, legendX + 3.7, legendY);
+    });
+  }
+}
+
 function drawBarWithTrendLineChart(
   pdf: jsPDF,
   title: string,
@@ -643,7 +780,7 @@ export async function generateManagementSummaryPdf(
     return acc;
   }, emptyMonthSums());
 
-  // ====== Page 1 — Executive Overview ======
+  // ====== Page 1: Executive Overview ======
   if (sectionSet.has("executive")) {
     drawPdfHeader(pdf, reportTitleBase, reportContext, logoDataUrl);
     isFirstPage = false;
@@ -744,7 +881,7 @@ export async function generateManagementSummaryPdf(
     );
   }
 
-  // ====== Page 2 — Notifications & Defects ======
+  // ====== Page 2: Notifications & Defects ======
   const wantsNotifPage =
     sectionSet.has("chart-notifications-month") ||
     sectionSet.has("chart-defects-month") ||
@@ -755,7 +892,7 @@ export async function generateManagementSummaryPdf(
     isFirstPage = false;
     drawPdfHeader(
       pdf,
-      `${reportTitleBase} — Notifications & Defects`,
+      `${reportTitleBase}: Notifications & Defects`,
       reportContext,
       logoDataUrl
     );
@@ -804,27 +941,37 @@ export async function generateManagementSummaryPdf(
       );
     }
     if (sectionSet.has("chart-notifications-type")) {
-      const series: PdfSeriesPoint[] = last12Months.map((m) => {
+      const stacked: StackedBarPoint[] = last12Months.map((m) => {
         const ms = monthSums.get(m) || emptyMonthSums();
         return {
           label: monthLabelShort(m),
-          value: ms.customerComplaints + ms.supplierComplaints + ms.internalComplaints,
+          segments: [
+            { key: "Q1", value: ms.customerComplaints },
+            { key: "Q2", value: ms.supplierComplaints },
+            { key: "Q3", value: ms.internalComplaints },
+          ],
         };
       });
+      const segmentColors: Record<string, [number, number, number]> = {
+        Q1: [6, 182, 212],
+        Q2: [20, 184, 166],
+        Q3: [244, 67, 54],
+      };
       const legend: PdfLegendItem[] = [
-        { label: "Q1 - Customer", value: totals.customerComplaints, color: [6, 182, 212] },
-        { label: "Q2 - Supplier", value: totals.supplierComplaints, color: [20, 184, 166] },
-        { label: "Q3 - Internal", value: totals.internalComplaints, color: [244, 67, 54] },
+        { label: "Q1 (Customer)", value: totals.customerComplaints, color: segmentColors.Q1 },
+        { label: "Q2 (Supplier)", value: totals.supplierComplaints, color: segmentColors.Q2 },
+        { label: "Q3 (Internal)", value: totals.internalComplaints, color: segmentColors.Q3 },
       ];
-      drawSimpleBarChart(
+      drawStackedBarChart(
         pdf,
-        "R12M Number of Notifications by Month and Notification Type",
-        series,
+        "R12M Notifications by Month, split by Notification Type",
+        stacked,
+        segmentColors,
+        ["Q1", "Q2", "Q3"],
         10,
         144,
         pageWidth - 20,
         56,
-        [20, 184, 166],
         "Notifications",
         legend,
         { legendTitle: "Notification Types", highlightLabel: reportMonthLabelShort }
@@ -842,7 +989,7 @@ export async function generateManagementSummaryPdf(
     const barColor: [number, number, number] = isCustomer ? [6, 182, 212] : [20, 184, 166];
     const trendColor: [number, number, number] = [76, 175, 80];
 
-    drawPdfHeader(pdf, `${reportTitleBase} — ${heading}`, reportContext, logoDataUrl);
+    drawPdfHeader(pdf, `${reportTitleBase}: ${heading}`, reportContext, logoDataUrl);
 
     const series: PdfSeriesPoint[] = last12Months.map((m) => {
       const ms = monthSums.get(m) || emptyMonthSums();
@@ -854,7 +1001,7 @@ export async function generateManagementSummaryPdf(
 
     drawBarWithTrendLineChart(
       pdf,
-      `R12M ${heading} — monthly values + trend`,
+      `R12M ${heading} monthly values with trend`,
       series,
       movingAverage(series, 3),
       10,
@@ -955,7 +1102,7 @@ export async function generateManagementSummaryPdf(
   if (sectionSet.has("customer-ppm")) renderPpmPage("customer");
   if (sectionSet.has("supplier-ppm")) renderPpmPage("supplier");
 
-  // ====== Plant Pages — 6 charts (3x2) + reported-month table ======
+  // ====== Plant Pages: 6 charts (3x2) plus reported-month table and remarks card ======
   if (sectionSet.has("plant-pages")) {
     for (const code of payload.plantCodes) {
       if (!isFirstPage) pdf.addPage();
@@ -963,7 +1110,7 @@ export async function generateManagementSummaryPdf(
       const label = formatPlantLabel(code, plantsByCode);
       drawPdfHeader(
         pdf,
-        `${reportTitleBase} — ${label}`,
+        `${reportTitleBase}: ${label}`,
         reportContext,
         logoDataUrl
       );
@@ -1125,7 +1272,7 @@ export async function generateManagementSummaryPdf(
 
       drawPdfTable(
         pdf,
-        `Customer — ${reportMonthLabelLong} vs Last 12 months`,
+        `Customer KPIs: ${reportMonthLabelLong} vs Last 12 months`,
         ["Metric", reportedHeader, "Last 12 months"],
         [
           [
@@ -1158,7 +1305,7 @@ export async function generateManagementSummaryPdf(
 
       drawPdfTable(
         pdf,
-        `Supplier — ${reportMonthLabelLong} vs Last 12 months`,
+        `Supplier KPIs: ${reportMonthLabelLong} vs Last 12 months`,
         ["Metric", reportedHeader, "Last 12 months"],
         [
           [
@@ -1189,22 +1336,21 @@ export async function generateManagementSummaryPdf(
         { firstColRatio: 0.42 }
       );
 
-      // Remarks rendered as a dedicated card below the tables (no overlap).
-      const remark = (payload.plantRemarks?.[code] || "").trim();
-      if (remark) {
-        const remarksY = tableY + tableH + 4;
-        const remarksH = pageHeight - remarksY - 10;
-        if (remarksH > 12) {
-          drawRemarksCard(
-            pdf,
-            "Remarks / Top topics",
-            remark,
-            10,
-            remarksY,
-            pageWidth - 20,
-            remarksH
-          );
-        }
+      // Remarks rendered as a dedicated card below the tables (always visible,
+      // with "No remarks." as the default body when nothing was entered for the plant).
+      const remarkText = (payload.plantRemarks?.[code] || "").trim() || "No remarks.";
+      const remarksY = tableY + tableH + 4;
+      const remarksH = pageHeight - remarksY - 10;
+      if (remarksH > 12) {
+        drawRemarksCard(
+          pdf,
+          "Remarks / Top topics",
+          remarkText,
+          10,
+          remarksY,
+          pageWidth - 20,
+          remarksH
+        );
       }
     }
   }

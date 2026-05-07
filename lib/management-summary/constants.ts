@@ -55,7 +55,7 @@ export function getReportMonthInfo(reference: Date = new Date()): ReportMonthInf
 }
 
 export function getRecommendedManagementSummaryTitle(monthLabel: string, year: number): string {
-  return `Management Summary QOS ET Report — ${monthLabel} ${year}`;
+  return `Management Summary QOS ET Report ${monthLabel} ${year}`;
 }
 
 export function createDefaultPayload(

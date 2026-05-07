@@ -280,7 +280,7 @@ export function ManagementSummaryClient() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Report title</CardTitle>
           <CardDescription>
-            Suggested title: <span className="text-foreground/90">{recommendedTitle}</span> — you can edit it below.
+            Suggested title: <span className="text-foreground/90">{recommendedTitle}</span>. You can edit it below.
             <br />
             Reporting month is the previous closed month (<span className="text-foreground/90">{reportMonth.label}</span>);
             tables show this month&apos;s values alongside the trailing 12-month totals.
@@ -365,7 +365,7 @@ export function ManagementSummaryClient() {
                       />
                       <div className="flex-1 min-w-0">
                         <Label htmlFor={`plant-${p.code}`} className="font-medium cursor-pointer text-foreground">
-                          {p.code} — {p.name}
+                          {p.code} {p.name}
                         </Label>
                         {p.location ? (
                           <p className="text-xs text-muted-foreground truncate">{p.location}</p>

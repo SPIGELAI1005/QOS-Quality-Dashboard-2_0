@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed - 2026-05-07 (PDF refinements, round 2)
+**Type**: Changed
+
+**Description**: Stacked notifications-by-type chart, em-dash cleanup across PDF and UI strings, and always-visible plant Remarks section
+
+**Details**:
+- **Notifications by Type chart now uses stacked bars**: each monthly bar is split into Q1 (Customer), Q2 (Supplier), and Q3 (Internal) segments matching the legend colours. New helper `drawStackedBarChart` renders the stack bottom-to-top using `[Q1, Q2, Q3]` ordering. Legend labels switched from `Q1 - Customer` to `Q1 (Customer)` for consistency. Chart title also updated to *"R12M Notifications by Month, split by Notification Type"*.
+- **Removed em-dashes (`—`) from all PDF and UI strings**:
+  - Recommended report title is now `Management Summary QOS ET Report April 2026` (no em-dash separator).
+  - Page sub-titles use a colon: `…April 2026: Notifications & Defects`, `…April 2026: Customer PPM`, `…April 2026: 131 CHI, RO`, etc.
+  - Chart titles use natural phrasing: `R12M Customer PPM monthly values with trend`, `R12M Total Number of Notifications by Month`, etc.
+  - Plant-comparison tables: `Customer KPIs: April 2026 vs Last 12 months` / `Supplier KPIs: April 2026 vs Last 12 months`.
+  - Section catalog labels and descriptions on `/management-summary` no longer contain em-dashes.
+  - Plant list rows now read `<code> <name>` (no em-dash separator), and the report-title hint reads `…April 2026. You can edit it below.`.
+- **Plant pages always include a Remarks / Top topics section**: the card is now rendered on every plant page; if no remark was entered for the plant the card body shows `No remarks.` as the default text. The card chrome is identical to the other tables and never overlaps them.
+
+**Files Modified**:
+- `components/management-summary/pdf-generator.ts` — `drawStackedBarChart` helper, stacked notifications-by-type chart, em-dash removal from page titles, always-on remarks card with default body
+- `components/management-summary/management-summary-client.tsx` — em-dash removal from title-card description and plant list labels
+- `lib/management-summary/constants.ts` — recommended title without em-dash
+- `lib/management-summary/section-catalog.ts` — em-dash removal from section labels and descriptions
+
+**Breaking Changes**: None
+
+---
+
 ### Changed - 2026-05-07 (PDF refinements)
 **Type**: Changed
 
